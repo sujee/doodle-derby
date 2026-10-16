@@ -2,8 +2,9 @@ import { el } from './dom';
 import type { GameResult } from './game';
 
 /**
- * Share card: one square image with every round's doodle, who guessed it, and a funny wrong guess.
- * Drawn on a canvas (no DOM screenshot library), so it looks the same everywhere.
+ * Share cards, drawn on a canvas (no DOM screenshot library) so they look the same everywhere:
+ * 1. "Doodles": every round's doodle, who guessed it, and a funny wrong guess.
+ * 2. "Bot brains": a table of every bot's guess trail per round, plus the wildest guess of the game.
  */
 
 const SIZE = 1080;
@@ -38,40 +39,40 @@ function gameUrl(): string {
 
 export function shareText(r: GameResult): string {
   const bots = r.labels.map((l, i) => `${shortName(l)} ${r.scores[i]}`).join(' · ');
+  const wild = wildestGuess(r);
   const url = gameUrl();
   return (
     `I just played Doodle Duel ✏️🤖 ${headlineFor(r)} ` +
     `The bots guessed ${r.playerScore} of my ${r.rounds.length} doodles (${bots}).` +
+    (wild ? ` Wildest guess: “${wild.guess}” for ${wild.word}.` : '') +
     (url ? ` ${url}` : '')
   );
 }
 
-export async function buildShareCard(r: GameResult): Promise<Blob> {
-  // Canvas text only uses web fonts that have finished loading.
+/** The wildest wrong guess of the game: the wordiest one (long guesses tend to be the funny ones). */
+export function wildestGuess(r: GameResult): { guess: string; word: string; bot: number } | null {
+  let best: { guess: string; word: string; bot: number } | null = null;
+  for (const round of r.rounds) {
+    round.guesses.forEach((list, bot) => {
+      for (const guess of list) if (!best || guess.length > best.guess.length) best = { guess, word: round.word, bot };
+    });
+  }
+  return best;
+}
+
+type Prepared = { images: (HTMLImageElement | null)[] };
+
+/** Canvas text only uses web fonts that have finished loading; doodles must be decoded first too. */
+async function prepare(r: GameResult): Promise<Prepared> {
   await Promise.all([document.fonts.load(`40px ${HAND}`), document.fonts.load(`40px ${BODY}`)]).catch(() => {});
-  const images = await Promise.all(r.rounds.map((round) => (round.image ? loadImage(round.image) : null)));
+  return { images: await Promise.all(r.rounds.map((round) => (round.image ? loadImage(round.image) : null))) };
+}
 
-  const c = document.createElement('canvas');
-  c.width = c.height = SIZE;
-  const ctx = c.getContext('2d')!;
-
-  // Paper with a faint dot grid.
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, SIZE, SIZE);
-  ctx.fillStyle = 'rgba(43,43,43,0.12)';
-  for (let x = 18; x < SIZE; x += 36) for (let y = 18; y < SIZE; y += 36) ctx.fillRect(x, y, 3, 3);
-
-  // Title in two colors.
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.font = `104px ${HAND}`;
-  const w1 = ctx.measureText('Doodle ').width;
-  const w2 = ctx.measureText('Duel').width;
-  let x = (SIZE - w1 - w2) / 2;
-  ctx.fillStyle = BOT_COLORS[0];
-  ctx.fillText('Doodle ', x, 120);
-  ctx.fillStyle = BOT_COLORS[1];
-  ctx.fillText('Duel', x + w1, 120);
+/** Card 1: the 10 doodles, who guessed each, and one funny wrong guess. */
+export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
+  const { images } = prep ?? (await prepare(r));
+  const { c, ctx } = paper(SIZE, SIZE);
+  title(ctx, SIZE, 120, 104);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = INK;
@@ -87,7 +88,7 @@ export async function buildShareCard(r: GameResult): Promise<Blob> {
   const pad = 22;
   const gap = 16;
   const widths = chips.map((ch) => ctx.measureText(ch.text).width + pad * 2);
-  x = (SIZE - widths.reduce((a, b) => a + b, 0) - gap * (chips.length - 1)) / 2;
+  let x = (SIZE - widths.reduce((a, b) => a + b, 0) - gap * (chips.length - 1)) / 2;
   chips.forEach((ch, i) => {
     roundRect(ctx, x, 222, widths[i], 50, 25);
     ctx.fillStyle = ch.color;
@@ -135,13 +136,199 @@ export async function buildShareCard(r: GameResult): Promise<Blob> {
     }
   });
 
+  footer(ctx, SIZE, SIZE);
+  return toPng(c);
+}
+
+/**
+ * Card 2, "What were the bots thinking?": a notebook table with one row per round (doodle + word)
+ * and one column per bot. Each cell is that bot's guess trail: wrong guesses struck through in the
+ * bot's color, the right one circled.
+ */
+export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
+  const { images } = prep ?? (await prepare(r));
+  const rows = r.rounds.slice(0, 10);
+  const top = 290;
+  const rowH = 104;
+  const height = Math.max(SIZE, top + rows.length * rowH + 100);
+  const { c, ctx } = paper(SIZE, height);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = INK;
+  ctx.font = `66px ${HAND}`;
+  ctx.fillText('What were the bots thinking?', SIZE / 2, 92);
+
+  // "Wildest guess" banner, slightly tilted like a sticker.
+  const wild = wildestGuess(r);
+  ctx.font = `32px ${BODY}`;
+  const banner = wild
+    ? `Wildest guess: “${wild.guess}” for ${wild.word} (${shortName(r.labels[wild.bot], 16)})`
+    : 'No wrong guesses at all. Show-offs!';
+  const bw = Math.min(SIZE - 80, ctx.measureText(banner).width + 60);
+  ctx.save();
+  ctx.translate(SIZE / 2, 152);
+  ctx.rotate((-1.2 * Math.PI) / 180);
+  roundRect(ctx, -bw / 2, -32, bw, 64, 32);
+  ctx.fillStyle = '#ffd23f';
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.fillText(fit(ctx, banner, bw - 40), 0, 11);
+  ctx.restore();
+
+  // Column headers: bot names in their colors.
+  const left = 40;
+  const colStart = 300;
+  const colW = (SIZE - colStart - left) / Math.max(1, r.labels.length);
+  ctx.textAlign = 'left';
+  ctx.font = `30px ${HAND}`;
+  ctx.fillStyle = MUTED;
+  ctx.fillText('Round', left, top - 26);
+  r.labels.forEach((label, b) => {
+    ctx.fillStyle = darker(BOT_COLORS[b % 3]);
+    ctx.fillText(fit(ctx, shortName(label), colW - 16), colStart + b * colW, top - 26);
+  });
+
+  rows.forEach((round, i) => {
+    const y = top + i * rowH;
+    if (i % 2 === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(left - 12, y, SIZE - (left - 12) * 2, rowH);
+    }
+    dashed(ctx, left - 12, y, SIZE - left + 12);
+
+    // Thumbnail + word + time.
+    const t = 80;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(left, y + 12, t, t);
+    const img = images[i];
+    if (img) ctx.drawImage(img, left + 2, y + 14, t - 4, t - 4);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = INK;
+    ctx.strokeRect(left, y + 12, t, t);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = INK;
+    ctx.font = `34px ${HAND}`;
+    ctx.fillText(fit(ctx, round.word, colStart - left - t - 30), left + t + 16, y + 52);
+    ctx.fillStyle = MUTED;
+    ctx.font = `20px ${BODY}`;
+    ctx.fillText(
+      round.winner === null ? 'stumped' : `got in ${round.seconds?.toFixed(1) ?? '?'}s`,
+      left + t + 16,
+      y + 80,
+    );
+
+    // Each bot's guess trail.
+    r.labels.forEach((_, b) => {
+      const trail = [
+        ...(round.guesses[b] ?? []).map((g) => ({ text: g, right: false })),
+        ...(round.winner === b ? [{ text: round.word, right: true }] : []),
+      ];
+      drawTrail(ctx, trail, colStart + b * colW, y + 36, colW - 22, BOT_COLORS[b % 3]);
+    });
+  });
+  dashed(ctx, left - 12, top + rows.length * rowH, SIZE - left + 12);
+
+  footer(ctx, SIZE, height);
+  return toPng(c);
+}
+
+/** Lay out guesses left to right, wrapping, up to 3 lines: wrong ones struck through, the right one circled. */
+function drawTrail(
+  ctx: CanvasRenderingContext2D,
+  trail: { text: string; right: boolean }[],
+  x0: number,
+  y0: number,
+  width: number,
+  color: string,
+) {
+  ctx.textAlign = 'left';
+  if (trail.length === 0) {
+    ctx.fillStyle = MUTED;
+    ctx.font = `24px ${BODY}`;
+    ctx.fillText('(quiet)', x0, y0 + 10);
+    return;
+  }
+  const lineH = 29;
+  let x = x0;
+  let line = 0;
+  for (const item of trail) {
+    ctx.font = item.right ? `30px ${HAND}` : `24px ${BODY}`;
+    const text = fit(ctx, item.text, width - 40);
+    const w = ctx.measureText(text).width;
+    const need = item.right ? w + 40 : w;
+    if (x > x0 && x + need > x0 + width) {
+      line++;
+      x = x0;
+    }
+    if (line > 2) {
+      ctx.fillStyle = MUTED;
+      ctx.font = `24px ${BODY}`;
+      ctx.fillText('…', x0 + width - 10, y0 + 2 * lineH);
+      return;
+    }
+    const y = y0 + line * lineH;
+    if (item.right) {
+      ctx.fillStyle = darker(color);
+      ctx.fillText(text, x + 6, y);
+      ctx.beginPath(); // hand-drawn circle around the right answer
+      ctx.ellipse(x + 6 + w / 2, y - 9, w / 2 + 10, 18, -0.06, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = MINT;
+      ctx.stroke();
+      ctx.fillStyle = '#05a37b';
+      ctx.font = `26px ${BODY}`;
+      ctx.fillText('✓', x + w + 20, y);
+      x += need + 8;
+    } else {
+      ctx.fillStyle = INK;
+      ctx.fillText(text, x, y);
+      ctx.beginPath(); // scribbled strike-through in the bot's color
+      ctx.moveTo(x - 2, y - 7);
+      ctx.lineTo(x + w + 2, y - 9);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+      x += w + 14;
+    }
+  }
+}
+
+/** A cream sheet with a faint dot grid. */
+function paper(width: number, height: number) {
+  const c = document.createElement('canvas');
+  c.width = width;
+  c.height = height;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = 'rgba(43,43,43,0.12)';
+  for (let x = 18; x < width; x += 36) for (let y = 18; y < height; y += 36) ctx.fillRect(x, y, 3, 3);
+  ctx.textBaseline = 'alphabetic';
+  return { c, ctx };
+}
+
+/** "Doodle Duel" in two colors, centered on baseline y. */
+function title(ctx: CanvasRenderingContext2D, width: number, y: number, size: number) {
+  ctx.textAlign = 'left';
+  ctx.font = `${size}px ${HAND}`;
+  const w1 = ctx.measureText('Doodle ').width;
+  const w2 = ctx.measureText('Duel').width;
+  const x = (width - w1 - w2) / 2;
+  ctx.fillStyle = BOT_COLORS[0];
+  ctx.fillText('Doodle ', x, y);
+  ctx.fillStyle = BOT_COLORS[1];
+  ctx.fillText('Duel', x + w1, y);
+}
+
+function footer(ctx: CanvasRenderingContext2D, width: number, height: number) {
   ctx.textAlign = 'center';
   ctx.fillStyle = MUTED;
   ctx.font = `30px ${BODY}`;
   const url = gameUrl();
-  ctx.fillText(url ? `Play: ${url.replace(/^https?:\/\//, '')}` : 'You doodle. The bots guess. Fastest bot wins.', SIZE / 2, SIZE - 40);
-
-  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png'));
+  ctx.fillText(url ? `Play: ${url.replace(/^https?:\/\//, '')}` : 'You doodle. The bots guess. Fastest bot wins.', width / 2, height - 40);
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, img: HTMLImageElement | null, i: number) {
@@ -169,6 +356,18 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: num
   ctx.restore();
 }
 
+function dashed(ctx: CanvasRenderingContext2D, x1: number, y: number, x2: number) {
+  ctx.save();
+  ctx.setLineDash([8, 7]);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(43,43,43,0.35)';
+  ctx.beginPath();
+  ctx.moveTo(x1, y);
+  ctx.lineTo(x2, y);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function fit(ctx: CanvasRenderingContext2D, text: string, max: number): string {
   if (ctx.measureText(text).width <= max) return text;
   let t = text;
@@ -188,6 +387,10 @@ function darker(hex: string): string {
   return `rgb(${f(n >> 16)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`;
 }
 
+function toPng(c: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png'));
+}
+
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -197,24 +400,28 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Modal with the card preview and share / download / copy actions. */
+type Card = { name: string; file: string; blob: Blob; url: string };
+
+/** Modal with both cards (tabs), and share / download / copy actions for the one shown. */
 export async function openShareDialog(r: GameResult) {
   const status = el('p', { class: 'share-status', role: 'status' });
-  const preview = el('div', { class: 'share-preview' }, el('p', { class: 'note' }, 'Drawing your card…'));
+  const tabs = el('div', { class: 'share-tabs', role: 'tablist' });
+  const preview = el('div', { class: 'share-preview' }, el('p', { class: 'note' }, 'Drawing your cards…'));
   const actions = el('div', { class: 'share-actions' });
   const close = el('button', { type: 'button', class: 'icon-btn share-close', 'aria-label': 'Close' }, '✕');
   const dialog = el('div', { class: 'share-dialog card', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Share your doodles' }, [
     close,
     el('h2', {}, 'Share your doodles'),
+    tabs,
     preview,
     actions,
     status,
   ]);
   const backdrop = el('div', { class: 'share-backdrop' }, dialog);
-  let url = '';
+  let cards: Card[] = [];
   const dismiss = () => {
     backdrop.remove();
-    if (url) URL.revokeObjectURL(url);
+    cards.forEach((c) => URL.revokeObjectURL(c.url));
     document.removeEventListener('keydown', onKey);
   };
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dismiss();
@@ -224,19 +431,44 @@ export async function openShareDialog(r: GameResult) {
   document.body.append(backdrop);
   close.focus();
 
-  let blob: Blob;
   try {
-    blob = await buildShareCard(r);
+    const prep = await prepare(r);
+    const [doodles, brains] = await Promise.all([buildDoodleCard(r, prep), buildBrainCard(r, prep)]);
+    cards = [
+      { name: 'Doodles', file: 'doodle-duel.png', blob: doodles, url: URL.createObjectURL(doodles) },
+      { name: 'Bot brains', file: 'doodle-duel-bot-brains.png', blob: brains, url: URL.createObjectURL(brains) },
+    ];
   } catch {
-    preview.replaceChildren(el('p', { class: 'note' }, 'Could not draw the share card, sorry!'));
+    preview.replaceChildren(el('p', { class: 'note' }, 'Could not draw the share cards, sorry!'));
     return;
   }
-  url = URL.createObjectURL(blob);
-  preview.replaceChildren(el('img', { src: url, alt: 'Doodle Duel share card with all your doodles' }));
 
   const text = shareText(r);
-  const file = new File([blob], 'doodle-duel.png', { type: 'image/png' });
+  const files = cards.map((c) => new File([c.blob], c.file, { type: 'image/png' }));
+  const canShareFiles = !!navigator.canShare?.({ files });
   const say = (msg: string) => (status.textContent = msg);
+  let current = cards[0];
+
+  const show = (card: Card) => {
+    current = card;
+    preview.replaceChildren(
+      el('img', {
+        src: card.url,
+        alt: card.name === 'Doodles' ? 'Share card with all your doodles' : 'Table of every bot’s guesses for each round',
+      }),
+    );
+    for (const b of tabs.children) b.setAttribute('aria-selected', String(b.textContent === card.name));
+    say('');
+  };
+  tabs.append(
+    ...cards.map((card) => {
+      const b = el('button', { type: 'button', role: 'tab', class: 'share-tab' }, card.name);
+      b.addEventListener('click', () => show(card));
+      return b;
+    }),
+  );
+  show(cards[0]);
+
   const button = (label: string, cls: string, fn: () => Promise<void> | void) => {
     const b = el('button', { type: 'button', class: cls }, label);
     b.addEventListener('click', async () => {
@@ -249,20 +481,19 @@ export async function openShareDialog(r: GameResult) {
     return b;
   };
 
-  if (navigator.canShare?.({ files: [file] })) {
-    actions.append(button('Share…', 'primary', () => navigator.share({ files: [file], text, title: 'Doodle Duel' })));
+  if (canShareFiles) {
+    actions.append(button('Share both…', 'primary', () => navigator.share({ files, text, title: 'Doodle Duel' })));
   }
   actions.append(
-    button('Download', navigator.canShare?.({ files: [file] }) ? '' : 'primary', () => {
-      const a = el('a', { href: url, download: 'doodle-duel.png' });
-      a.click();
-      say('Saved doodle-duel.png');
+    button('Download', canShareFiles ? '' : 'primary', () => {
+      el('a', { href: current.url, download: current.file }).click();
+      say(`Saved ${current.file}`);
     }),
   );
   if (navigator.clipboard && 'ClipboardItem' in window) {
     actions.append(
       button('Copy image', '', async () => {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': current.blob })]);
         say('Image copied! Paste it into a post.');
       }),
     );

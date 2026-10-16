@@ -616,3 +616,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 }
 .share-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 16px; }
 .share-status { color: var(--muted); min-height: 1.4em; margin: 10px 0 0; }
+.share-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+.share-tab { padding: 6px 16px; }
+.share-tab[aria-selected='true'] { background: var(--sun); color: var(--on-bright); }
+.share-preview img { max-height: calc(100dvh - 300px); width: auto; max-width: 100%; margin: 0 auto; }
