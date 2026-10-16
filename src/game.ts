@@ -21,7 +21,14 @@ function hintSeen(): boolean {
   }
 }
 
-export type RoundResult = { word: string; winner: number | null; seconds: number | null; guesses: string[][] };
+export type RoundResult = {
+  word: string;
+  winner: number | null;
+  seconds: number | null;
+  guesses: string[][];
+  /** JPEG data URL of the final drawing, or null if the canvas was empty. */
+  image: string | null;
+};
 export type GameResult = {
   labels: string[];
   scores: number[];
@@ -353,7 +360,13 @@ export class Game {
       sfx.wahWah();
       for (const p of this.players) p.lane.shrug();
     }
-    this.results.push({ word, winner, seconds, guesses: this.players.map((p) => [...p.wrong]) });
+    this.results.push({
+      word,
+      winner,
+      seconds,
+      guesses: this.players.map((p) => [...p.wrong]),
+      image: this.canvas.isEmpty ? null : this.canvas.snapshot(),
+    });
 
     const last = this.round === ROUNDS - 1;
     const next = el('button', { class: 'primary' }, last ? 'See results' : 'Next round');

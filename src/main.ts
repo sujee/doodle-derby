@@ -4,6 +4,7 @@ import { el } from './dom';
 import { Game, type GameResult } from './game';
 import type { GuesserConfig } from './providers';
 import { renderSetup } from './setup';
+import { headlineFor, openShareDialog } from './share';
 import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
@@ -22,20 +23,14 @@ function startGame(configs: GuesserConfig[]) {
 
 function showResults(r: GameResult) {
   const best = Math.max(...r.scores);
-  const winners = r.labels.filter((_, i) => r.scores[i] === best);
-  const headline =
-    r.rounds.length === 0
-      ? 'Game stopped'
-      : best === 0
-      ? 'The bots were stumped!'
-      : winners.length > 1
-        ? "It's a tie!"
-        : `${winners[0]} wins!`;
+  const headline = headlineFor(r);
 
   const again = el('button', { class: 'primary big' }, 'Play again!');
   again.addEventListener('click', () => startGame(lastConfigs));
   const setup = el('button', { class: 'quiet' }, 'Change bots');
   setup.addEventListener('click', showSetup);
+  const share = el('button', {}, 'Share your doodles 📸');
+  share.addEventListener('click', () => openShareDialog(r));
 
   // Podium: bots ranked by score (ties share a step), laid out 2nd – 1st – 3rd.
   const ranks = r.scores.map((s) => r.scores.filter((o) => o > s).length);
@@ -58,7 +53,7 @@ function showResults(r: GameResult) {
       r.stopped ? el('p', { class: 'note' }, `Stopped after ${r.rounds.length} of 10 rounds.`) : '',
       podium,
       youBadge,
-      el('div', { class: 'row center' }, [again, setup]),
+      el('div', { class: 'row center' }, [again, ...(r.rounds.length ? [share] : []), setup]),
       el('details', { class: 'report' }, [
         el('summary', {}, 'Round by round'),
         el('table', { class: 'summary report-card' }, [
