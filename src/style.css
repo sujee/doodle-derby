@@ -128,6 +128,7 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
 .bot1 { --bot: var(--sky); }
 .bot2 { --bot: var(--grape); }
 .you-face { --bot: var(--mint); }
+.doodler-bot { --bot: var(--sun); }
 .bot .ink { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .bot .bot-fill { fill: var(--bot); }
 .bot .face { fill: #fffdf6; }
@@ -636,3 +637,34 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .receipt .bot-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .receipt tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--scrap-ink); }
 .receipt .note { font-size: 0.9rem; margin: 8px 0 0; }
+
+/* Bot-doodler mode */
+.mode { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -6px 0 18px; flex-wrap: wrap; }
+.mode-label { font-family: var(--hand); font-size: 1.3rem; margin-right: 4px; }
+.mode-btn[aria-pressed='true'] { background: var(--sun); color: var(--on-bright); font-weight: 700; }
+.slot.doodler-slot { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); transform: rotate(-1deg); }
+.lane.human { --lane: var(--mint); background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); rotate: 0.5deg; }
+.podium-spot.human .step { background: var(--mint); }
+.doodler-row { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); }
+.doodler-row .bot { width: 30px; }
+.doodler-name { min-width: 0; }
+.doodler-name h3 { margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doodler-name .meter { margin: 0; }
+.sketching {
+  position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--paper) 35%, transparent);
+}
+.sketching .kicker { font-size: 1.4rem; margin: 0; animation: wiggle 1.2s ease-in-out infinite; }
+.guess-form { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.guess-form .guess-input { flex: 1 1 220px; max-width: 360px; font: 1.2rem/1.3 var(--body); padding: 10px 14px; }
+@media (prefers-reduced-motion: reduce) { .sketching .kicker { animation: none; } }
+@media (max-width: 760px) {
+  /* Keep the guess box in reach while the doodle and lanes scroll. */
+  .guess-form {
+    position: sticky; bottom: 0; z-index: 20; margin: 12px -16px 0; padding: 10px 16px;
+    background: color-mix(in srgb, var(--paper) 92%, transparent); border-top: 2.5px dashed var(--ink);
+    flex-wrap: nowrap;
+  }
+  .guess-form .guess-input { flex: 1 1 auto; min-width: 0; }
+  .guess-form .tool-label { display: none; }
+}

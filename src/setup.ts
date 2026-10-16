@@ -9,7 +9,8 @@ import {
   type ModelInfo,
   type ProviderKind,
 } from './providers';
-import { robot, you } from './art';
+import { doodlerBot, robot, you } from './art';
+import { createDoodler } from './doodler';
 import { el } from './dom';
 
 const CUSTOM = '__custom__';
@@ -28,11 +29,24 @@ type Slot = {
 
 const MAX_BOTS = 3;
 
-/** Render the setup screen. Calls onStart with 1–3 guesser configs. */
-export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[]) => void) {
+/** Render the setup screen. Calls onStart with 1–3 guesser configs, plus the doodler bot's config when a bot draws. */
+export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[], doodler: GuesserConfig | null) => void) {
   container.replaceChildren();
   const first = makeSlot(1);
   const slots = [first, ...Array.from({ length: MAX_BOTS - 1 }, (_, i) => makeSlot(i + 2, first))];
+  const doodlerSlot = makeSlot(0, first, true);
+
+  // Who doodles? You (classic) or a bot (you join the guessers).
+  let botDraws = false;
+  const youCard = el('div', { class: 'you-card card' }, [you(), el('h2', {}, 'You'), el('p', { class: 'you-role' })]);
+  const lede = el('p', { class: 'lede' });
+  const modeBtns = (['You', 'A bot'] as const).map((label, i) => {
+    const b = el('button', { type: 'button', class: 'mode-btn', 'aria-pressed': 'false' }, label);
+    b.addEventListener('click', () => setMode(i === 1));
+    return b;
+  });
+  const slotsEl = el('div', { class: 'slots' });
+  const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
   let count = 1;
   const addLabel = el('span');
   const add = el('button', { type: 'button', class: 'add-bot' }, [
@@ -40,7 +54,21 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     addLabel,
   ]);
   const note = el('p', { class: 'note' }, 'Your API keys stay in this tab. They’re never saved and only go to the endpoint you pick.');
-  const syncNote = () => (note.hidden = !slots.slice(0, count).some((s) => s.kind() !== 'fake'));
+  const syncNote = () =>
+    (note.hidden = ![...slots.slice(0, count), ...(botDraws ? [doodlerSlot] : [])].some((s) => s.kind() !== 'fake'));
+  const setMode = (bot: boolean) => {
+    botDraws = bot;
+    modeBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i === (bot ? 1 : 0))));
+    lede.textContent = bot ? 'A bot doodles. You and the bots race to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
+    youCard.querySelector('.you-role')!.textContent = bot ? 'a guesser 🔍' : 'the doodler ✏️';
+    slotsEl.replaceChildren(
+      ...(bot ? [doodlerSlot.root, vs, youCard] : [youCard, vs]),
+      ...slots.map((s) => s.root),
+      add,
+    );
+    syncNote();
+  };
+  doodlerSlot.onChange(syncNote);
   const setCount = (n: number) => {
     count = n;
     slots.forEach((s, i) => {
@@ -63,6 +91,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   }
   const error = el('p', { class: 'error', role: 'alert' });
   setCount(1);
+  setMode(false);
   const start = el('button', { class: 'primary big start' }, 'Play!');
   start.addEventListener('click', () => {
     const configs: GuesserConfig[] = [];
@@ -72,19 +101,21 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
       if (c.kind === 'openai' && !c.baseUrl) return void (error.textContent = 'Enter the API URL.');
       configs.push(c);
     }
-    onStart(configs);
+    let doodler: GuesserConfig | null = null;
+    if (botDraws) {
+      doodler = doodlerSlot.read();
+      if (doodler.kind !== 'fake' && !doodler.model) return void (error.textContent = 'Pick a model for the doodler bot.');
+      if (doodler.kind === 'openai' && !doodler.baseUrl) return void (error.textContent = 'Enter the doodler’s API URL.');
+    }
+    onStart(configs, doodler);
   });
 
   container.append(
     el('section', { class: 'setup' }, [
       el('h1', { class: 'logo' }, [robot(0), el('span', {}, [el('span', { class: 'w1' }, 'Doodle'), ' ', el('span', { class: 'w2' }, 'Duel')]), robot(1)]),
-      el('p', { class: 'lede' }, 'You doodle. The bots guess. Fastest bot wins.'),
-      el('div', { class: 'slots' }, [
-        el('div', { class: 'you-card card' }, [you(), el('h2', {}, 'You'), el('p', {}, 'the doodler ✏️')]),
-        el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS'),
-        ...slots.map((s) => s.root),
-        add,
-      ]),
+      lede,
+      el('div', { class: 'mode', role: 'group', 'aria-label': 'Who doodles?' }, [el('span', { class: 'mode-label' }, 'Who doodles?'), ...modeBtns]),
+      slotsEl,
       note,
       error,
       start,
@@ -92,21 +123,24 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   );
 }
 
-/** With a leader, the slot offers "Same provider as Guesser 1" and then only asks for a model. */
-function makeSlot(n: number, leader?: Slot): Slot {
+/**
+ * With a leader, the slot offers "Same provider as Guesser 1" and then only asks for a model.
+ * The doodler slot (doodler = true) draws instead of guessing: no vision filter, and Test asks for a drawing.
+ */
+function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
   // One flat provider list: OpenAI-compatible presets are "openai:<index>".
   // Fake guesser first (the no-key default), real providers A–Z, generic "OpenAI compatible" last.
   const presets = OPENAI_PRESETS.map((p, i) => [`openai:${i}`, p.name]);
   const generic = presets.filter(([, name]) => name === 'OpenAI compatible');
   const named = [['anthropic', 'Anthropic'], ...presets.filter((p) => !generic.includes(p))];
   named.sort((a, b) => a[1].localeCompare(b[1]));
-  const kind = select([['fake', 'Fake guesser (no key)'], ...named, ...generic], 'fake');
+  const kind = select([['fake', doodler ? 'Fake doodler (no key)' : 'Fake guesser (no key)'], ...named, ...generic], 'fake');
   const baseUrl = el('input', { type: 'url', placeholder: 'https://…/v1' }) as HTMLInputElement;
   const apiKey = el('input', { type: 'password', autocomplete: 'off', placeholder: 'API key' }) as HTMLInputElement;
   const modelSelect = el('select') as HTMLSelectElement;
   const customModel = el('input', { placeholder: 'Type a model name' }) as HTMLInputElement;
   const visionOnly = el('input', { type: 'checkbox' }) as HTMLInputElement;
-  visionOnly.checked = true;
+  visionOnly.checked = !doodler; // drawing doesn't need image input
   const loadBtn = el('button', { type: 'button' }, 'Load models');
   const testBtn = el('button', { type: 'button' }, 'Test');
   const status = el('p', { class: 'status' });
@@ -177,7 +211,8 @@ function makeSlot(n: number, leader?: Slot): Slot {
     const k = slotKind();
     const remote = k === 'openai' || k === 'anthropic';
     urlRow.hidden = k !== 'openai';
-    keyRow.hidden = modelRow.hidden = visionRow.hidden = !remote;
+    keyRow.hidden = modelRow.hidden = !remote;
+    visionRow.hidden = !remote || doodler;
     status.textContent = '';
     help.textContent = '';
     if (k === 'openai') {
@@ -197,7 +232,8 @@ function makeSlot(n: number, leader?: Slot): Slot {
   const refreshSame = () => {
     providerRow.hidden = urlRow.hidden = keyRow.hidden = loadBtn.hidden = help.hidden = true;
     status.textContent = '';
-    modelRow.hidden = visionRow.hidden = leader!.kind() === 'fake';
+    modelRow.hidden = leader!.kind() === 'fake';
+    visionRow.hidden = modelRow.hidden || doodler;
     const list = leader!.models();
     const keep = modelValue();
     const other = list.find((m) => m.id !== leader!.model() && m.vision !== 'no') ?? list[0];
@@ -238,7 +274,9 @@ function makeSlot(n: number, leader?: Slot): Slot {
       setModels(ids);
       notify();
       const vision = ids.filter((m) => m.vision === 'yes' || m.vision === 'likely').length;
-      status.textContent = `${ids.length} models loaded, ${vision} accept images. “(likely)” is a guess from the name.`;
+      status.textContent = doodler
+        ? `${ids.length} models loaded. Any chat model can doodle.`
+        : `${ids.length} models loaded, ${vision} accept images. “(likely)” is a guess from the name.`;
     } catch (e) {
       status.textContent = `Could not load models: ${errorText(e)}`;
     }
@@ -247,6 +285,15 @@ function makeSlot(n: number, leader?: Slot): Slot {
   testBtn.addEventListener('click', async () => {
     const c = read();
     status.textContent = 'Testing…';
+    if (doodler) {
+      try {
+        const { strokes } = await createDoodler(c).draw('sun', AbortSignal.timeout(90000));
+        status.textContent = `Works. It drew a test sun with ${strokes.length} strokes.`;
+      } catch (e) {
+        status.textContent = `Hmm, that didn’t work: ${errorText(e)}`;
+      }
+      return;
+    }
     try {
       const g = createGuesser(c, { target: () => ({ word: 'circle' }), progress: () => 1, difficulty: () => 0 });
       const { guess, confidence } = await g.guess({ image: testImage(), wrongGuesses: [], signal: AbortSignal.timeout(30000) });
@@ -258,8 +305,9 @@ function makeSlot(n: number, leader?: Slot): Slot {
   });
 
   const removeBtn = el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove this Doodlebot', 'aria-label': `Remove Doodlebot #${n}` }, '✕');
-  const root = el('div', { class: `slot card p${n - 1}` }, [
-    el('div', { class: 'slot-head' }, [robot(n - 1), el('h2', {}, `Doodlebot #${n}`), removeBtn]),
+  if (doodler) removeBtn.hidden = true;
+  const root = el('div', { class: doodler ? 'slot card doodler-slot' : `slot card p${n - 1}` }, [
+    el('div', { class: 'slot-head' }, doodler ? [doodlerBot(), el('h2', {}, 'Doodler bot ✏️'), removeBtn] : [robot(n - 1), el('h2', {}, `Doodlebot #${n}`), removeBtn]),
     sameRow,
     providerRow,
     urlRow,

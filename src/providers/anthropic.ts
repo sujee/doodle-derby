@@ -3,9 +3,9 @@ import { sortModels, visionFromName, type ModelInfo } from './vision';
 import { GuessError, promptFor, parseGuess, type Guesser, type GuessRequest, type GuessResult } from './types';
 
 // Models that accept output_config.effort. Low effort keeps guesses fast.
-const EFFORT_MODELS = /^claude-(fable|mythos|opus|sonnet|haiku)-5/;
+export const EFFORT_MODELS = /^claude-(fable|mythos|opus|sonnet|haiku)-5/;
 // Models that accept the server-side refusal fallback ("default" form, Claude API).
-const FALLBACK_MODELS = /^claude-(fable-5-1|opus-5-5|opus-5$|sonnet-5-5)/;
+export const FALLBACK_MODELS = /^claude-(fable-5-1|opus-5-5|opus-5$|sonnet-5-5)/;
 
 export class AnthropicGuesser implements Guesser {
   readonly label: string;
@@ -68,7 +68,7 @@ export async function listAnthropicModels(apiKey: string): Promise<ModelInfo[]> 
   }
 }
 
-function toGuessError(e: unknown): unknown {
+export function toGuessError(e: unknown): unknown {
   if (e instanceof GuessError) return e;
   if (e instanceof Anthropic.APIUserAbortError) return new DOMException('Aborted', 'AbortError');
   if (e instanceof Anthropic.RateLimitError) {

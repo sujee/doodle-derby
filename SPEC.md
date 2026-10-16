@@ -14,6 +14,14 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - "Test" button sends one tiny image request to check the key, browser access, and image support.
 - API keys live in memory only. They are never saved, and are sent only to the chosen endpoint.
 
+## Who doodles?
+- **You** (default): you draw, the bots guess.
+- **A bot**: a "Doodler bot" (any provider, Fake doodler with no key; "Same provider as Doodlebot #1" by default) draws the word and **you join the guessers**, typing guesses in a box under the canvas (sticky at the bottom on phones).
+  - The doodler model returns strokes as JSON (`{"strokes": [[[x,y],...],...]}` on a 512×512 canvas; Anthropic uses structured outputs). Strokes are validated, clamped and capped, then animated onto the canvas over 8–15 s; the clock starts when drawing starts. The word is hidden until the round ends.
+  - The next round's drawing is fetched during the current round, so later rounds start without waiting.
+  - A failed drawing is retried once; then the round is skipped with a friendly message.
+  - Scoring: the first correct guesser (a bot or You) +1, and the doodler +1 for every drawing that gets guessed. The doodler's row (stars, tokens, cost) takes the place of "You" under the lanes; You get a mint lane and a spot on the podium.
+
 ## Game
 - 10 rounds. Words get harder as the game goes on:
   - Rounds 1–3: easy (ball, hat, sun…)

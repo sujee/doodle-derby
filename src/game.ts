@@ -1,6 +1,7 @@
-import { confetti, tapes, trash, undoArrow } from './art';
+import { confetti, tapes, trash, undoArrow, you } from './art';
+import { createDoodler, Sketcher, type Doodle, type Doodler } from './doodler';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
-import { Lane, Stars, youRow } from './climb';
+import { doodlerRow, Lane, Stars, youRow } from './climb';
 import { DrawingCanvas } from './canvas';
 import { el } from './dom';
 import { isMatch } from './match';
@@ -39,10 +40,18 @@ export type GameResult = {
   playerScore: number;
   rounds: RoundResult[];
   stopped: boolean;
+  /**
+   * Set when a bot drew. Then playerScore is the doodler's score (drawings guessed), and "You" are
+   * one of the guessers, at index humanIndex in labels/scores/usage/prices.
+   */
+  doodler?: { label: string; usage: Usage; price: Price };
+  humanIndex?: number;
 };
 
 type Player = {
   guesser: Guesser;
+  /** You, guessing by typing (bot-doodler mode). Never polled. */
+  human?: boolean;
   label: string;
   score: number;
   wrong: string[];
@@ -96,11 +105,34 @@ export class Game {
   private youStars = new Stars();
   private hint = el('div', { class: 'hint', 'aria-hidden': 'true' }, 'Draw here! The clock starts when the bots start guessing ✏️');
   private overlay = el('div', { class: 'overlay', hidden: '' });
+  private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
+
+  // Bot-doodler mode
+  private doodler: Doodler | null = null;
+  private doodlerLabel = '';
+  private doodlerUsage: Usage = { input: 0, output: 0, calls: 0 };
+  private doodlerPrice: Price = { kind: 'unknown' };
+  private doodlerMeter = el('div', { class: 'meter' });
+  /** Drawings already requested, by round, so the next one is ready when its round starts. */
+  private doodles = new Map<number, Promise<Doodle>>();
+  private doodleAbort = new AbortController();
+  private sketcher: Sketcher | null = null;
+  private lastSketch = 0;
+  private pendingDoodle: Doodle | null = null;
+  private sketchEl = el('div', { class: 'sketching', hidden: '' });
+  private guessInput = el('input', {
+    type: 'text',
+    class: 'guess-input',
+    placeholder: 'What is it? Type your guess…',
+    autocomplete: 'off',
+    'aria-label': 'Your guess',
+  }) as HTMLInputElement;
 
   constructor(
     private container: HTMLElement,
     configs: GuesserConfig[],
     private onDone: (r: GameResult) => void,
+    doodlerConfig: GuesserConfig | null = null,
   ) {
     const fakeCtx = {
       target: () => this.words[this.round],
@@ -124,8 +156,33 @@ export class Game {
       badgeEl: el('span', { class: 'badge', hidden: '' }),
       feedEl: el('ol', { class: 'feed' }),
     }));
+    if (doodlerConfig) {
+      this.doodler = createDoodler(doodlerConfig);
+      this.doodlerLabel = this.doodler.label;
+      this.doodlerPrice = priceFor(doodlerConfig);
+      // You join the guessers, after the bots.
+      this.players.push({
+        guesser: { label: 'You', guess: () => Promise.reject(new Error('You guess by typing')) },
+        human: true,
+        label: 'You',
+        score: 0,
+        wrong: [],
+        inFlight: false,
+        lastVersion: -1,
+        backoffUntil: 0,
+        disabled: false,
+        usage: { input: 0, output: 0, calls: 0 },
+        price: { kind: 'free', why: 'you' },
+        lane: null as unknown as Lane,
+        meterEl: el('div', { class: 'meter' }, 'type your guesses below'),
+        scoreEl: el('span', { class: 'score', title: 'Rounds won' }, '0'),
+        badgeEl: el('span', { class: 'badge', hidden: '' }),
+        feedEl: el('ol', { class: 'feed' }),
+      });
+    }
     // Same model twice gets numbered labels so the scoreboard stays readable.
     for (const [i, p] of this.players.entries()) {
+      if (p.human) continue;
       const dup = this.players.filter((q) => q.guesser.label === p.guesser.label).length > 1;
       p.label = dup ? `${p.guesser.label} #${i + 1}` : p.guesser.label;
     }
@@ -153,8 +210,8 @@ export class Game {
     };
 
     this.canvas.el.addEventListener('contextmenu', (e) => e.preventDefault()); // no right-click menu while drawing
-    this.paper.replaceChildren(...tapes(), this.canvas.el, this.overlay);
-    if (!hintSeen()) {
+    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.overlay);
+    if (!hintSeen() && !this.doodler) {
       this.paper.append(this.hint);
       this.canvas.el.addEventListener('pointerdown', () => this.hideHint(), { once: true });
     }
@@ -169,31 +226,35 @@ export class Game {
       el('section', { class: 'game' }, [
         el('header', { class: 'hud' }, [
           el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
-          el('div', { class: 'prompt' }, [el('span', { class: 'draw-label' }, 'Your turn to draw: '), this.wordEl]),
+          el('div', { class: 'prompt' }, [this.drawLabel, this.wordEl]),
           el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, [this.timerBar, this.timerEl]), this.pauseBtn, stop]),
         ]),
         el('div', { class: 'board' }, [
           el('div', { class: 'pad-wrap' }, [
             this.paper,
-            el('div', { class: 'tools' }, [
-              pen,
-              eraser,
-              tool('Undo', () => this.canvas.undo(), 'tool', undoArrow()),
-              tool('Clear', () => this.canvas.clear(), 'tool', trash()),
-              tool('Skip', () => this.endRound(null), 'tool ghost', '⏭'),
-            ]),
+            this.doodler
+              ? this.guessForm(tool('Skip', () => this.endRound(null), 'tool ghost', '⏭'))
+              : el('div', { class: 'tools' }, [
+                  pen,
+                  eraser,
+                  tool('Undo', () => this.canvas.undo(), 'tool', undoArrow()),
+                  tool('Clear', () => this.canvas.clear(), 'tool', trash()),
+                  tool('Skip', () => this.endRound(null), 'tool ghost', '⏭'),
+                ]),
           ]),
           el('aside', { class: 'climb' }, [
             el(
               'div',
               { class: 'lanes' },
               this.players.map((p, i) => {
-                p.lane = new Lane(i, p.label, [p.badgeEl, p.feedEl], p.scoreEl, p.meterEl);
+                p.lane = new Lane(i, p.label, [p.badgeEl, p.feedEl], p.scoreEl, p.meterEl, p.human ? you() : undefined);
                 this.updateMeter(p);
                 return p.lane.el;
               }),
             ),
-            youRow(this.youScoreEl, this.youStars),
+            this.doodler
+              ? (this.updateDoodlerMeter(), doodlerRow(this.doodlerLabel, this.youScoreEl, this.youStars, this.doodlerMeter))
+              : youRow(this.youScoreEl, this.youStars),
           ]),
         ]),
       ]),
@@ -201,6 +262,7 @@ export class Game {
   }
 
   private nextRound() {
+    if (!this.roundOver) return; // a round is still being played
     clearInterval(this.advanceTimer);
     if (this.stopped) return;
     this.round++;
@@ -212,14 +274,18 @@ export class Game {
     this.clockRunning = false;
     this.overlay.hidden = true;
     this.canvas.clear();
-    this.canvas.setEnabled(true);
+    this.canvas.setEnabled(!this.doodler);
+    this.sketcher = null;
+    this.pendingDoodle = null;
+    this.guessInput.value = '';
     sfx.roundStart();
 
     const tier = tierForRound(this.round);
     this.roundEl.textContent = `Round ${this.round + 1}/${ROUNDS}`;
     this.tierEl.textContent = tier;
     this.tierEl.className = `tier ${tier}`;
-    this.wordEl.textContent = this.words[this.round].word;
+    this.wordEl.textContent = this.doodler ? '???' : this.words[this.round].word;
+    this.drawLabel.textContent = this.doodler ? 'Guess the doodle: ' : 'Your turn to draw: ';
     for (const p of this.players) {
       p.wrong = [];
       p.lastVersion = -1;
@@ -230,6 +296,98 @@ export class Game {
     this.timers.push(window.setInterval(() => this.tickTimer(), 100));
     this.timers.push(window.setInterval(() => this.poll(), POLL_MS));
     this.tickTimer();
+    if (this.doodler) this.startDoodle();
+  }
+
+  /** The drawing for round r, requested once (retried once) and cached so it can be fetched early. */
+  private doodleFor(r: number): Promise<Doodle> {
+    let p = this.doodles.get(r);
+    if (!p) {
+      const word = this.words[r].word;
+      const signal = this.doodleAbort.signal;
+      const attempt = () =>
+        this.doodler!.draw(word, signal).then((d) => {
+          this.doodlerUsage.calls++;
+          if (d.usage) {
+            this.doodlerUsage.input += d.usage.input;
+            this.doodlerUsage.output += d.usage.output;
+          }
+          this.updateDoodlerMeter();
+          return d;
+        });
+      p = attempt().catch((e) => {
+        if ((e as Error)?.name === 'AbortError') throw e;
+        return attempt();
+      });
+      p.catch(() => {}); // handled where it's awaited
+      this.doodles.set(r, p);
+    }
+    return p;
+  }
+
+  private async startDoodle() {
+    const roundId = this.roundId;
+    this.sketchEl.replaceChildren(el('div', { class: 'reveal card' }, [el('p', { class: 'kicker' }, `✏️ ${this.doodlerLabel} is sketching…`)]));
+    this.sketchEl.hidden = false;
+    try {
+      const doodle = await this.doodleFor(this.round);
+      if (roundId !== this.roundId || this.roundOver) return;
+      if (this.round + 1 < ROUNDS) this.doodleFor(this.round + 1); // get the next one ready
+      if (this.pausedAt) this.pendingDoodle = doodle;
+      else this.beginSketch(doodle);
+    } catch (e) {
+      if (roundId !== this.roundId || this.roundOver || (e as Error)?.name === 'AbortError') return;
+      const why = e instanceof GuessError ? e.message : 'something went wrong';
+      this.sketchEl.replaceChildren(
+        el('div', { class: 'reveal card' }, [el('h2', {}, 'The doodler got stuck 😵'), el('p', {}, `${why}. Skipping this round…`)]),
+      );
+      setTimeout(() => roundId === this.roundId && this.endRound(null), 2500);
+    }
+  }
+
+  /** Start animating the bot's strokes; the round clock starts now. */
+  private beginSketch(doodle: Doodle) {
+    this.sketchEl.hidden = true;
+    this.sketcher = new Sketcher(this.canvas, doodle.strokes);
+    this.clockRunning = true;
+    this.roundStart = performance.now();
+    this.guessInput.focus({ preventScroll: true });
+    this.startSketchTimer();
+  }
+
+  /**
+   * Animate on a timer rather than requestAnimationFrame: rAF stops in background tabs, which would
+   * freeze the drawing while the round clock keeps running. Progress follows elapsed time, so a
+   * throttled timer just draws in bigger steps. Lives in this.timers, so pause and endRound stop it.
+   */
+  private startSketchTimer() {
+    if (!this.sketcher || this.sketcher.done) return;
+    this.lastSketch = performance.now();
+    const id = window.setInterval(() => {
+      const now = performance.now();
+      this.sketcher?.tick(now - this.lastSketch);
+      this.lastSketch = now;
+      if (!this.sketcher || this.sketcher.done) clearInterval(id);
+    }, 40);
+    this.timers.push(id);
+  }
+
+  /** Bot-doodler mode: a text box for your guesses, plus Skip. */
+  private guessForm(skip: HTMLElement): HTMLElement {
+    const form = el('form', { class: 'guess-form' }, [
+      this.guessInput,
+      el('button', { type: 'submit', class: 'primary' }, 'Guess!'),
+      skip,
+    ]) as HTMLFormElement;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = this.guessInput.value.trim();
+      const you = this.players.find((p) => p.human)!;
+      if (!text || this.roundOver || !this.sketcher || this.pausedAt) return;
+      this.guessInput.value = '';
+      this.onGuess(you, text, null);
+    });
+    return form;
   }
 
   private tickTimer() {
@@ -255,7 +413,7 @@ export class Game {
     const version = this.canvas.changeVersion;
     const now = performance.now();
     const ready = this.players.filter(
-      (p) => !p.disabled && !p.inFlight && now >= p.backoffUntil && p.lastVersion !== version,
+      (p) => !p.human && !p.disabled && !p.inFlight && now >= p.backoffUntil && p.lastVersion !== version,
     );
     if (ready.length === 0) return;
     const image = this.canvas.snapshot();
@@ -285,16 +443,21 @@ export class Game {
       this.updateMeter(p);
       if (roundId !== this.roundId || this.roundOver) return; // stale answer
       this.setBadge(p, '');
-      const right = isMatch(guess, this.words[this.round]);
-      this.addGuess(p, guess, right, confidence);
-      if (right) this.endRound(this.players.indexOf(p));
-      else if (!p.wrong.includes(guess)) p.wrong.push(guess);
+      this.onGuess(p, guess, confidence);
     } catch (e) {
       if (roundId !== this.roundId || (e as Error)?.name === 'AbortError') return;
       this.handleError(p, e);
     } finally {
       if (roundId === this.roundId) p.inFlight = false;
     }
+  }
+
+  /** A guess from a bot or from you: show it, and end the round if it's right. */
+  private onGuess(p: Player, guess: string, confidence: number | null) {
+    const right = isMatch(guess, this.words[this.round]);
+    this.addGuess(p, guess, right, confidence);
+    if (right) this.endRound(this.players.indexOf(p));
+    else if (!p.wrong.includes(guess)) p.wrong.push(guess);
   }
 
   private handleError(p: Player, e: unknown) {
@@ -356,6 +519,9 @@ export class Game {
     this.timers = [];
     this.canvas.setEnabled(false);
     this.hint.remove();
+    this.sketchEl.hidden = true;
+    this.sketcher?.tick(Infinity); // show the whole doodle at the reveal
+    this.wordEl.textContent = this.words[this.round].word;
     for (const p of this.players) {
       p.inFlight = false;
       if (!p.disabled) this.setBadge(p, '');
@@ -412,8 +578,14 @@ export class Game {
             ]
           : [
               el('div', { class: 'stamp', 'aria-hidden': 'true' }, 'DING! ✓'),
-              el('h2', {}, `${this.players[winner].label} nailed it!`),
-              el('p', {}, `“${word}” in ${seconds!.toFixed(1)}s. A star for the bot and a star for you!`),
+              el('h2', {}, this.players[winner].human ? 'You nailed it!' : `${this.players[winner].label} nailed it!`),
+              el(
+                'p',
+                {},
+                this.doodler
+                  ? `“${word}” in ${seconds!.toFixed(1)}s. A star for ${this.players[winner].human ? 'you' : 'the bot'} and a star for the doodler!`
+                  : `“${word}” in ${seconds!.toFixed(1)}s. A star for the bot and a star for you!`,
+              ),
             ]),
         countdown,
         next,
@@ -458,10 +630,17 @@ export class Game {
       this.roundStart += pausedFor;
       for (const p of this.players) p.backoffUntil += pausedFor;
       this.abort = new AbortController();
-      this.canvas.setEnabled(true);
+      this.canvas.setEnabled(!this.doodler);
       this.timers.push(window.setInterval(() => this.tickTimer(), 100));
       this.timers.push(window.setInterval(() => this.poll(), POLL_MS));
       this.tickTimer();
+      if (this.pendingDoodle) {
+        const d = this.pendingDoodle;
+        this.pendingDoodle = null;
+        this.beginSketch(d);
+      } else {
+        this.startSketchTimer(); // carry on drawing where it paused
+      }
     }
     this.pauseBtn.textContent = '⏸';
     this.pauseBtn.title = 'Pause';
@@ -482,7 +661,15 @@ export class Game {
     this.finish();
   }
 
+  private updateDoodlerMeter() {
+    const { input, output } = this.doodlerUsage;
+    const cost = costOf(this.doodlerUsage, this.doodlerPrice);
+    this.doodlerMeter.textContent =
+      this.doodlerPrice.kind === 'free' ? (this.doodlerPrice.why === 'fake bot' ? 'free (fake bot)' : 'free') : `${formatTokens(input)} in · ${formatTokens(output)} out${cost === null ? '' : ` · ${formatUsd(cost)}`}`;
+  }
+
   private updateMeter(p: Player) {
+    if (p.human) return; // your lane keeps its "type your guesses" hint
     const { input, output } = p.usage;
     if (p.price.kind === 'free') {
       p.meterEl.textContent = p.price.why === 'fake bot' ? 'free (fake bot)' : `${formatTokens(input)} in · ${formatTokens(output)} out · free`;
@@ -493,7 +680,10 @@ export class Game {
   }
 
   private finish() {
+    this.doodleAbort.abort(); // drop any drawing fetched ahead
+    const humanIndex = this.players.findIndex((p) => p.human);
     this.onDone({
+      ...(this.doodler ? { doodler: { label: this.doodlerLabel, usage: { ...this.doodlerUsage }, price: this.doodlerPrice }, humanIndex } : {}),
       usage: this.players.map((p) => ({ ...p.usage })),
       prices: this.players.map((p) => p.price),
       stopped: this.stopped,

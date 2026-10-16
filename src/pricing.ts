@@ -79,7 +79,7 @@ export function formatTokens(n: number): string {
 
 export function formatUsd(x: number | null): string {
   if (x === null) return 'price unknown';
-  if (x === 0) return 'free';
+  if (x === 0) return '$0.00'; // free bots are labelled by their callers
   if (x < 0.01) return `$${x.toFixed(4)}`;
   return `$${x.toFixed(2)}`;
 }

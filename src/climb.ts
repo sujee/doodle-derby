@@ -3,7 +3,7 @@
  * The player gets a row of stars. Display only; no game logic here.
  */
 
-import { replay, robot, you } from './art';
+import { doodlerBot, replay, robot, you } from './art';
 import { el } from './dom';
 import { ROUNDS } from './words';
 
@@ -34,11 +34,12 @@ export class Lane {
   private level = 0;
 
   /** bubbles: the badge and guess feed shown above the ladder. */
-  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node) {
-    this.climbing.append(robot(index));
+  /** art: the climber (defaults to robot i); you() when You are guessing in bot-doodler mode. */
+  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element) {
+    this.climbing.append(art ?? robot(index));
     const rungs = el('div', { class: 'rungs' });
     for (let i = 0; i < RUNGS; i++) rungs.append(el('span', { class: 'rung' }));
-    this.el = el('div', { class: `lane card p${index}` }, [
+    this.el = el('div', { class: art ? 'lane card human' : `lane card p${index}` }, [
       el('div', { class: 'lane-head' }, [el('h3', { title: label }, label), score]),
       ...(meter ? [meter] : []),
       el('div', { class: 'thoughts' }, bubbles),
@@ -78,4 +79,14 @@ export class Lane {
 /** The player's own row: face, name and stars. */
 export function youRow(score: HTMLElement, stars: Stars): HTMLElement {
   return el('div', { class: 'you-row card' }, [you(), el('h3', {}, 'You'), stars.el, score]);
+}
+
+/** Bot-doodler mode: the doodler's row takes the player's place, with its stars and token meter. */
+export function doodlerRow(label: string, score: HTMLElement, stars: Stars, meter: HTMLElement): HTMLElement {
+  return el('div', { class: 'you-row doodler-row card' }, [
+    doodlerBot(),
+    el('div', { class: 'doodler-name' }, [el('h3', { title: label }, `✏️ ${label}`), meter]),
+    stars.el,
+    score,
+  ]);
 }

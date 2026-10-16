@@ -84,7 +84,7 @@ async function withOllamaCapabilities(baseUrl: string, apiKey: string, models: M
   );
 }
 
-async function request(url: string, apiKey: string, signal: AbortSignal, init: RequestInit = {}): Promise<Response> {
+export async function request(url: string, apiKey: string, signal: AbortSignal, init: RequestInit = {}): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -109,6 +109,6 @@ async function request(url: string, apiKey: string, signal: AbortSignal, init: R
   return res;
 }
 
-function trimSlash(s: string) {
+export function trimSlash(s: string) {
   return s.trim().replace(/\/+$/, '');
 }

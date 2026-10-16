@@ -55,6 +55,11 @@ export function robot(i: number): SVGSVGElement {
   return svg(BOTS[i % BOTS.length], '-2 -2 104 90', `bot bot${i % BOTS.length}`);
 }
 
+/** The doodler bot: the round-faced robot in sunshine yellow, holding a pencil (✏️ shown next to it). */
+export function doodlerBot(): SVGSVGElement {
+  return svg(BOTS[0], '-2 -2 104 90', 'bot doodler-bot');
+}
+
 /** The player: a smiley pencil-shaving face in mint. */
 export function you(): SVGSVGElement {
   return svg(

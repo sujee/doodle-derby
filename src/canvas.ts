@@ -48,6 +48,21 @@ export class DrawingCanvas {
     this.bump();
   }
 
+  /** Programmatic drawing (the bot doodler): start a new stroke at p. */
+  beginStroke(p: Point) {
+    this.current = null;
+    this.strokes.push({ color: '#111111', width: 6, points: [p] });
+    this.bump();
+  }
+
+  /** Continue the last stroke started with beginStroke. */
+  extendStroke(p: Point) {
+    const s = this.strokes[this.strokes.length - 1];
+    if (!s) return;
+    s.points.push(p);
+    this.bump();
+  }
+
   undo() {
     this.strokes.pop();
     this.bump();

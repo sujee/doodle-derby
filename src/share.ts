@@ -20,8 +20,9 @@ export function headlineFor(r: GameResult): string {
   const best = Math.max(0, ...r.scores);
   const winners = r.labels.filter((_, i) => r.scores[i] === best);
   if (r.rounds.length === 0) return 'Game stopped';
-  if (best === 0) return 'The bots were stumped!';
-  return winners.length > 1 ? "It's a tie!" : `${shortName(winners[0])} wins!`;
+  if (best === 0) return r.doodler ? 'Nobody cracked the doodles!' : 'The bots were stumped!';
+  if (winners.length > 1) return "It's a tie!";
+  return winners[0] === 'You' ? 'You win!' : `${shortName(winners[0])} wins!`;
 }
 
 /** "meta-llama/Llama-4-Maverick-17B" → "Llama-4-Maverick-17B", trimmed to fit a chip. */
@@ -41,9 +42,12 @@ export function shareText(r: GameResult): string {
   const bots = r.labels.map((l, i) => `${shortName(l)} ${r.scores[i]}`).join(' · ');
   const wild = wildestGuess(r);
   const url = gameUrl();
+  const story = r.doodler
+    ? `${shortName(r.doodler.label)} doodled, and we raced to guess: ${bots}.`
+    : `The bots guessed ${r.playerScore} of my ${r.rounds.length} doodles (${bots}).`;
   return (
     `I just played Doodle Duel ✏️🤖 ${headlineFor(r)} ` +
-    `The bots guessed ${r.playerScore} of my ${r.rounds.length} doodles (${bots}).` +
+    story +
     (wild ? ` Wildest guess: “${wild.guess}” for ${wild.word}.` : '') +
     (url ? ` ${url}` : '')
   );
@@ -68,6 +72,9 @@ async function prepare(r: GameResult): Promise<Prepared> {
   return { images: await Promise.all(r.rounds.map((round) => (round.image ? loadImage(round.image) : null))) };
 }
 
+/** Each column's color: bots coral / sky / grape, You in mint. */
+const colorOf = (r: GameResult, i: number) => (i === r.humanIndex ? MINT : BOT_COLORS[i % 3]);
+
 /** Card 1: the 10 doodles, who guessed each, and one funny wrong guess. */
 export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
@@ -81,8 +88,10 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
   // Score chips: each bot, then You.
   const chips = [
-    ...r.labels.map((l, i) => ({ text: `${shortName(l, 18)}: ${r.scores[i]}`, color: BOT_COLORS[i % 3] })),
-    { text: `You: ${r.playerScore}/${r.rounds.length}`, color: MINT },
+    ...r.labels.map((l, i) => ({ text: `${shortName(l, 18)}: ${r.scores[i]}`, color: colorOf(r, i) })),
+    r.doodler
+      ? { text: `✏ ${shortName(r.doodler.label, 14)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
+      : { text: `You: ${r.playerScore}/${r.rounds.length}`, color: MINT },
   ];
   ctx.font = `30px ${BODY}`;
   const pad = 22;
@@ -121,7 +130,7 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
     ctx.font = `25px ${BODY}`;
     if (round.winner !== null) {
-      ctx.fillStyle = darker(BOT_COLORS[round.winner % 3]);
+      ctx.fillStyle = darker(colorOf(r, round.winner));
       const t = round.seconds !== null ? ` ${round.seconds.toFixed(1)}s` : '';
       ctx.fillText(fit(ctx, `✓ ${shortName(r.labels[round.winner], 12)}${t}`, tile + 10), cx + tile / 2, cy + tile + 78);
     } else {
@@ -136,7 +145,7 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
     }
   });
 
-  footer(ctx, SIZE, SIZE);
+  footer(ctx, SIZE, SIZE, r);
   return toPng(c);
 }
 
@@ -156,7 +165,7 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
   ctx.textAlign = 'center';
   ctx.fillStyle = INK;
   ctx.font = `66px ${HAND}`;
-  ctx.fillText('What were the bots thinking?', SIZE / 2, 92);
+  ctx.fillText(r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?', SIZE / 2, 92);
 
   // "Wildest guess" banner, slightly tilted like a sticker.
   const wild = wildestGuess(r);
@@ -187,7 +196,7 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
   ctx.fillStyle = MUTED;
   ctx.fillText('Round', left, top - 26);
   r.labels.forEach((label, b) => {
-    ctx.fillStyle = darker(BOT_COLORS[b % 3]);
+    ctx.fillStyle = darker(colorOf(r, b));
     ctx.fillText(fit(ctx, shortName(label), colW - 16), colStart + b * colW, top - 26);
   });
 
@@ -226,12 +235,12 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
         ...(round.guesses[b] ?? []).map((g) => ({ text: g, right: false })),
         ...(round.winner === b ? [{ text: round.word, right: true }] : []),
       ];
-      drawTrail(ctx, trail, colStart + b * colW, y + 36, colW - 22, BOT_COLORS[b % 3]);
+      drawTrail(ctx, trail, colStart + b * colW, y + 36, colW - 22, colorOf(r, b));
     });
   });
   dashed(ctx, left - 12, top + rows.length * rowH, SIZE - left + 12);
 
-  footer(ctx, SIZE, height);
+  footer(ctx, SIZE, height, r);
   return toPng(c);
 }
 
@@ -323,12 +332,12 @@ function title(ctx: CanvasRenderingContext2D, width: number, y: number, size: nu
   ctx.fillText('Duel', x + w1, y);
 }
 
-function footer(ctx: CanvasRenderingContext2D, width: number, height: number) {
+function footer(ctx: CanvasRenderingContext2D, width: number, height: number, r: GameResult) {
   ctx.textAlign = 'center';
   ctx.fillStyle = MUTED;
   ctx.font = `30px ${BODY}`;
   const url = gameUrl();
-  ctx.fillText(url ? `Play: ${url.replace(/^https?:\/\//, '')}` : 'You doodle. The bots guess. Fastest bot wins.', width / 2, height - 40);
+  ctx.fillText(url ? `Play: ${url.replace(/^https?:\/\//, '')}` : r.doodler ? 'A bot doodles. Everyone races to guess it.' : 'You doodle. The bots guess. Fastest bot wins.', width / 2, height - 40);
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, img: HTMLImageElement | null, i: number) {
