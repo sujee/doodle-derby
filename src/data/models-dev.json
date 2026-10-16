@@ -1,0 +1,1008 @@
+{
+ "source": "https://models.dev",
+ "fetched": "2026-10-16",
+ "providers": {
+  "anthropic": {
+   "name": "Anthropic",
+   "models": {
+    "claude-haiku-4-5": {
+     "in": 1,
+     "out": 5,
+     "img": true
+    },
+    "claude-opus-4-5": {
+     "in": 5,
+     "out": 25,
+     "img": true
+    },
+    "claude-sonnet-4-5": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "claude-opus-5-5": {
+     "in": 4,
+     "out": 20,
+     "img": true
+    },
+    "claude-fable-5-1": {
+     "in": 10,
+     "out": 50,
+     "img": true
+    },
+    "claude-opus-4-5-20251101": {
+     "in": 5,
+     "out": 25,
+     "img": true
+    },
+    "claude-opus-5": {
+     "in": 5,
+     "out": 25,
+     "img": true
+    },
+    "claude-fable-5": {
+     "in": 10,
+     "out": 50,
+     "img": true
+    },
+    "claude-opus-4-8": {
+     "in": 5,
+     "out": 25,
+     "img": true
+    },
+    "claude-sonnet-4-5-20250929": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "claude-sonnet-5": {
+     "in": 2,
+     "out": 10,
+     "img": true
+    },
+    "claude-opus-4-6": {
+     "in": 5,
+     "out": 25,
+     "img": true
+    },
+    "claude-haiku-4-5-20251001": {
+     "in": 1,
+     "out": 5,
+     "img": true
+    },
+    "claude-haiku-5-5": {
+     "in": 0.1,
+     "out": 0.5,
+     "img": true
+    },
+    "claude-sonnet-4-6": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "claude-sonnet-5-5": {
+     "in": 2,
+     "out": 10,
+     "img": true
+    },
+    "claude-opus-4-7": {
+     "in": 5,
+     "out": 25,
+     "img": true
+    }
+   }
+  },
+  "openai": {
+   "name": "OpenAI",
+   "models": {
+    "chatgpt-image-latest": {
+     "img": true
+    },
+    "gpt-5.4": {
+     "in": 2.5,
+     "out": 15,
+     "img": true
+    },
+    "gpt-5.4-pro": {
+     "in": 30,
+     "out": 180,
+     "img": true
+    },
+    "gpt-3.5-turbo": {
+     "in": 0.5,
+     "out": 1.5,
+     "img": false
+    },
+    "gpt-5.5-pro": {
+     "in": 30,
+     "out": 180,
+     "img": true
+    },
+    "text-embedding-3-small": {
+     "in": 0.02,
+     "out": 0,
+     "img": false
+    },
+    "gpt-5.4-nano": {
+     "in": 0.2,
+     "out": 1.25,
+     "img": true
+    },
+    "gpt-realtime-2.1": {
+     "in": 4,
+     "out": 24,
+     "img": true
+    },
+    "gpt-4o-2024-05-13": {
+     "in": 5,
+     "out": 15,
+     "img": true
+    },
+    "gpt-4o": {
+     "in": 2.5,
+     "out": 10,
+     "img": true
+    },
+    "gpt-5-mini": {
+     "in": 0.25,
+     "out": 2,
+     "img": true
+    },
+    "gpt-image-2": {
+     "in": 5,
+     "out": 30,
+     "img": true
+    },
+    "gpt-5.2-pro": {
+     "in": 21,
+     "out": 168,
+     "img": true
+    },
+    "o4-mini": {
+     "in": 1.1,
+     "out": 4.4,
+     "img": true
+    },
+    "o3-mini": {
+     "in": 1.1,
+     "out": 4.4,
+     "img": false
+    },
+    "text-embedding-ada-002": {
+     "in": 0.1,
+     "out": 0,
+     "img": false
+    },
+    "gpt-4": {
+     "in": 30,
+     "out": 60,
+     "img": false
+    },
+    "gpt-5.3-codex": {
+     "in": 1.75,
+     "out": 14,
+     "img": true
+    },
+    "gpt-4.1-nano": {
+     "in": 0.1,
+     "out": 0.4,
+     "img": true
+    },
+    "gpt-5-nano": {
+     "in": 0.05,
+     "out": 0.4,
+     "img": true
+    },
+    "gpt-5.6": {
+     "in": 4,
+     "out": 20,
+     "img": true
+    },
+    "gpt-5.2-chat-latest": {
+     "in": 1.75,
+     "out": 14,
+     "img": true
+    },
+    "o1": {
+     "in": 15,
+     "out": 60,
+     "img": true
+    },
+    "gpt-5-pro": {
+     "in": 15,
+     "out": 120,
+     "img": true
+    },
+    "gpt-5.3-codex-spark": {
+     "in": 1.75,
+     "out": 14,
+     "img": true
+    },
+    "gpt-6.1-sol": {
+     "in": 2,
+     "out": 10,
+     "img": true
+    },
+    "text-embedding-3-large": {
+     "in": 0.13,
+     "out": 0,
+     "img": false
+    },
+    "gpt-4o-2024-08-06": {
+     "in": 2.5,
+     "out": 10,
+     "img": true
+    },
+    "gpt-6-astra": {
+     "in": 10,
+     "out": 50,
+     "img": true
+    },
+    "gpt-5.1": {
+     "in": 1.25,
+     "out": 10,
+     "img": true
+    },
+    "gpt-4o-mini": {
+     "in": 0.15,
+     "out": 0.6,
+     "img": true
+    },
+    "o3-pro": {
+     "in": 20,
+     "out": 80,
+     "img": true
+    },
+    "gpt-image-1": {
+     "img": true
+    },
+    "gpt-daybreak-blue-latest": {
+     "in": 4,
+     "out": 20,
+     "img": true
+    },
+    "gpt-5.4-mini": {
+     "in": 0.75,
+     "out": 4.5,
+     "img": true
+    },
+    "gpt-5.6-luna": {
+     "in": 0.2,
+     "out": 1.2,
+     "img": true
+    },
+    "gpt-5.2": {
+     "in": 1.75,
+     "out": 14,
+     "img": true
+    },
+    "gpt-5.5": {
+     "in": 5,
+     "out": 30,
+     "img": true
+    },
+    "gpt-4.1": {
+     "in": 2,
+     "out": 8,
+     "img": true
+    },
+    "gpt-4o-2024-11-20": {
+     "in": 2.5,
+     "out": 10,
+     "img": true
+    },
+    "gpt-4.1-mini": {
+     "in": 0.4,
+     "out": 1.6,
+     "img": true
+    },
+    "gpt-6-luna": {
+     "in": 0.1,
+     "out": 0.5,
+     "img": true
+    },
+    "gpt-5.3-chat-latest": {
+     "in": 1.75,
+     "out": 14,
+     "img": true
+    },
+    "gpt-image-1-mini": {
+     "img": true
+    },
+    "gpt-image-1.5": {
+     "img": true
+    },
+    "gpt-5.6-terra": {
+     "in": 2,
+     "out": 12,
+     "img": true
+    },
+    "gpt-4-turbo": {
+     "in": 10,
+     "out": 30,
+     "img": true
+    },
+    "gpt-daybreak-red-latest": {
+     "in": 12.5,
+     "out": 75,
+     "img": true
+    },
+    "o3": {
+     "in": 2,
+     "out": 8,
+     "img": true
+    },
+    "gpt-5": {
+     "in": 1.25,
+     "out": 10,
+     "img": true
+    },
+    "gpt-5.6-sol": {
+     "in": 4,
+     "out": 20,
+     "img": true
+    },
+    "gpt-6-sol": {
+     "in": 2,
+     "out": 10,
+     "img": true
+    },
+    "o1-pro": {
+     "in": 150,
+     "out": 600,
+     "img": true
+    }
+   }
+  },
+  "togetherai": {
+   "name": "Together AI",
+   "models": {
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo": {
+     "in": 1.04,
+     "out": 1.04,
+     "img": false
+    },
+    "thinkingmachines/Inkling": {
+     "in": 1,
+     "out": 4.05,
+     "img": true
+    },
+    "essentialai/Rnj-1-Instruct": {
+     "in": 0.15,
+     "out": 0.15,
+     "img": false
+    },
+    "Qwen/Qwen3.7-Max": {
+     "in": 1.25,
+     "out": 3.75,
+     "img": false
+    },
+    "Qwen/Qwen2.5-7B-Instruct-Turbo": {
+     "in": 0.3,
+     "out": 0.3,
+     "img": false
+    },
+    "Qwen/Qwen3-Coder-Next-FP8": {
+     "in": 0.5,
+     "out": 1.2,
+     "img": false
+    },
+    "Qwen/Qwen3-235B-A22B-Instruct-2507-tput": {
+     "in": 0.2,
+     "out": 0.6,
+     "img": false
+    },
+    "Qwen/Qwen3.5-9B": {
+     "in": 0.17,
+     "out": 0.25,
+     "img": true
+    },
+    "Qwen/Qwen3.5-397B-A17B": {
+     "in": 0.6,
+     "out": 3.6,
+     "img": true
+    },
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8": {
+     "in": 2,
+     "out": 2,
+     "img": false
+    },
+    "Qwen/Qwen3.6-Plus": {
+     "in": 0.5,
+     "out": 3,
+     "img": false
+    },
+    "LiquidAI/LFM2-24B-A2B": {
+     "in": 0.03,
+     "out": 0.12,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4-Flash-0731": {
+     "in": 0.14,
+     "out": 0.28,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-R1": {
+     "in": 3,
+     "out": 7,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4-Pro-0813": {
+     "in": 1.32,
+     "out": 3.96,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4.1-Flash": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": true
+    },
+    "deepseek-ai/DeepSeek-V3-1": {
+     "in": 0.6,
+     "out": 1.7,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V3": {
+     "in": 1.25,
+     "out": 1.25,
+     "img": false
+    },
+    "MiniMaxAI/MiniMax-M3": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": true
+    },
+    "MiniMaxAI/MiniMax-M2.5": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "MiniMaxAI/MiniMax-M2.7": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "moonshotai/Kimi-K3": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "zai-org/GLM-5.1": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "zai-org/GLM-5.2": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "zai-org/GLM-5": {
+     "in": 1,
+     "out": 3.2,
+     "img": false
+    },
+    "zai-org/GLM-5.3-Flash": {
+     "in": 0.15,
+     "out": 0.5,
+     "img": true
+    },
+    "zai-org/GLM-5.3": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "nvidia/nemotron-3-ultra-550b-a55b": {
+     "in": 0.6,
+     "out": 3.6,
+     "img": false
+    },
+    "openai/gpt-oss-120b": {
+     "in": 0.15,
+     "out": 0.6,
+     "img": false
+    }
+   }
+  },
+  "fireworks-ai": {
+   "name": "Fireworks AI",
+   "api": "https://api.fireworks.ai/inference/v1/",
+   "models": {
+    "accounts/fireworks/models/nemotron-3-ultra-nvfp4": {
+     "in": 0.6,
+     "out": 2.4,
+     "img": false
+    },
+    "accounts/fireworks/models/kimi-k3": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "accounts/fireworks/models/qwen3p8-2p4t-a95b": {
+     "in": 2,
+     "out": 6,
+     "img": false
+    },
+    "accounts/fireworks/models/ember-1": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "accounts/fireworks/models/deepseek-v4p1-flash": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": true
+    },
+    "accounts/fireworks/models/glm-5p3": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b": {
+     "in": 0.05,
+     "out": 0.2,
+     "img": false
+    },
+    "accounts/fireworks/models/inkling": {
+     "in": 1,
+     "out": 4.05,
+     "img": true
+    },
+    "accounts/fireworks/models/minimax-m3": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "accounts/fireworks/models/glm-5p3-flash": {
+     "in": 0.15,
+     "out": 0.5,
+     "img": true
+    },
+    "accounts/fireworks/models/gpt-oss-120b": {
+     "in": 0.15,
+     "out": 0.6,
+     "img": false
+    },
+    "accounts/fireworks/models/muse-spark-open": {
+     "in": 1.25,
+     "out": 4.25,
+     "img": true
+    },
+    "accounts/fireworks/models/qwen3p8-max": {
+     "in": 2,
+     "out": 6,
+     "img": true
+    },
+    "accounts/fireworks/routers/minimax-latest": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "accounts/fireworks/routers/glm-flash-latest": {
+     "in": 0.15,
+     "out": 0.5,
+     "img": true
+    },
+    "accounts/fireworks/routers/glm-fast-latest": {
+     "in": 2.1,
+     "out": 6.6,
+     "img": false
+    },
+    "accounts/fireworks/routers/kimi-k3-fast": {
+     "in": 4.5,
+     "out": 22.5,
+     "img": true
+    },
+    "accounts/fireworks/routers/glm-5p3-fast": {
+     "in": 2.1,
+     "out": 6.6,
+     "img": false
+    },
+    "accounts/fireworks/routers/kimi-fast-latest": {
+     "in": 4.5,
+     "out": 22.5,
+     "img": true
+    },
+    "accounts/fireworks/routers/qwen-max-latest": {
+     "in": 2,
+     "out": 6,
+     "img": true
+    },
+    "accounts/fireworks/routers/kimi-latest": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "accounts/fireworks/routers/deepseek-flash-latest": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": true
+    },
+    "accounts/fireworks/routers/glm-latest": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    }
+   }
+  },
+  "nebius": {
+   "name": "Nebius Token Factory",
+   "api": "https://api.tokenfactory.nebius.com/v1",
+   "models": {
+    "meta-models/muse-spark-open": {
+     "in": 1.25,
+     "out": 4.25,
+     "img": true
+    },
+    "google/gemma-3-27b-it": {
+     "in": 0.1,
+     "out": 0.3,
+     "img": true
+    },
+    "Qwen/Qwen3.8-27B": {
+     "in": 0.45,
+     "out": 3,
+     "img": false
+    },
+    "Qwen/Qwen3-30B-A3B-Instruct-2507": {
+     "in": 0.1,
+     "out": 0.3,
+     "img": false
+    },
+    "Qwen/Qwen3-235B-A22B-Instruct-2507": {
+     "in": 0.2,
+     "out": 0.6,
+     "img": false
+    },
+    "Qwen/Qwen3-Embedding-8B": {
+     "in": 0.01,
+     "out": 0,
+     "img": false
+    },
+    "Qwen/Qwen3.5-397B-A17B": {
+     "in": 0.6,
+     "out": 3.6,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4-Flash-0731": {
+     "in": 0.14,
+     "out": 0.28,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4-Pro-0813": {
+     "in": 1.32,
+     "out": 3.96,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4.1-Flash": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": true
+    },
+    "deepseek-ai/DeepSeek-V4-Pro": {
+     "in": 1.75,
+     "out": 3.5,
+     "img": false
+    },
+    "MiniMaxAI/MiniMax-M3": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "moonshotai/Kimi-K3": {
+     "in": 3,
+     "out": 15,
+     "img": false
+    },
+    "moonshotai/Kimi-K2.7-Code": {
+     "in": 0.95,
+     "out": 4,
+     "img": false
+    },
+    "zai-org/GLM-5.2": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "zai-org/GLM-5.3-Flash": {
+     "in": 0.15,
+     "out": 0.5,
+     "img": false
+    },
+    "zai-org/GLM-5.3": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "nvidia/Nemotron-3.5-Super-VL": {
+     "in": 0.3,
+     "out": 0.9,
+     "img": true
+    },
+    "nvidia/nemotron-3-super-120b-a12b": {
+     "in": 0.3,
+     "out": 0.9,
+     "img": false
+    },
+    "nvidia/Nemotron-3_5-Lightning": {
+     "in": 0.06,
+     "out": 0.24,
+     "img": false
+    },
+    "nvidia/Nemotron-3-Ultra-550b-a55b": {
+     "in": 1,
+     "out": 3,
+     "img": false
+    },
+    "openai/gpt-oss-120b": {
+     "in": 0.15,
+     "out": 0.6,
+     "img": false
+    },
+    "NousResearch/Hermes-4-405B": {
+     "in": 1,
+     "out": 3,
+     "img": false
+    }
+   }
+  },
+  "baseten": {
+   "name": "Baseten",
+   "api": "https://inference.baseten.co/v1",
+   "models": {
+    "thinkingmachines/inkling-small": {
+     "in": 0.5,
+     "out": 1.2,
+     "img": true
+    },
+    "thinkingmachines/inkling": {
+     "in": 1,
+     "out": 4.05,
+     "img": true
+    },
+    "deepseek-ai/DeepSeek-V3.1": {
+     "in": 0.5,
+     "out": 1.5,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4-Flash-0731": {
+     "in": 0.13,
+     "out": 0.26,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4-Pro-0813": {
+     "in": 1.32,
+     "out": 3.96,
+     "img": false
+    },
+    "deepseek-ai/DeepSeek-V4.1-Flash": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": true
+    },
+    "deepseek-ai/DeepSeek-V4.1-Flash-Fast": {
+     "in": 0.6,
+     "out": 2.4,
+     "img": true
+    },
+    "deepseek-ai/DeepSeek-V4-Pro": {
+     "in": 1.74,
+     "out": 3.48,
+     "img": false
+    },
+    "MiniMaxAI/MiniMax-M2.5": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "moonshotai/Kimi-K2.6": {
+     "in": 0.95,
+     "out": 4,
+     "img": true
+    },
+    "moonshotai/Kimi-K3": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "moonshotai/Kimi-K2.7-Code": {
+     "in": 0.95,
+     "out": 4,
+     "img": true
+    },
+    "moonshotai/Kimi-K2.5": {
+     "in": 0.6,
+     "out": 3,
+     "img": true
+    },
+    "zai-org/GLM-5.1": {
+     "in": 1.3,
+     "out": 4.3,
+     "img": false
+    },
+    "zai-org/GLM-5.2": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": true
+    },
+    "zai-org/GLM-4.7": {
+     "in": 0.6,
+     "out": 2.2,
+     "img": false
+    },
+    "zai-org/GLM-5.2-Fast": {
+     "in": 2.1,
+     "out": 6.6,
+     "img": true
+    },
+    "zai-org/GLM-5.3-Fast": {
+     "in": 2.1,
+     "out": 6.6,
+     "img": true
+    },
+    "zai-org/GLM-5": {
+     "in": 0.95,
+     "out": 3.15,
+     "img": false
+    },
+    "zai-org/GLM-5.3-Flash": {
+     "in": 0.15,
+     "out": 0.5,
+     "img": true
+    },
+    "zai-org/GLM-5.3": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": true
+    },
+    "nvidia/Nemotron-120B-A12B": {
+     "in": 0.3,
+     "out": 0.75,
+     "img": false
+    },
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B": {
+     "in": 0.6,
+     "out": 2.4,
+     "img": false
+    },
+    "openai/gpt-oss-120b": {
+     "in": 0.1,
+     "out": 0.5,
+     "img": false
+    }
+   }
+  },
+  "ollama-cloud": {
+   "name": "Ollama Cloud",
+   "api": "https://ollama.com/v1",
+   "models": {
+    "glm-5.3-flash": {
+     "in": 0.15,
+     "out": 0.5,
+     "img": true
+    },
+    "nemotron-3-ultra": {
+     "in": 0.1,
+     "out": 3,
+     "img": false
+    },
+    "kimi-k3": {
+     "in": 3,
+     "out": 15,
+     "img": true
+    },
+    "mistral-large-4": {
+     "in": 1.36,
+     "out": 4.18,
+     "img": true
+    },
+    "deepseek-v4.1-flash": {
+     "in": 0.15,
+     "out": 0.6,
+     "img": true
+    },
+    "minimax-m2.5": {
+     "img": false
+    },
+    "kimi-k2.6": {
+     "in": 0.95,
+     "out": 4,
+     "img": true
+    },
+    "qwen3.5:397b": {
+     "in": 0.6,
+     "out": 3.6,
+     "img": true
+    },
+    "gpt-oss:20b": {
+     "in": 0.07,
+     "out": 0.3,
+     "img": false
+    },
+    "gpt-oss:120b": {
+     "in": 0.15,
+     "out": 0.6,
+     "img": false
+    },
+    "nemotron-3-nano:30b": {
+     "in": 0.06,
+     "out": 0.24,
+     "img": false
+    },
+    "kimi-k2.5": {
+     "img": true
+    },
+    "mistral-large-3:675b": {
+     "in": 0.5,
+     "out": 1.5,
+     "img": true
+    },
+    "minimax-m2.7": {
+     "in": 0.3,
+     "out": 1.2,
+     "img": false
+    },
+    "deepseek-v4-pro:0813": {
+     "in": 0.66,
+     "out": 1.98,
+     "img": false
+    },
+    "minimax-m3": {
+     "in": 0.6,
+     "out": 2.4,
+     "img": true
+    },
+    "deepseek-v4-flash:0731": {
+     "in": 0.22,
+     "out": 0.66,
+     "img": false
+    },
+    "gemma4:31b": {
+     "in": 0.14,
+     "out": 0.4,
+     "img": true
+    },
+    "glm-5.2": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "glm-5.1": {
+     "in": 1,
+     "out": 3.2,
+     "img": false
+    },
+    "deepseek-v4-pro": {
+     "in": 0.66,
+     "out": 1.98,
+     "img": false
+    },
+    "glm-5.3": {
+     "in": 1.4,
+     "out": 4.4,
+     "img": false
+    },
+    "kimi-k2.7-code": {
+     "in": 0.95,
+     "out": 4,
+     "img": true
+    },
+    "nemotron-3-super": {
+     "in": 0.015,
+     "out": 0.6,
+     "img": false
+    },
+    "muse-spark-open": {
+     "in": 1.25,
+     "out": 4.25,
+     "img": true
+    },
+    "deepseek-v4-flash": {
+     "in": 0.22,
+     "out": 0.66,
+     "img": false
+    }
+   }
+  }
+ }
+}

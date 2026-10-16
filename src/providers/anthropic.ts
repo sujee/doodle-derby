@@ -45,7 +45,9 @@ export class AnthropicGuesser implements Guesser {
       if (response.stop_reason === 'refusal') throw new GuessError('other', 'Model declined');
       const text = response.content.find((b) => b.type === 'text');
       if (!text || text.type !== 'text' || !text.text.trim()) throw new GuessError('other', 'Empty response');
-      return parseGuess(text.text);
+      // output_tokens includes thinking tokens, which are billed as output.
+      const usage = { input: response.usage.input_tokens, output: response.usage.output_tokens };
+      return { ...parseGuess(text.text), usage };
     } catch (e) {
       throw toGuessError(e);
     }

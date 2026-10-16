@@ -11,6 +11,12 @@ npm run dev
 
 Pick **Fake guesser** to play without an API key.
 
+Refresh token prices from models.dev:
+
+```bash
+npm run pricing
+```
+
 ## Deploy
 
 Push to `main`. In the repo's **Settings → Pages**, set **Source** to **GitHub Actions** once.

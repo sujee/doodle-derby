@@ -7,7 +7,13 @@ export type GuessRequest = {
 };
 
 /** A guess plus how sure the model is (0–100), or null if it didn't say. Confidence is display-only. */
-export type GuessResult = { guess: string; confidence: number | null };
+export type TokenUsage = { input: number; output: number };
+export type GuessResult = {
+  guess: string;
+  confidence: number | null;
+  /** Tokens billed for this call, when the provider reports them. */
+  usage?: TokenUsage;
+};
 
 export interface Guesser {
   readonly label: string;

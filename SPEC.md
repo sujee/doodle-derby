@@ -38,6 +38,16 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - A guess is cleaned up (lowercase, punctuation and articles removed, plural made singular) and must equal the word or one of its listed alternatives.
 - Answers that arrive after the round ended are discarded. Requests still running when a round ends are cancelled.
 
+## Tokens and cost
+- Each bot's lane shows tokens in / out and cost so far, from the usage the provider reports.
+- Results show a folded "Bot bill" receipt per bot (calls, tokens, cost) with a total. Requests cancelled when a round ends aren't counted.
+- Prices (USD per 1M tokens) come from models.dev: a trimmed snapshot in `src/data/models-dev.json`, refreshed with `npm run pricing` and on every deploy. Fake and local Ollama bots are free; unknown models show "price unknown".
+- models.dev's image-support data also fills in "accepts images" when a provider's model list doesn't say.
+
+## Sharing
+- "Share your doodles" on the results screen makes two images: **Doodles** (the 10 drawings with who guessed each and a funny wrong guess) and **Bot brains** (a table of every bot's guess trail per round, wrong guesses struck through, right ones circled, plus a "Wildest guess" award).
+- Share (Web Share with both images, where supported), Download, Copy image, Copy text.
+
 ## Look and sound
 - Whimsical sketchbook style: hand-drawn fonts (Gochi Hand, Patrick Hand, Fredoka), bright colors, robot Doodlebots, taped-paper canvas (the drawing surface stays pure white), pencil timer, confetti. Chalkboard theme in dark mode. Animations are off under reduced motion.
 - Synthesized sound effects (Web Audio, no files). 🔊/🔇 toggle on every screen and the M key; the choice is remembered.

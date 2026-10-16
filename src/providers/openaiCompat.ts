@@ -34,7 +34,10 @@ export class OpenAICompatGuesser implements Guesser {
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || !text.trim()) throw new GuessError('other', 'Empty response');
-    return parseGuess(text);
+    const u = data?.usage;
+    const usage =
+      typeof u?.prompt_tokens === 'number' ? { input: u.prompt_tokens, output: u.completion_tokens ?? 0 } : undefined;
+    return { ...parseGuess(text), usage };
   }
 }
 

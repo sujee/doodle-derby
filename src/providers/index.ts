@@ -21,16 +21,17 @@ export function listModels(config: GuesserConfig): Promise<ModelInfo[]> {
   return Promise.resolve([]);
 }
 
-export type OpenAIPreset = { name: string; baseUrl: string; keyless?: boolean };
+/** catalog: the provider's id on models.dev, for prices and image support. */
+export type OpenAIPreset = { name: string; baseUrl: string; keyless?: boolean; catalog?: string };
 
 export const OPENAI_PRESETS: OpenAIPreset[] = [
-  { name: 'Nebius Token Factory', baseUrl: 'https://api.tokenfactory.nebius.com/v1' },
-  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+  { name: 'Nebius Token Factory', baseUrl: 'https://api.tokenfactory.nebius.com/v1', catalog: 'nebius' },
+  { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', catalog: 'openai' },
   { name: 'OpenAI compatible', baseUrl: '' },
-  { name: 'Baseten', baseUrl: 'https://inference.baseten.co/v1' },
-  { name: 'Together', baseUrl: 'https://api.together.xyz/v1' },
-  { name: 'Fireworks', baseUrl: 'https://api.fireworks.ai/inference/v1' },
-  { name: 'Ollama Cloud', baseUrl: 'https://ollama.com/v1' },
+  { name: 'Baseten', baseUrl: 'https://inference.baseten.co/v1', catalog: 'baseten' },
+  { name: 'Together', baseUrl: 'https://api.together.xyz/v1', catalog: 'togetherai' },
+  { name: 'Fireworks', baseUrl: 'https://api.fireworks.ai/inference/v1', catalog: 'fireworks-ai' },
+  { name: 'Ollama Cloud', baseUrl: 'https://ollama.com/v1', catalog: 'ollama-cloud' },
   { name: 'Ollama local', baseUrl: 'http://localhost:11434/v1', keyless: true },
 ];
 

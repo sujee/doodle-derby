@@ -24,6 +24,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fresh token prices from models.dev; keeps the committed snapshot if the fetch fails.
+      - run: npm run pricing || echo "Using the bundled price snapshot"
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

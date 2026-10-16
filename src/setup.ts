@@ -1,8 +1,10 @@
+import { catalogVision } from './pricing';
 import {
   createGuesser,
   GuessError,
   listModels,
   OPENAI_PRESETS,
+  sortModels,
   type GuesserConfig,
   type ModelInfo,
   type ProviderKind,
@@ -225,7 +227,14 @@ function makeSlot(n: number, leader?: Slot): Slot {
     const c = read();
     status.textContent = 'Loading models…';
     try {
-      const ids = await listModels(c);
+      // Where the provider's own list doesn't say, fall back to models.dev's image support.
+      const ids = sortModels(
+        (await listModels(c)).map((m) => {
+          if (m.vision === 'yes' || m.vision === 'no') return m;
+          const img = catalogVision(c, m.id);
+          return img === undefined ? m : { ...m, vision: img ? ('yes' as const) : ('no' as const) };
+        }),
+      );
       setModels(ids);
       notify();
       const vision = ids.filter((m) => m.vision === 'yes' || m.vision === 'likely').length;

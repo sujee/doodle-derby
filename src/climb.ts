@@ -34,12 +34,13 @@ export class Lane {
   private level = 0;
 
   /** bubbles: the badge and guess feed shown above the ladder. */
-  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement) {
+  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node) {
     this.climbing.append(robot(index));
     const rungs = el('div', { class: 'rungs' });
     for (let i = 0; i < RUNGS; i++) rungs.append(el('span', { class: 'rung' }));
     this.el = el('div', { class: `lane card p${index}` }, [
       el('div', { class: 'lane-head' }, [el('h3', { title: label }, label), score]),
+      ...(meter ? [meter] : []),
       el('div', { class: 'thoughts' }, bubbles),
       el('div', { class: 'ladder' }, [el('span', { class: 'bell', 'aria-hidden': 'true' }, '🔔'), rungs, this.climbing]),
     ]);

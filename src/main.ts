@@ -3,6 +3,7 @@ import { confetti, robot, you } from './art';
 import { el } from './dom';
 import { Game, type GameResult } from './game';
 import type { GuesserConfig } from './providers';
+import { costOf, formatTokens, formatUsd, PRICES_FETCHED } from './pricing';
 import { renderSetup } from './setup';
 import { headlineFor, openShareDialog } from './share';
 import { fanfare, installSound } from './sound';
@@ -53,6 +54,7 @@ function showResults(r: GameResult) {
       r.stopped ? el('p', { class: 'note' }, `Stopped after ${r.rounds.length} of 10 rounds.`) : '',
       podium,
       youBadge,
+      receipt(r),
       el('div', { class: 'row center' }, [again, ...(r.rounds.length ? [share] : []), setup]),
       el('details', { class: 'report' }, [
         el('summary', {}, 'Round by round'),
@@ -75,6 +77,42 @@ function showResults(r: GameResult) {
       ]),
     ]),
   );
+}
+
+/** "Bot bill": tokens and cost per bot, folded into one summary line. Hidden when every bot is fake. */
+function receipt(r: GameResult) {
+  if (r.prices.every((p) => p.kind === 'free' && p.why === 'fake bot')) return '';
+  const costs = r.usage.map((u, i) => costOf(u, r.prices[i]));
+  const known = costs.filter((c): c is number => c !== null);
+  const total = known.reduce((a, b) => a + b, 0);
+  const tokens = r.usage.reduce((n, u) => n + u.input + u.output, 0);
+  const totalText = known.length ? (known.length < costs.length ? `${formatUsd(total)}+` : formatUsd(total)) : 'price unknown';
+  const cell = (text: string, cls = '') => el('td', cls ? { class: cls } : {}, text);
+  return el('details', { class: 'receipt' }, [
+    el('summary', {}, `🧾 Bot bill: ${totalText} · ${formatTokens(tokens)} tokens`),
+    el('table', {}, [
+      el('thead', {}, el('tr', {}, ['Bot', 'Calls', 'In', 'Out', 'Cost'].map((h) => el('th', {}, h)))),
+      el(
+        'tbody',
+        {},
+        r.labels.map((label, i) =>
+          el('tr', {}, [
+            cell(label, 'bot-name'),
+            cell(String(r.usage[i].calls)),
+            cell(formatTokens(r.usage[i].input)),
+            cell(formatTokens(r.usage[i].output)),
+            cell(r.prices[i].kind === 'free' ? r.prices[i].why === 'fake bot' ? 'free (fake)' : 'free (local)' : formatUsd(costs[i])),
+          ]),
+        ),
+      ),
+      el('tfoot', {}, el('tr', {}, [cell('Total'), cell(''), cell(''), cell(''), cell(totalText)])),
+    ]),
+    el(
+      'p',
+      { class: 'note' },
+      `Prices from models.dev (${PRICES_FETCHED}). Requests cancelled when a round ended aren't counted, so the real bill can be a little higher.`,
+    ),
+  ]);
 }
 
 /**

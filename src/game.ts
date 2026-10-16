@@ -1,4 +1,5 @@
 import { confetti, tapes, trash, undoArrow } from './art';
+import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
 import { Lane, Stars, youRow } from './climb';
 import { DrawingCanvas } from './canvas';
 import { el } from './dom';
@@ -31,6 +32,9 @@ export type RoundResult = {
 };
 export type GameResult = {
   labels: string[];
+  /** Tokens and calls per bot (successful calls only; cancelled requests report nothing). */
+  usage: Usage[];
+  prices: Price[];
   scores: number[];
   playerScore: number;
   rounds: RoundResult[];
@@ -46,8 +50,11 @@ type Player = {
   lastVersion: number;
   backoffUntil: number;
   disabled: boolean;
+  usage: Usage;
+  price: Price;
   // UI
   lane: Lane;
+  meterEl: HTMLElement;
   scoreEl: HTMLElement;
   badgeEl: HTMLElement;
   feedEl: HTMLElement;
@@ -109,7 +116,10 @@ export class Game {
       lastVersion: -1,
       backoffUntil: 0,
       disabled: false,
+      usage: { input: 0, output: 0, calls: 0 },
+      price: priceFor(c),
       lane: null as unknown as Lane, // built in render()
+      meterEl: el('div', { class: 'meter', title: 'Tokens in / out and cost so far' }),
       scoreEl: el('span', { class: 'score', title: 'Rounds won' }, '0'),
       badgeEl: el('span', { class: 'badge', hidden: '' }),
       feedEl: el('ol', { class: 'feed' }),
@@ -178,7 +188,8 @@ export class Game {
               'div',
               { class: 'lanes' },
               this.players.map((p, i) => {
-                p.lane = new Lane(i, p.label, [p.badgeEl, p.feedEl], p.scoreEl);
+                p.lane = new Lane(i, p.label, [p.badgeEl, p.feedEl], p.scoreEl, p.meterEl);
+                this.updateMeter(p);
                 return p.lane.el;
               }),
             ),
@@ -264,7 +275,14 @@ export class Game {
     p.inFlight = true;
     this.setBadge(p, 'thinking…', 'thinking');
     try {
-      const { guess, confidence } = await p.guesser.guess({ image, wrongGuesses: [...p.wrong], signal });
+      const { guess, confidence, usage } = await p.guesser.guess({ image, wrongGuesses: [...p.wrong], signal });
+      // Billed even if the answer arrives too late to count.
+      p.usage.calls++;
+      if (usage) {
+        p.usage.input += usage.input;
+        p.usage.output += usage.output;
+      }
+      this.updateMeter(p);
       if (roundId !== this.roundId || this.roundOver) return; // stale answer
       this.setBadge(p, '');
       const right = isMatch(guess, this.words[this.round]);
@@ -464,8 +482,20 @@ export class Game {
     this.finish();
   }
 
+  private updateMeter(p: Player) {
+    const { input, output } = p.usage;
+    if (p.price.kind === 'free') {
+      p.meterEl.textContent = p.price.why === 'fake bot' ? 'free (fake bot)' : `${formatTokens(input)} in · ${formatTokens(output)} out · free`;
+      return;
+    }
+    const cost = costOf(p.usage, p.price);
+    p.meterEl.textContent = `${formatTokens(input)} in · ${formatTokens(output)} out${cost === null ? '' : ` · ${formatUsd(cost)}`}`;
+  }
+
   private finish() {
     this.onDone({
+      usage: this.players.map((p) => ({ ...p.usage })),
+      prices: this.players.map((p) => p.price),
       stopped: this.stopped,
       labels: this.players.map((p) => p.label),
       scores: this.players.map((p) => p.score),
