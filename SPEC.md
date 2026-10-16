@@ -1,0 +1,52 @@
+# Doodle Duel — Spec
+
+A browser game: you draw, AI vision models (the Doodlebots) race to guess what it is.
+
+## Setup
+- Title screen with one Doodlebot card and a big **Play!** button; Play works at once with the Fake guesser. "+ Add a Doodlebot" adds up to **3 bots**.
+- Provider dropdown (Fake guesser first, then A–Z, "OpenAI compatible" last):
+  - **Fake guesser**: no API key; simulated guesses for trying the game.
+  - **Anthropic**: API key, model.
+  - OpenAI-compatible APIs, each with an editable base URL: **Baseten, Fireworks, Nebius Token Factory, Ollama Cloud, Ollama local** (no key), **OpenAI, Together, OpenAI compatible** (any URL).
+- Base URL, the vision filter and Test sit under "More options".
+- Model dropdown stays empty until "Load models" fetches the endpoint's list (`?verbose=true` first). Models are grouped by image support (provider metadata, Ollama capabilities, or a name guess marked "likely"); "Vision models only" filter is on by default. "Other…" lets you type a model name.
+- Bots 2 and 3 default to "Same provider as Doodlebot #1", which reuses its provider, key and model list, so they only pick a model.
+- "Test" button sends one tiny image request to check the key, browser access, and image support.
+- API keys live in memory only. They are never saved, and are sent only to the chosen endpoint.
+
+## Game
+- 10 rounds. Words get harder as the game goes on:
+  - Rounds 1–3: easy (ball, hat, sun…)
+  - Rounds 4–7: medium (bicycle, umbrella, guitar…)
+  - Rounds 8–10: hard (lighthouse, octopus, helicopter…)
+- No word repeats within a game.
+- Each round: the word is shown, and you have **30 seconds** to draw.
+- About every 2.5 s, if the drawing changed and isn't empty, the same snapshot (white background, 512px JPEG) goes to every guesser.
+- Each guesser has at most one request in flight. Its previous wrong guesses this round are included in the prompt.
+- Each guess comes with the model's confidence (`<object> | <0-100>`). **Doodle Climb:** each bot sits on a 10-rung ladder at its latest confidence, leaps to the bell when it's right, and slides down when time runs out. Confidence is display-only.
+- Each bot's last 3 guesses show with their times.
+- After a round, the next one starts after a 5-second countdown (or press Next).
+- **Pause** freezes the round or the countdown; **Stop** ends the game and shows results so far.
+
+## Scoring
+- First guesser to answer correctly: **+1** for that guesser, and the round ends.
+- You: **+1** whenever any guesser gets your drawing.
+- Time runs out: nobody scores.
+- The end screen shows a podium (winner in the middle with a crown, ties share a place), then a folded round-by-round table.
+
+## Matching
+- A guess is cleaned up (lowercase, punctuation and articles removed, plural made singular) and must equal the word or one of its listed alternatives.
+- Answers that arrive after the round ended are discarded. Requests still running when a round ends are cancelled.
+
+## Look and sound
+- Whimsical sketchbook style: hand-drawn fonts (Gochi Hand, Patrick Hand, Fredoka), bright colors, robot Doodlebots, taped-paper canvas (the drawing surface stays pure white), pencil timer, confetti. Chalkboard theme in dark mode. Animations are off under reduced motion.
+- Synthesized sound effects (Web Audio, no files). 🔊/🔇 toggle on every screen and the M key; the choice is remembered.
+
+## Errors
+- Rate limit: that guesser backs off and shows a badge; the game continues.
+- Bad key, browser access blocked, or no image support: shown clearly on Test and in the feed.
+
+## Tech
+- Vite + TypeScript, plain DOM and canvas, no backend.
+- Hosted on GitHub Pages, deployed by GitHub Actions on push to `main`.
+- Local models (Ollama, LM Studio) need CORS enabled. Safari may block `http://localhost` from an https page.
