@@ -1,3 +1,4 @@
+import { debug } from '../debug';
 import Anthropic from '@anthropic-ai/sdk';
 import { sortModels, visionFromName, type ModelInfo } from './vision';
 import { GuessError, promptFor, parseGuess, type Guesser, type GuessRequest, type GuessResult } from './types';
@@ -24,6 +25,8 @@ export class AnthropicGuesser implements Guesser {
     const data = image.slice(image.indexOf(',') + 1);
     const useFallback = FALLBACK_MODELS.test(this.model);
     try {
+      const started = performance.now();
+      debug('request', `Anthropic ${this.model}: guess`, { wrongGuesses, prompt: promptFor(wrongGuesses) });
       const response = await this.client.beta.messages.create(
         {
           model: this.model,
@@ -42,6 +45,10 @@ export class AnthropicGuesser implements Guesser {
         },
         { signal },
       );
+      debug('response', `Anthropic ${this.model}: ${response.stop_reason} (${Math.round(performance.now() - started)} ms)`, {
+        content: response.content,
+        usage: response.usage,
+      });
       if (response.stop_reason === 'refusal') throw new GuessError('other', 'Model declined');
       const text = response.content.find((b) => b.type === 'text');
       if (!text || text.type !== 'text' || !text.text.trim()) throw new GuessError('other', 'Empty response');
@@ -49,6 +56,7 @@ export class AnthropicGuesser implements Guesser {
       const usage = { input: response.usage.input_tokens, output: response.usage.output_tokens };
       return { ...parseGuess(text.text), usage };
     } catch (e) {
+      debug('error', `Anthropic ${this.model}: ${(e as Error)?.name === 'APIUserAbortError' ? 'cancelled' : (e as Error)?.message}`);
       throw toGuessError(e);
     }
   }
@@ -58,10 +66,12 @@ export async function listAnthropicModels(apiKey: string): Promise<ModelInfo[]> 
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 0 });
   try {
     const models: ModelInfo[] = [];
+    debug('request', 'Anthropic: list models');
     for await (const m of client.models.list()) {
       const img = m.capabilities?.image_input?.supported;
       models.push({ id: m.id, vision: img === undefined ? visionFromName(m.id) : img ? 'yes' : 'no' });
     }
+    debug('response', `Anthropic: ${models.length} models`, models);
     return sortModels(models);
   } catch (e) {
     throw toGuessError(e);

@@ -1,3 +1,4 @@
+import { debug, debugImage } from './debug';
 import { confetti, tapes, trash, undoArrow, you } from './art';
 import { createDoodler, Sketcher, type Doodle, type Doodler } from './doodler';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
@@ -290,6 +291,7 @@ export class Game {
     this.roundEl.textContent = `Round ${this.round + 1}/${ROUNDS}`;
     this.tierEl.textContent = tier;
     this.tierEl.className = `tier ${tier}`;
+    debug('game', `Round ${this.round + 1}: "${this.words[this.round].word}" (${tier})`);
     this.wordEl.textContent = this.doodler ? '???' : this.words[this.round].word;
     this.drawLabel.textContent = this.doodler ? 'Guess the doodle: ' : 'Your turn to draw: ';
     for (const p of this.players) {
@@ -338,6 +340,7 @@ export class Game {
     this.sketchEl.hidden = false;
     try {
       const doodle = await this.doodleFor(this.round);
+      debug('game', `Doodle for "${this.words[this.round].word}": ${doodle.strokes.length} strokes`, doodle.strokes);
       if (roundId !== this.roundId || this.roundOver) return;
       if (this.round + 1 < ROUNDS) this.doodleFor(this.round + 1); // get the next one ready
       if (this.pausedAt) this.pendingDoodle = doodle;
@@ -345,6 +348,7 @@ export class Game {
     } catch (e) {
       if (roundId !== this.roundId || this.roundOver || (e as Error)?.name === 'AbortError') return;
       const why = e instanceof GuessError ? e.message : 'something went wrong';
+      debug('error', `Doodler failed twice for "${this.words[this.round].word}": ${why}`);
       this.sketchEl.replaceChildren(
         el('div', { class: 'reveal card' }, [el('h2', {}, 'The doodler got stuck 😵'), el('p', {}, `${why}. Skipping this round…`)]),
       );
@@ -424,6 +428,7 @@ export class Game {
     );
     if (ready.length === 0) return;
     const image = this.canvas.snapshot();
+    debugImage(`Snapshot → ${ready.map((p) => p.label).join(', ')}`, image);
     if (!this.clockRunning) {
       this.clockRunning = true;
       this.roundStart = performance.now();
@@ -462,6 +467,7 @@ export class Game {
   /** A guess from a bot or from you: show it, and end the round if it's right. */
   private onGuess(p: Player, guess: string, confidence: number | null) {
     const right = isMatch(guess, this.words[this.round]);
+    debug('game', `${p.label} guessed "${guess}"${confidence === null ? '' : ` (${confidence}%)`}: ${right ? 'RIGHT ✓' : 'wrong'}`);
     this.addGuess(p, guess, right, confidence);
     if (right) this.endRound(this.players.indexOf(p));
     else if (!p.wrong.includes(guess)) p.wrong.push(guess);
@@ -536,6 +542,7 @@ export class Game {
     }
 
     const seconds = winner === null ? null : (performance.now() - this.roundStart) / 1000;
+    debug('game', winner === null ? `Round ${this.round + 1} over: nobody got it` : `Round ${this.round + 1} won by ${this.players[winner].label} in ${seconds!.toFixed(1)}s`);
     if (winner !== null) {
       this.players[winner].score++;
       this.players[winner].scoreEl.textContent = String(this.players[winner].score);
@@ -634,6 +641,7 @@ export class Game {
   private pause() {
     if (this.pausedAt || this.stopped) return;
     this.pausedAt = performance.now();
+    debug('game', 'Paused');
     if (!this.roundOver) {
       this.timers.forEach(clearInterval);
       this.timers = [];
@@ -655,6 +663,7 @@ export class Game {
   private resume() {
     if (!this.pausedAt) return;
     const pausedFor = performance.now() - this.pausedAt;
+    debug('game', `Resumed after ${(pausedFor / 1000).toFixed(1)}s`);
     this.pausedAt = 0;
     if (!this.roundOver) {
       this.roundStart += pausedFor;
@@ -710,6 +719,10 @@ export class Game {
   private finish() {
     this.doodleAbort.abort(); // drop any drawing fetched ahead
     const humanIndex = this.players.findIndex((p) => p.human);
+    debug('game', this.stopped ? 'Game stopped' : 'Game over', {
+      scores: Object.fromEntries(this.players.map((p) => [p.label, p.score])),
+      usage: Object.fromEntries(this.players.map((p) => [p.label, p.usage])),
+    });
     this.onDone({
       ...(this.doodler ? { doodler: { label: this.doodlerLabel, usage: { ...this.doodlerUsage }, price: this.doodlerPrice }, humanIndex } : {}),
       usage: this.players.map((p) => ({ ...p.usage })),

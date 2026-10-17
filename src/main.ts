@@ -1,3 +1,4 @@
+import { installDebug } from './debug';
 import './style.css';
 import { confetti, doodlerBot, robot, you } from './art';
 import { el } from './dom';
@@ -10,7 +11,7 @@ import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
 const app = document.getElementById('app')!;
-document.body.append(installSound());
+document.body.append(installSound(), installDebug());
 let lastConfigs: GuesserConfig[] = [];
 let lastDoodler: GuesserConfig | null = null;
 

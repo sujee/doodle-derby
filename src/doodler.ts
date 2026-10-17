@@ -1,3 +1,4 @@
+import { debug } from './debug';
 import Anthropic from '@anthropic-ai/sdk';
 import type { DrawingCanvas } from './canvas';
 import { EFFORT_MODELS, FALLBACK_MODELS, toGuessError } from './providers/anthropic';
@@ -110,6 +111,8 @@ class AnthropicDoodler implements Doodler {
       ...(EFFORT_MODELS.test(this.model) ? { effort: 'low' as const } : {}),
       ...(structured ? { format: { type: 'json_schema' as const, schema } } : {}),
     };
+    const started = performance.now();
+    debug('request', `Anthropic ${this.model}: doodle "${word}"${structured ? ' (structured output)' : ''}`, { prompt: PROMPT(word) });
     const response = await this.client.beta.messages.create(
       {
         model: this.model,
@@ -120,6 +123,10 @@ class AnthropicDoodler implements Doodler {
       },
       { signal },
     );
+    debug('response', `Anthropic ${this.model}: doodle ${response.stop_reason} (${Math.round(performance.now() - started)} ms)`, {
+      content: response.content,
+      usage: response.usage,
+    });
     if (response.stop_reason === 'refusal') throw new GuessError('other', 'The doodler declined');
     const text = response.content.find((b) => b.type === 'text');
     if (!text || text.type !== 'text') throw new GuessError('other', 'The doodler didn’t send a drawing');
