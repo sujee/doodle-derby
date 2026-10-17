@@ -9,25 +9,27 @@ the preview folder never change underneath the user.
 
 | Folder | Path | Git branch | Dev server | Who uses it |
 |---|---|---|---|---|
-| **preview** | `draw-game/draw-claude` | `main` | http://localhost:5173 (launch config `preview`) | The user plays and tests here |
-| **dev** | `draw-game/draw-claude-dev` (a git worktree of the same repo) | `dev` | http://localhost:5174 (launch config `dev`) | The agent edits, builds and tests here |
+| **preview** | `draw-claude/main` | `main` | http://localhost:5173 (launch config `preview`) | The user plays and tests here |
+| **dev** | `draw-claude/dev` (a git worktree of the same repo) | `dev` | http://localhost:5174 (launch config `dev`) | The agent edits, builds and tests here |
 
 The two folders sit side by side (same depth), so nothing done in one can touch the other.
+The top folder `draw-claude` is not a git repo: it only holds `main/` and `dev/`, plus the
+launch configs (`draw-claude/.claude/launch.json`) that start each dev server in its own folder.
 List them with `git worktree list`. Run each dev server from its own folder.
 
 ### Rules
 
-1. **Never edit files in the preview folder** (except during a promotion, below). All work happens in `draw-claude-dev`.
+1. **Never edit files in the preview folder** (except during a promotion, below). All work happens in `dev`.
 2. **Commit in dev** in small, meaningful steps.
 3. **Before asking to promote**, in dev:
    - `npm test` passes,
    - `npm run build` passes (it type-checks too),
    - the change is play-tested on http://localhost:5174 (desktop and phone width; with Fake bots / mocked APIs).
 4. **Promote only after the user says yes.** Ask with a short summary of what changes.
-5. **Promotion is a copy, not a merge:** from the preview folder (`draw-claude`), copy the dev files over it, then commit there so it can be rolled back:
+5. **Promotion is a copy, not a merge:** from the preview folder (`main`), copy the dev files over it, then commit there so it can be rolled back:
 
    ```bash
-   rsync -a --delete --exclude .git --exclude node_modules --exclude dist ../draw-claude-dev/ ./
+   rsync -a --delete --exclude .git --exclude node_modules --exclude dist ../dev/ ./
    ```
    ```bash
    npm install   # only if package.json changed
