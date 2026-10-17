@@ -394,6 +394,10 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .badge { font-size: 0.95rem; text-align: center; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
+.badge.cutoff { justify-content: center; color: var(--muted); border-style: dashed; font-size: 0.85rem; }
+.badge.cutoff::before { content: '⏱'; }
+/* A cut-off bot wasn't asleep: drop the "zzz…" under its badge. */
+.badge.cutoff:not([hidden]) + .feed:empty::before { content: none; }
 .badge.thinking { font-size: 0; animation: float 1.4s ease-in-out infinite; }
 .badge.thinking::before { content: 'Hmm'; font-size: 1.15rem; }
 .badge.thinking::after { content: '…'; font-size: 1.15rem; display: inline-block; animation: dots 1s steps(4) infinite; overflow: hidden; width: 1.3ch; }

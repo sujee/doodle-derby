@@ -93,7 +93,7 @@ export type GameResult = {
   humanIndex?: number;
 };
 
-export type BadgeKind = '' | 'thinking' | 'warn' | 'error';
+export type BadgeKind = '' | 'thinking' | 'warn' | 'error' | 'cutoff';
 
 /** Everything the screen needs to hear about. All optional. */
 export interface EngineEvents {
@@ -235,10 +235,11 @@ export class Engine {
     this.clockRunning = false;
     this.sketching = false;
     this.pendingDoodle = null;
-    for (const p of this.players) {
+    for (const [i, p] of this.players.entries()) {
       p.wrong = [];
       p.history = [];
       p.lastVersion = -1;
+      if (!p.disabled) this.events.badge?.(i, '', ''); // clear last round's "cut off"
     }
     const tier = tierForRound(this.round);
     this.log('game', `Round ${this.round + 1}: "${this.word.word}" (${tier})`);
@@ -306,6 +307,7 @@ export class Engine {
       }
       this.events.usage?.(i);
       if (roundId !== this.roundId || this.roundOver) return; // stale answer
+      p.inFlight = false; // answered (before guess(), which may end the round)
       this.events.badge?.(i, '', '');
       this.guess(i, guess, confidence);
     } catch (e) {
@@ -369,8 +371,10 @@ export class Engine {
     this.abort.abort();
     this.stopTimers();
     for (const [i, p] of this.players.entries()) {
+      // A bot still waiting for its reply had its request cancelled: say so, rather than look idle.
+      if (p.inFlight) this.events.badge?.(i, 'cut off: round over', 'cutoff', 'Its request was still waiting for a reply when the round ended, so it was cancelled.');
+      else if (!p.disabled) this.events.badge?.(i, '', '');
       p.inFlight = false;
-      if (!p.disabled) this.events.badge?.(i, '', '');
     }
     const seconds = winner === null ? null : (this.clock.now() - this.roundStart) / 1000;
     this.events.roundEnding?.();
