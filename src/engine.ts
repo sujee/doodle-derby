@@ -93,7 +93,7 @@ export type GameResult = {
   humanIndex?: number;
 };
 
-export type BadgeKind = '' | 'thinking' | 'warn' | 'error' | 'cutoff';
+export type BadgeKind = '' | 'thinking' | 'warn' | 'error' | 'cancelled';
 
 /** Everything the screen needs to hear about. All optional. */
 export interface EngineEvents {
@@ -239,7 +239,7 @@ export class Engine {
       p.wrong = [];
       p.history = [];
       p.lastVersion = -1;
-      if (!p.disabled) this.events.badge?.(i, '', ''); // clear last round's "cut off"
+      if (!p.disabled) this.events.badge?.(i, '', ''); // clear last round's "cancelled"
     }
     const tier = tierForRound(this.round);
     this.log('game', `Round ${this.round + 1}: "${this.word.word}" (${tier})`);
@@ -372,7 +372,7 @@ export class Engine {
     this.stopTimers();
     for (const [i, p] of this.players.entries()) {
       // A bot still waiting for its reply had its request cancelled: say so, rather than look idle.
-      if (p.inFlight) this.events.badge?.(i, 'cut off: round over', 'cutoff', 'Its request was still waiting for a reply when the round ended, so it was cancelled.');
+      if (p.inFlight) this.events.badge?.(i, 'cancelled', 'cancelled', 'Its request was still waiting for a reply when the round ended, so it was cancelled.');
       else if (!p.disabled) this.events.badge?.(i, '', '');
       p.inFlight = false;
     }
