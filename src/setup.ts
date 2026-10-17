@@ -36,21 +36,21 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const slots = [first, ...Array.from({ length: MAX_BOTS - 1 }, (_, i) => makeSlot(i + 2, first))];
   const doodlerSlot = makeSlot(0, first, true);
 
-  // Who doodles? You (classic) or a bot (you join the guessers).
+  // Pick the doodler: click the You card or the Bot card. The picked card is highlighted; a picked
+  // Bot expands into its model settings, and You become one of the guessers.
   let botDraws = false;
-  const youCard = el('div', { class: 'you-card card' }, [you(), el('h2', {}, 'You'), el('p', { class: 'you-role' })]);
+  const youRole = el('p', { class: 'you-role' });
+  const youCard = pickCard(el('div', { class: 'you-card card' }, [you(), el('h2', {}, 'You'), youRole]), () => setMode(false));
+  const botCard = pickCard(
+    el('div', { class: 'bot-pick card' }, [doodlerBot(), el('h2', {}, 'Bot'), el('p', {}, 'let a bot doodle')]),
+    () => setMode(true),
+  );
   const lede = el('p', { class: 'lede' });
-  const modeBtns = (['You', 'Bot'] as const).map((label, i) => {
-    const b = el('button', { type: 'button', class: 'mode-btn', 'aria-pressed': 'false' }, label);
-    b.addEventListener('click', () => setMode(i === 1));
-    return b;
-  });
   const slotsEl = el('div', { class: 'slots' });
-  // Left side: pick the doodler, with the chosen doodler's card right under the choice.
-  const doodlerHolder = el('div', { class: 'doodler-holder' });
-  const doodlerSide = el('div', { class: 'doodler-side' }, [
-    el('div', { class: 'mode', role: 'group', 'aria-label': 'Pick the doodler' }, [el('span', { class: 'mode-label' }, 'Pick the doodler'), ...modeBtns]),
-    doodlerHolder,
+  const doodlerSide = el('div', { class: 'doodler-side', role: 'group', 'aria-label': 'Pick the doodler' }, [
+    el('p', { class: 'pick-label' }, 'Pick the doodler'),
+    youCard,
+    botCard,
   ]);
   const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
   let count = 1;
@@ -64,11 +64,14 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     (note.hidden = ![...slots.slice(0, count), ...(botDraws ? [doodlerSlot] : [])].some((s) => s.kind() !== 'fake'));
   const setMode = (bot: boolean) => {
     botDraws = bot;
-    modeBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i === (bot ? 1 : 0))));
     lede.textContent = bot ? 'A bot doodles. You and the bots race to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
-    youCard.querySelector('.you-role')!.textContent = bot ? 'a guesser 🔍' : 'the doodler ✏️';
-    doodlerHolder.replaceChildren(bot ? doodlerSlot.root : youCard);
-    slotsEl.replaceChildren(doodlerSide, vs, ...(bot ? [youCard] : []), ...slots.map((s) => s.root), add);
+    youRole.textContent = bot ? 'guessing 🔍' : 'the doodler ✏️';
+    setPicked(youCard, !bot);
+    setPicked(botCard, false);
+    doodlerSlot.root.classList.toggle('picked', bot);
+    // A picked Bot shows its settings in place of the compact card.
+    doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, bot ? doodlerSlot.root : botCard);
+    slotsEl.replaceChildren(doodlerSide, vs, ...slots.map((s) => s.root), add);
     syncNote();
   };
   doodlerSlot.onChange(syncNote);
@@ -330,6 +333,26 @@ function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
     model: modelValue,
     onChange: (fn) => listeners.push(fn),
   };
+}
+
+/** Make a card clickable (and keyboard-pressable) to pick it. */
+function pickCard(card: HTMLElement, onPick: () => void): HTMLElement {
+  card.classList.add('pick');
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.addEventListener('click', onPick);
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onPick();
+    }
+  });
+  return card;
+}
+
+function setPicked(card: HTMLElement, picked: boolean) {
+  card.classList.toggle('picked', picked);
+  card.setAttribute('aria-pressed', String(picked));
 }
 
 function errorText(e: unknown): string {

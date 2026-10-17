@@ -635,10 +635,21 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .receipt .note { font-size: 0.9rem; margin: 8px 0 0; }
 
 /* Bot-doodler mode */
-.doodler-side { display: grid; justify-items: center; gap: 12px; }
-.mode { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
-.mode-label { font-family: var(--hand); font-size: 1.3rem; margin-right: 4px; }
-.mode-btn[aria-pressed='true'] { background: var(--sun); color: var(--on-bright); font-weight: 700; }
+.doodler-side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.doodler-side .slot { flex: none; width: min(320px, 100%); } /* in a column, flex-basis would be its height */
+.pick-label { margin: 0; font-family: var(--hand); font-size: 1.4rem; }
+.pick { cursor: pointer; transition: opacity 0.15s, filter 0.15s; }
+.pick:not(.picked) { opacity: 0.55; filter: saturate(0.5); }
+.pick:not(.picked):hover, .pick:not(.picked):focus-visible { opacity: 0.95; filter: none; }
+.pick:focus-visible { outline: 3px dashed var(--grape); outline-offset: 4px; }
+.picked { outline: 4px solid var(--sun); outline-offset: 4px; }
+.bot-pick {
+  flex: none; width: 150px; text-align: center; padding: 14px 10px;
+  background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); transform: rotate(-1.5deg);
+}
+.bot-pick .bot { width: 64px; }
+.bot-pick h2 { margin: 4px 0 0; font-size: 2rem; }
+.bot-pick p { margin: 0; color: var(--muted); font-size: 1rem; }
 .slot.doodler-slot { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); transform: rotate(-1deg); }
 .lane.human { --lane: var(--mint); background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); rotate: 0.5deg; }
 .podium-spot.human .step { background: var(--mint); }
