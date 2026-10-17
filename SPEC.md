@@ -57,7 +57,7 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - Share (Web Share with both images, where supported), Download, Copy image, Copy text.
 
 ## Look and sound
-- Whimsical sketchbook style: hand-drawn fonts (Gochi Hand, Patrick Hand, Fredoka), bright colors, robot Doodlebots, taped-paper canvas (the drawing surface stays pure white), pencil timer, confetti. Chalkboard theme in dark mode. Animations are off under reduced motion.
+- Whimsical sketchbook style: hand-drawn fonts (Short Stack, Fredoka), bright colors, robot Doodlebots, taped-paper canvas (the drawing surface stays pure white), pencil timer, confetti. Chalkboard theme in dark mode. Animations are off under reduced motion.
 - Synthesized sound effects (Web Audio, no files). 🔊/🔇 toggle on every screen and the M key; the choice is remembered.
 
 ## Errors

@@ -14,8 +14,8 @@ const PAPER = '#fff8e7';
 const BOT_COLORS = ['#ff6b6b', '#4cc9f0', '#9b5de5'];
 const MINT = '#06d6a0';
 const STRIKE = 'rgb(229 56 59 / 0.45)'; // see-through red through wrong guesses
-const HAND = '"Gochi Hand", "Comic Sans MS", cursive';
-const BODY = '"Patrick Hand", "Comic Sans MS", cursive';
+const HAND = '"Short Stack", "Comic Sans MS", cursive';
+const BODY = '"Short Stack", "Comic Sans MS", cursive';
 
 export function headlineFor(r: GameResult): string {
   const best = Math.max(0, ...r.scores);
