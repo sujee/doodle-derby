@@ -65,7 +65,8 @@ export function parseGuess(text: string): GuessResult {
 
 /** Keep only the first line, without quotes or a trailing period. */
 export function cleanGuess(text: string): string {
-  return text.trim().split('\n')[0].replace(/^["'`*]+|["'`*.!]+$/g, '').trim().slice(0, 60);
+  // Trim the line itself too: trailing spaces would stop the quote/period stripping.
+  return text.trim().split('\n')[0].trim().replace(/^["'`*]+|["'`*.!]+$/g, '').trim().slice(0, 60);
 }
 
 export function errorFromStatus(status: number, message: string, retryAfter?: string | null): GuessError {

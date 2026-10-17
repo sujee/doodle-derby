@@ -736,6 +736,8 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 .ladder-wrap { justify-self: center; display: flex; align-items: flex-start; gap: 6px; }
 .ladder-wrap .ladder { justify-self: auto; }
 .stars.vertical.ladder-stars { height: 224px; margin-top: 24px; justify-content: space-between; font-size: 1.05rem; gap: 0; }
+/* Each star's box is exactly a rung tall, laid out like the rungs, so star and rung centers line up. */
+.ladder-stars .star { height: 7px; display: flex; align-items: center; justify-content: center; overflow: visible; }
 @media (max-width: 760px) {
   .pad-wrap { width: auto; }
   .paper-row { gap: 8px; }
@@ -744,6 +746,7 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
   .star-col-name { font-size: 0.8rem; }
   .stars.vertical { font-size: 1rem; gap: 2px; }
   .stars.vertical.ladder-stars { height: 104px; margin-top: 26px; font-size: 0.6rem; line-height: 1; }
+  .ladder-stars .star { height: 5px; }
 }
 
 @media (max-width: 760px) {
