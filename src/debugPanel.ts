@@ -13,10 +13,21 @@ export function installDebugPanel(): HTMLElement[] {
   const empty = el('p', { class: 'dbg-empty' }, 'Nothing yet. API calls and game events will show up here as they happen.');
   const clear = el('button', { type: 'button', class: 'dbg-btn' }, 'Clear');
   const close = el('button', { type: 'button', class: 'dbg-btn', 'aria-label': 'Close the debug log' }, '✕');
-  const panel = el('section', { class: 'dbg-panel', hidden: '', 'aria-label': 'Debug log' }, [
-    el('header', { class: 'dbg-head' }, [el('strong', {}, '🐞 Debug log'), el('span', { class: 'dbg-note' }, 'API keys are never shown'), clear, close]),
-    list,
+  const head = el('header', { class: 'dbg-head', title: 'Double-click to reset the size' }, [
+    el('strong', {}, '🐞 Debug log'),
+    el('span', { class: 'dbg-note' }, 'API keys are never shown'),
+    clear,
+    close,
   ]);
+  const panel = el('section', { class: 'dbg-panel', hidden: '', 'aria-label': 'Debug log' }, [
+    head,
+    list,
+    // Drag handles on the sides that face the page (the panel is pinned top-right).
+    el('div', { class: 'dbg-grip left', 'aria-hidden': 'true' }),
+    el('div', { class: 'dbg-grip bottom', 'aria-hidden': 'true' }),
+    el('div', { class: 'dbg-grip corner', 'aria-hidden': 'true' }),
+  ]);
+  makeResizable(panel, head);
 
   const rows = new Map<number, HTMLElement>();
   const setOpen = (open: boolean) => {
@@ -64,6 +75,65 @@ export function installDebugPanel(): HTMLElement[] {
   for (const e of getLog()) list.append(rows.set(e.id, renderEntry(e)).get(e.id)!);
   sync();
   return [pill, panel];
+}
+
+const SIZE_KEY = 'doodle-duel-debug-size';
+
+/** Drag the left edge, bottom edge or bottom-left corner to resize; the size is remembered. */
+function makeResizable(panel: HTMLElement, head: HTMLElement) {
+  const apply = (w: number, h: number) => {
+    // Keep it on screen: the panel is fixed 10px from the right and 104px from the top.
+    const width = Math.round(Math.min(Math.max(w, 280), window.innerWidth - 20));
+    const height = Math.round(Math.min(Math.max(h, 180), window.innerHeight - 114));
+    // On phones the drawer stays full width; only the height is adjustable.
+    panel.style.width = window.innerWidth > 760 ? `${width}px` : '';
+    panel.style.height = `${height}px`;
+    return { width, height };
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(SIZE_KEY) ?? 'null');
+    if (saved?.width && saved?.height) apply(saved.width, saved.height);
+  } catch {
+    // no saved size: keep the default
+  }
+
+  for (const grip of panel.querySelectorAll<HTMLElement>('.dbg-grip')) {
+    grip.addEventListener('pointerdown', (down) => {
+      down.preventDefault();
+      grip.setPointerCapture(down.pointerId);
+      const start = { x: down.clientX, y: down.clientY, w: panel.offsetWidth, h: panel.offsetHeight };
+      const horizontal = !grip.classList.contains('bottom');
+      const vertical = !grip.classList.contains('left');
+      panel.classList.add('resizing');
+      let size = { width: start.w, height: start.h };
+      const move = (e: PointerEvent) => {
+        size = apply(horizontal ? start.w + (start.x - e.clientX) : start.w, vertical ? start.h + (e.clientY - start.y) : start.h);
+      };
+      const up = () => {
+        panel.classList.remove('resizing');
+        grip.removeEventListener('pointermove', move);
+        try {
+          localStorage.setItem(SIZE_KEY, JSON.stringify(size));
+        } catch {
+          // storage blocked: the size lasts until reload
+        }
+      };
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up, { once: true });
+      grip.addEventListener('pointercancel', up, { once: true });
+    });
+  }
+
+  head.addEventListener('dblclick', (e) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    panel.style.width = '';
+    panel.style.height = '';
+    try {
+      localStorage.removeItem(SIZE_KEY);
+    } catch {
+      // ignore
+    }
+  });
 }
 
 /** One log row: a summary line, and the details when expanded. Re-rendering keeps open sections open. */
