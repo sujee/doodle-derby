@@ -32,13 +32,19 @@ export class Lane {
   readonly el: HTMLElement;
   private climbing = el('div', { class: 'climber' });
   private level = 0;
+  /** One star per rung, bottom rung first; lit for each round won. */
+  private rungStars: HTMLElement[] = [];
 
   /** bubbles: the badge and guess feed shown above the ladder. */
   /** art: the climber (defaults to robot i); you() when You are guessing in bot-doodler mode. */
   constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element) {
     this.climbing.append(art ?? robot(index));
     const rungs = el('div', { class: 'rungs' });
-    for (let i = 0; i < RUNGS; i++) rungs.append(el('span', { class: 'rung' }));
+    for (let i = 0; i < RUNGS; i++) {
+      const star = el('span', { class: 'rung-star', 'aria-hidden': 'true' }, '★');
+      this.rungStars.unshift(star); // rungs are laid out top to bottom
+      rungs.append(el('span', { class: 'rung' }, star));
+    }
     this.el = el('div', { class: art ? 'lane card human' : `lane card p${index}` }, [
       el('div', { class: 'lane-head' }, [el('h3', { title: label }, label), score]),
       ...(meter ? [meter] : []),
@@ -63,6 +69,10 @@ export class Lane {
   /** Won a round: climb to the rung for the new score and ring the bell. */
   win(score: number) {
     this.climbTo(score);
+    this.rungStars.forEach((s, i) => {
+      s.classList.toggle('on', i < score);
+      if (i === score - 1) replay(s, 'pop');
+    });
     replay(this.el, 'rang');
   }
 
@@ -76,17 +86,24 @@ export class Lane {
   }
 }
 
-/** The player's own row: face, name and stars. */
-export function youRow(score: HTMLElement, stars: Stars): HTMLElement {
-  return el('div', { class: 'you-row card' }, [you(), el('h3', {}, 'You'), stars.el, score]);
+/**
+ * The doodler's score beside the canvas: a face over a column of stars that fill from the bottom.
+ * That's You normally, or the doodler bot in bot-doodler mode.
+ */
+export function starColumn(score: HTMLElement, stars: Stars, bot: boolean): HTMLElement {
+  stars.el.classList.add('vertical');
+  return el('div', { class: `star-col${bot ? ' doodler' : ''}`, title: bot ? 'Doodler’s stars: drawings guessed' : 'Your stars: drawings guessed' }, [
+    bot ? doodlerBot() : you(),
+    el('span', { class: 'star-col-name' }, bot ? 'Doodler' : 'You'),
+    stars.el,
+    score,
+  ]);
 }
 
-/** Bot-doodler mode: the doodler's row takes the player's place, with its stars and token meter. */
-export function doodlerRow(label: string, score: HTMLElement, stars: Stars, meter: HTMLElement): HTMLElement {
+/** Bot-doodler mode: the doodler's name and token meter under the lanes (its stars are beside the canvas). */
+export function doodlerRow(label: string, meter: HTMLElement): HTMLElement {
   return el('div', { class: 'you-row doodler-row card' }, [
     doodlerBot(),
     el('div', { class: 'doodler-name' }, [el('h3', { title: label }, `✏️ ${label}`), meter]),
-    stars.el,
-    score,
   ]);
 }

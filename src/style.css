@@ -276,7 +276,7 @@ button.start:hover { animation-play-state: paused; }
 .tier.hard::before { content: '🔥 '; }
 
 .board { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: start; }
-.pad-wrap { width: min(620px, calc(100dvh - 230px)); min-width: 300px; }
+.pad-wrap { width: calc(min(620px, 100dvh - 230px) + 62px); min-width: 300px; }
 .paper {
   position: relative; margin: 0 auto;
   max-width: min(620px, calc(100dvh - 230px)); min-width: 260px;
@@ -705,3 +705,30 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 @media (max-width: 760px) {
   button.pause-btn { padding: 6px 10px; font-size: 0.9rem; }
 }
+
+/* Your stars beside the canvas: a face over a column of 10 stars filling from the bottom */
+.paper-row { display: flex; gap: 12px; align-items: stretch; }
+.paper-row .paper { flex: 1 1 auto; min-width: 0; margin: 0; }
+.star-col { flex: none; width: 50px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 6px; }
+.star-col .bot { width: 38px; }
+.star-col-name { font: 1rem/1 var(--hand); }
+.stars.vertical { flex-direction: column-reverse; gap: 3px; font-size: 1.45rem; letter-spacing: 0; line-height: 1; margin-top: 4px; }
+
+/* A star on every ladder rung, lit from the bottom for each round the bot wins */
+.rung { position: relative; }
+.rung-star {
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%; font-size: 15px; line-height: 1;
+  color: var(--surface); -webkit-text-stroke: 1.2px var(--ink);
+}
+.rung-star.on { color: var(--sun); }
+.rung-star.pop { animation: star-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1); }
+@media (max-width: 760px) {
+  .pad-wrap { width: auto; }
+  .paper-row { gap: 8px; }
+  .star-col { width: 34px; padding-top: 2px; }
+  .star-col .bot { width: 28px; }
+  .star-col-name { font-size: 0.8rem; }
+  .stars.vertical { font-size: 1rem; gap: 2px; }
+  .rung-star { font-size: 9px; -webkit-text-stroke-width: 0.8px; }
+}
+@media (prefers-reduced-motion: reduce) { .rung-star.pop { animation: none; } }

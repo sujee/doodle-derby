@@ -1,7 +1,7 @@
 import { confetti, tapes, trash, undoArrow, you } from './art';
 import { createDoodler, Sketcher, type Doodle, type Doodler } from './doodler';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
-import { doodlerRow, Lane, Stars, youRow } from './climb';
+import { doodlerRow, Lane, Stars, starColumn } from './climb';
 import { DrawingCanvas } from './canvas';
 import { el } from './dom';
 import { isMatch } from './match';
@@ -210,7 +210,8 @@ export class Game {
       eraser.classList.toggle('active', btn === eraser);
     };
 
-    this.canvas.el.addEventListener('contextmenu', (e) => e.preventDefault()); // no right-click menu while drawing
+    // No right-click menu anywhere on the paper: the canvas and the pop-ups over it (reveal, pause, sketching).
+    this.paper.addEventListener('contextmenu', (e) => e.preventDefault());
     this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.overlay);
     if (!hintSeen() && !this.doodler) {
       this.paper.append(this.hint);
@@ -239,7 +240,7 @@ export class Game {
         ]),
         el('div', { class: 'board' }, [
           el('div', { class: 'pad-wrap' }, [
-            this.paper,
+            el('div', { class: 'paper-row' }, [starColumn(this.youScoreEl, this.youStars, !!this.doodler), this.paper]),
             this.doodler
               ? this.guessForm(tool('Skip', () => this.endRound(null), 'tool ghost', '⏭'))
               : el('div', { class: 'tools' }, [
@@ -260,9 +261,7 @@ export class Game {
                 return p.lane.el;
               }),
             ),
-            this.doodler
-              ? (this.updateDoodlerMeter(), doodlerRow(this.doodlerLabel, this.youScoreEl, this.youStars, this.doodlerMeter))
-              : youRow(this.youScoreEl, this.youStars),
+            ...(this.doodler ? [(this.updateDoodlerMeter(), doodlerRow(this.doodlerLabel, this.doodlerMeter))] : []),
           ]),
         ]),
       ]),
