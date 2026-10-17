@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearLog, debug, debugFetch, getLog } from '../src/debug';
+import { clearLog, debug, debugFetch, entryText, getLog } from '../src/debug';
 import { installDebugPanel } from '../src/debugPanel';
 import { flush } from './helpers';
 
@@ -133,6 +133,43 @@ describe('debug panel', () => {
     button.click();
     clearLog();
     expect(panel.querySelectorAll('.dbg-entry')).toHaveLength(0);
+    button.remove();
+    panel.remove();
+  });
+});
+
+describe('copying an entry as text', () => {
+  it('gives the summary and the readable request and response, with images described, not pasted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ok()));
+    await (await call()).text();
+    await flush();
+    const text = entryText(getLog()[0]);
+    expect(text.split('\n')[0]).toMatch(/^\d+\.\ds {2}\[ok\] {2}OpenAI-compatible · gpt-4o-mini/);
+    expect(text).toContain('→ Request');
+    expect(text).toContain('← Response');
+    expect(text).toContain('cat');
+    expect(text).toMatch(/jpeg/i);
+    expect(text).not.toContain('/9j/4AAQ'); // no base64
+    expect(text).not.toContain('sk-SECRET-123');
+  });
+
+  it('includes a game event’s details', () => {
+    debug('game', 'Round 1 started', { word: 'cat' });
+    expect(entryText(getLog()[0])).toMatch(/\[info\] {2}Round 1 started\n {2}\{\n {4}"word": "cat"/);
+  });
+
+  it('the row’s 📋 button copies that entry without opening the row', async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    debug('game', 'Hello there');
+    const { button, panel } = installDebugPanel();
+    document.body.append(button, panel);
+    button.click();
+    const row = panel.querySelector<HTMLDetailsElement>('.dbg-entry')!;
+    row.querySelector<HTMLButtonElement>('.dbg-copy')!.click();
+    await flush();
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Hello there'));
+    expect(row.open).toBe(false);
     button.remove();
     panel.remove();
   });

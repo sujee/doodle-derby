@@ -69,6 +69,48 @@ export function debugImage(title: string, dataUrl: string) {
   record({ kind: 'game', title: `${title}: ${describeImage(dataUrl)}`, status: 'info', image: dataUrl });
 }
 
+/**
+ * One entry as plain text, for the row's copy button: the summary line, then the readable request
+ * and response. Images become a one-line description and raw bodies are left out, so it pastes well.
+ */
+export function entryText(e: LogEntry): string {
+  const result = e.result ?? (e.status === 'pending' ? 'waiting…' : '');
+  const out = [`${(e.at / 1000).toFixed(1)}s  [${e.status}]  ${e.title}${result ? `  →  ${result}` : ''}`];
+  const section = (heading: string, s: Section) => {
+    out.push('', heading);
+    for (const l of s.lines) {
+      const text = l.text.replace(/^\n/, '');
+      out.push(`  ${l.label}: ${text}`.trimEnd().replace(/\n/g, '\n    '));
+      if (l.data !== undefined) out.push(indent(prettyJson(l.data), 4));
+    }
+    for (const img of s.images) out.push(`  Image: ${describeImage(img)}`);
+  };
+  if (e.request) section('→ Request', e.request);
+  if (e.response) section('← Response', e.response);
+  else if (e.kind === 'call') out.push('', '← Response', `  ${e.result ?? 'waiting for the response…'}`);
+  if (e.image) out.push(`  Image: ${describeImage(e.image)}`);
+  if (e.data !== undefined) out.push(indent(prettyJson(e.data), 2));
+  return out.join('\n');
+}
+
+const indent = (text: string, n: number) => text.replace(/^/gm, ' '.repeat(n));
+
+/** Pretty JSON for reading; long base64 strings (images) are shortened to their size. */
+export function prettyJson(value: unknown): string {
+  if (typeof value === 'string') return value;
+  return JSON.stringify(
+    value,
+    (_k, v) => {
+      if (typeof v !== 'string' || v.length < 300) return v;
+      const b64 = v.startsWith('data:') ? v.slice(v.indexOf(',') + 1) : v;
+      if (!/^[A-Za-z0-9+/=]+$/.test(b64.slice(0, 200))) return v;
+      const kb = ((b64.length * 3) / 4 / 1024).toFixed(1);
+      return `${v.slice(0, 48)}… [${kb} KB of base64, shortened]`;
+    },
+    2,
+  );
+}
+
 // ---------------------------------------------------------------------------------------------
 // API calls: a fetch wrapper that both providers use (the Anthropic SDK takes it as `fetch`).
 

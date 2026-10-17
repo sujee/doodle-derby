@@ -780,6 +780,14 @@ button.dbg-btn.small { padding: 1px 8px; margin-left: 8px; font-size: 11px; box-
   padding: 4px 4px; cursor: pointer; list-style: none;
 }
 .dbg-entry > summary::-webkit-details-marker { display: none; }
+/* The row's copy button sits at the right of its summary line; quiet until the row is hovered or focused. */
+.dbg-entry > summary { position: relative; padding-right: 30px; }
+button.dbg-copy {
+  position: absolute; top: 2px; right: 2px; padding: 0 4px; border: 0; background: none; box-shadow: none;
+  font-size: 13px; line-height: 1.4; opacity: 0.25; cursor: pointer;
+}
+.dbg-entry > summary:hover .dbg-copy, button.dbg-copy:focus-visible { opacity: 1; }
+@media (hover: none) { button.dbg-copy { opacity: 0.7; } }
 .dbg-entry > summary:hover { background: color-mix(in srgb, var(--sun) 18%, transparent); }
 .dbg-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11px; }
 .dbg-tag { text-align: center; }

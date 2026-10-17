@@ -1,4 +1,4 @@
-import { clearLog, getLog, onLog, type LogEntry, type Section } from './debug';
+import { clearLog, entryText, getLog, onLog, prettyJson as pretty, type LogEntry, type Section } from './debug';
 import { el } from './dom';
 
 /**
@@ -169,6 +169,7 @@ function renderEntry(e: LogEntry, existing?: HTMLElement): HTMLElement {
     el('span', { class: 'dbg-tag', 'aria-hidden': 'true' }, tag),
     el('span', { class: 'dbg-title' }, e.title),
     ...(e.result || e.status === 'pending' ? [el('span', { class: 'dbg-result' }, resultText(e))] : []),
+    copyButton('📋', () => entryText(e), 'dbg-copy', 'Copy this entry as text'),
   ]);
 
   const body: Node[] = [];
@@ -212,36 +213,43 @@ function renderSection(s: Section): HTMLElement {
 
 /** A collapsible raw section; Copy puts the full, untruncated JSON on the clipboard. */
 function raw(title: string, first: string, headers: Record<string, string>, body: unknown): HTMLElement {
-  const copy = el('button', { type: 'button', class: 'dbg-btn small' }, 'Copy');
-  copy.addEventListener('click', async (ev) => {
-    ev.preventDefault();
-    const full = `${first}\n\nHeaders:\n${JSON.stringify(headers, null, 2)}\n\nBody:\n${typeof body === 'string' ? body : JSON.stringify(body, null, 2)}`;
-    try {
-      await navigator.clipboard.writeText(full);
-      copy.textContent = 'Copied!';
-    } catch {
-      copy.textContent = 'Copy failed';
-    }
-    setTimeout(() => (copy.textContent = 'Copy'), 1500);
-  });
+  const full = () => `${first}\n\nHeaders:\n${JSON.stringify(headers, null, 2)}\n\nBody:\n${typeof body === 'string' ? body : JSON.stringify(body, null, 2)}`;
+  const copy = copyButton('Copy', full, 'dbg-btn small');
   return el('details', { class: 'dbg-raw' }, [
     el('summary', {}, [title, copy]),
     el('pre', { class: 'dbg-pre' }, `${first}\n\nHeaders: ${pretty(headers)}\n\nBody: ${body === undefined ? '(none)' : pretty(body)}`),
   ]);
 }
 
-/** Pretty JSON for reading; long base64 strings are shortened here (Copy and the console keep them whole). */
-function pretty(value: unknown): string {
-  if (typeof value === 'string') return value;
-  return JSON.stringify(
-    value,
-    (_k, v) => {
-      if (typeof v !== 'string' || v.length < 300) return v;
-      const b64 = v.startsWith('data:') ? v.slice(v.indexOf(',') + 1) : v;
-      if (!/^[A-Za-z0-9+/=]+$/.test(b64.slice(0, 200))) return v;
-      const kb = ((b64.length * 3) / 4 / 1024).toFixed(1);
-      return `${v.slice(0, 48)}… [${kb} KB of base64, shortened here; Copy gives the full text]`;
-    },
-    2,
-  );
+/** A button that copies text to the clipboard and says so, without toggling the row it sits in. */
+function copyButton(label: string, text: () => string, cls: string, title?: string): HTMLButtonElement {
+  const button = el('button', { type: 'button', class: cls, ...(title ? { title, 'aria-label': title } : {}) }, label) as HTMLButtonElement;
+  button.addEventListener('click', async (ev) => {
+    ev.preventDefault(); // a click inside <summary> would open or close the row
+    ev.stopPropagation();
+    const ok = await copyText(text());
+    button.textContent = ok ? (label === 'Copy' ? 'Copied!' : '✓') : label === 'Copy' ? 'Copy failed' : '✗';
+    setTimeout(() => (button.textContent = label), 1500);
+  });
+  return button;
+}
+
+/** Copy to the clipboard; where the Clipboard API is blocked (some embedded views), select-and-copy instead. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = el('textarea', { readonly: '', style: 'position:fixed; top:0; left:-9999px; opacity:0' }) as HTMLTextAreaElement;
+    area.value = text;
+    document.body.append(area);
+    area.select();
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      area.remove();
+    }
+  }
 }
