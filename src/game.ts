@@ -699,21 +699,12 @@ export class Game {
   }
 
   private updateDoodlerMeter() {
-    const { input, output } = this.doodlerUsage;
-    const cost = costOf(this.doodlerUsage, this.doodlerPrice);
-    this.doodlerMeter.textContent =
-      this.doodlerPrice.kind === 'free' ? (this.doodlerPrice.why === 'fake bot' ? 'free (fake bot)' : 'free') : `${formatTokens(input)} in · ${formatTokens(output)} out${cost === null ? '' : ` · ${formatUsd(cost)}`}`;
+    renderMeter(this.doodlerMeter, this.doodlerUsage, this.doodlerPrice);
   }
 
   private updateMeter(p: Player) {
     if (p.human) return; // your lane keeps its "type your guesses" hint
-    const { input, output } = p.usage;
-    if (p.price.kind === 'free') {
-      p.meterEl.textContent = p.price.why === 'fake bot' ? 'free (fake bot)' : `${formatTokens(input)} in · ${formatTokens(output)} out · free`;
-      return;
-    }
-    const cost = costOf(p.usage, p.price);
-    p.meterEl.textContent = `${formatTokens(input)} in · ${formatTokens(output)} out${cost === null ? '' : ` · ${formatUsd(cost)}`}`;
+    renderMeter(p.meterEl, p.usage, p.price);
   }
 
   private finish() {
@@ -734,4 +725,22 @@ export class Game {
       rounds: this.results,
     });
   }
+}
+
+/** Live token meter: ↑ tokens in, ↓ tokens out, cost and calls, updated after every response. */
+function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
+  if (price.kind === 'free' && price.why === 'fake bot') {
+    meter.replaceChildren(el('span', { class: 'chip quiet' }, 'fake bot · no tokens'));
+    meter.title = 'The fake bot makes no API calls';
+    return;
+  }
+  const cost = costOf(usage, price);
+  const costText = price.kind === 'free' ? 'free' : cost === null ? 'price ?' : formatUsd(cost);
+  meter.replaceChildren(
+    el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
+    el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
+    el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
+    el('span', { class: 'chip quiet', title: 'Answered requests (cancelled ones aren’t counted)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
+  );
+  meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
 }

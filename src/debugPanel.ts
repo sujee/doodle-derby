@@ -43,6 +43,13 @@ export function installDebugPanel(): HTMLElement[] {
   };
 
   pill.addEventListener('click', () => setOpen(panel.hidden));
+  // Esc closes the log (leaving other Esc handlers, like the share dialog, alone when it's closed).
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || panel.hidden) return;
+    e.stopPropagation();
+    setOpen(false);
+    pill.focus({ preventScroll: true });
+  });
   close.addEventListener('click', () => setOpen(false));
   clear.addEventListener('click', clearLog);
 
