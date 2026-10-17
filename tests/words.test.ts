@@ -38,6 +38,22 @@ describe('word lists', () => {
     expect(new Set(ALL_WORDS).size).toBe(ALL_WORDS.length);
   });
 
+  it('no word or alternative belongs to two words, so a guess is never right for both', () => {
+    const owner = new Map<string, string>();
+    for (const w of Object.values(WORDS).flat()) {
+      for (const name of new Set([w.word, ...(w.alts ?? [])].map(normalize))) {
+        expect(owner.get(name), `"${name}" is used by both ${owner.get(name)} and ${w.word}`).toBeUndefined();
+        owner.set(name, w.word);
+      }
+    }
+  });
+
+  it('has plenty of words, so games don’t keep repeating', () => {
+    expect(WORDS.easy.length).toBeGreaterThanOrEqual(80);
+    expect(WORDS.medium.length).toBeGreaterThanOrEqual(80);
+    expect(WORDS.hard.length).toBeGreaterThanOrEqual(80);
+  });
+
   it('every word and alternative survives normalizing (so it can be matched)', () => {
     for (const w of Object.values(WORDS).flat()) {
       expect(normalize(w.word), w.word).not.toBe('');
