@@ -57,6 +57,13 @@ export function parseStrokes(text: string): Stroke[] {
   return cleanStrokes(raw);
 }
 
+/** A coordinate is a number or a numeric string; null, '' and the like are not (Number(null) would be 0). */
+function coord(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string' && v.trim() !== '') return Number(v);
+  return NaN;
+}
+
 export function cleanStrokes(raw: unknown[]): Stroke[] {
   const clamp = (v: number) => Math.min(SIZE, Math.max(0, v));
   const strokes: Stroke[] = [];
@@ -65,8 +72,8 @@ export function cleanStrokes(raw: unknown[]): Stroke[] {
     if (!Array.isArray(s)) continue;
     const pts: Stroke = [];
     for (const p of s) {
-      const x = Array.isArray(p) ? Number(p[0]) : Number((p as Pt)?.x);
-      const y = Array.isArray(p) ? Number(p[1]) : Number((p as Pt)?.y);
+      const x = coord(Array.isArray(p) ? p[0] : (p as Pt)?.x);
+      const y = coord(Array.isArray(p) ? p[1] : (p as Pt)?.y);
       if (Number.isFinite(x) && Number.isFinite(y)) pts.push({ x: clamp(x), y: clamp(y) });
       if (++total > MAX_POINTS) break;
     }
