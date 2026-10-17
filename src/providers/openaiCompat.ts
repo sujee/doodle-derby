@@ -1,4 +1,4 @@
-import { debug, debugOn } from '../debug';
+import { debugFetch } from '../debug';
 import { sortModels, visionFromMetadata, type ModelInfo } from './vision';
 import { errorFromStatus, GuessError, promptFor, parseGuess, type Guesser, type GuessRequest, type GuessResult } from './types';
 
@@ -86,28 +86,17 @@ async function withOllamaCapabilities(baseUrl: string, apiKey: string, models: M
 }
 
 export async function request(url: string, apiKey: string, signal: AbortSignal, init: RequestInit = {}): Promise<Response> {
-  const method = init.method ?? 'GET';
-  const started = performance.now();
-  debug('request', `${method} ${url}`, { body: parseBody(init.body) });
   let res: Response;
   try {
-    res = await fetch(url, {
+    // debugFetch is fetch, plus a request/response report in the console when debug logging is on.
+    res = await debugFetch(url, {
       ...init,
       signal,
       headers: { ...(init.headers ?? {}), ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
     });
   } catch (e) {
-    debug('error', `${method} ${url}: ${(e as Error).name === 'AbortError' ? 'cancelled' : (e as Error).message}`);
     if ((e as Error).name === 'AbortError' || (e as Error).name === 'TimeoutError') throw e;
     throw new GuessError('network', 'Could not reach endpoint (offline, wrong URL, or it blocks browser requests)');
-  }
-  const ms = Math.round(performance.now() - started);
-  if (debugOn()) {
-    res
-      .clone()
-      .text()
-      .then((text) => debug(res.ok ? 'response' : 'error', `${res.status} ${method} ${url} (${ms} ms)`, { body: parseBody(text) }))
-      .catch(() => {});
   }
   if (!res.ok) {
     let message = '';
@@ -120,15 +109,6 @@ export async function request(url: string, apiKey: string, signal: AbortSignal, 
     throw errorFromStatus(res.status, message, res.headers.get('retry-after'));
   }
   return res;
-}
-
-function parseBody(body: unknown): unknown {
-  if (typeof body !== 'string') return body ?? null;
-  try {
-    return JSON.parse(body);
-  } catch {
-    return body;
-  }
 }
 
 export function trimSlash(s: string) {
