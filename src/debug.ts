@@ -32,6 +32,8 @@ export type LogEntry = {
   /** One-line summary: what was called, then (for calls) status, time and tokens once known. */
   title: string;
   status: 'pending' | 'ok' | 'error' | 'cancelled' | 'info';
+  /** performance.now() when a call went out, for the live "waiting 12s" counter. */
+  startedAt?: number;
   result?: string;
   request?: Section;
   response?: Section;
@@ -147,19 +149,48 @@ export const debugFetch: typeof fetch = async (input, init) => {
   console.groupEnd();
 
   const started = performance.now();
+  entry.startedAt = started;
   try {
     const res = await fetch(input, init);
-    const ms = Math.round(performance.now() - started);
+    const headersMs = Math.round(performance.now() - started);
+    // Headers are in; the body may still be streaming (slow models, proxies that flush early).
+    entry.result = `${res.status} ${res.statusText} · headers after ${headersMs} ms · reading body…`.replace('  ', ' ');
+    changed(entry);
     res
       .clone()
       .text()
-      .then((text) => logResponse(entry, call, res, ms, parseJson(text) ?? text, new Blob([text]).size))
-      .catch(() => {});
+      .then((text) => {
+        const ms = Math.round(performance.now() - started);
+        try {
+          logResponse(entry, call, res, ms, parseJson(text) ?? text, new Blob([text]).size);
+        } catch (err) {
+          // Never leave a row hanging because the report itself failed.
+          entry.status = 'error';
+          entry.result = `${res.status} · ${ms} ms · couldn't build the report: ${(err as Error)?.message}`;
+          entry.rawResponse = { status: `HTTP ${res.status} ${res.statusText}`.trim(), headers: Object.fromEntries(res.headers.entries()), body: text };
+          changed(entry);
+          console.error(`#${entry.id} couldn't build the response report`, err);
+        }
+      })
+      .catch((err) => {
+        // The body never finished: usually the round ended or the game was paused mid-response.
+        const cancelled = (err as Error)?.name === 'AbortError' || init?.signal?.aborted;
+        const ms = Math.round(performance.now() - started);
+        entry.status = cancelled ? 'cancelled' : 'error';
+        entry.result = cancelled
+          ? `${res.status} · cancelled after ${ms} ms while the response was arriving (round ended or paused)`
+          : `${res.status} · failed reading the response after ${ms} ms: ${(err as Error)?.message}`;
+        changed(entry);
+        console.log(`%c${cancelled ? 'cancelled' : 'failed'}%c #${entry.id} ${call.title}: ${entry.result}`, STYLE.error, PLAIN);
+      });
     return res;
   } catch (e) {
-    const cancelled = (e as Error)?.name === 'AbortError';
+    const cancelled = (e as Error)?.name === 'AbortError' || init?.signal?.aborted;
+    const ms = Math.round(performance.now() - started);
     entry.status = cancelled ? 'cancelled' : 'error';
-    entry.result = cancelled ? 'cancelled (round ended or paused)' : `failed: ${(e as Error)?.message}`;
+    entry.result = cancelled
+      ? `cancelled after ${ms} ms, before any response (round ended or paused)`
+      : `failed after ${ms} ms: ${(e as Error)?.message} (network error, blocked by CORS, or wrong URL)`;
     changed(entry);
     console.log(`%c${cancelled ? 'cancelled' : 'failed'}%c #${entry.id} ${call.title}: ${entry.result}`, STYLE.error, PLAIN);
     throw e;

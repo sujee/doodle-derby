@@ -71,6 +71,16 @@ export function installDebugPanel(): HTMLElement[] {
     sync();
   });
 
+  // Tick the elapsed time on pending calls while the panel is open.
+  setInterval(() => {
+    if (panel.hidden) return;
+    for (const e of getLog()) {
+      if (e.status !== 'pending') continue;
+      const span = rows.get(e.id)?.querySelector(':scope > summary .dbg-result');
+      if (span) span.textContent = resultText(e);
+    }
+  }, 1000);
+
   list.append(empty);
   for (const e of getLog()) list.append(rows.set(e.id, renderEntry(e)).get(e.id)!);
   sync();
@@ -142,12 +152,13 @@ function renderEntry(e: LogEntry, existing?: HTMLElement): HTMLElement {
   const openRaw = [...row.querySelectorAll('details.dbg-raw')].map((d) => (d as HTMLDetailsElement).open);
   row.className = `dbg-entry ${e.kind} ${e.status}`;
 
-  const tag = e.kind === 'call' ? (e.status === 'pending' ? '⏳' : e.status === 'ok' ? '✓' : '✗') : e.kind === 'error' ? '⚠' : '•';
+  const CALL_TAG = { pending: '⏳', ok: '✓', cancelled: '⊘', error: '✗', info: '•' } as const;
+  const tag = e.kind === 'call' ? CALL_TAG[e.status] : e.kind === 'error' ? '⚠' : '•';
   const summary = el('summary', {}, [
     el('span', { class: 'dbg-time' }, `${(e.at / 1000).toFixed(1)}s`),
     el('span', { class: 'dbg-tag', 'aria-hidden': 'true' }, tag),
     el('span', { class: 'dbg-title' }, e.title),
-    ...(e.result ? [el('span', { class: 'dbg-result' }, e.result)] : e.status === 'pending' ? [el('span', { class: 'dbg-result' }, 'waiting…')] : []),
+    ...(e.result || e.status === 'pending' ? [el('span', { class: 'dbg-result' }, resultText(e))] : []),
   ]);
 
   const body: Node[] = [];
@@ -167,6 +178,13 @@ function renderEntry(e: LogEntry, existing?: HTMLElement): HTMLElement {
   row.replaceChildren(summary, ...(body.length ? [el('div', { class: 'dbg-body' }, body)] : []));
   [...row.querySelectorAll('details.dbg-raw')].forEach((d, i) => ((d as HTMLDetailsElement).open = openRaw[i] ?? false));
   return row;
+}
+
+/** The row's result line; while a call is pending it carries a live elapsed time. */
+function resultText(e: LogEntry): string {
+  if (e.status !== 'pending') return e.result ?? '';
+  const secs = e.startedAt === undefined ? '' : `${((performance.now() - e.startedAt) / 1000).toFixed(0)}s`;
+  return e.result ? `${e.result} ${secs}` : `waiting ${secs}…`;
 }
 
 function renderSection(s: Section): HTMLElement {

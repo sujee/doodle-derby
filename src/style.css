@@ -780,7 +780,8 @@ button.dbg-btn.small { padding: 1px 8px; margin-left: 8px; font-size: 11px; box-
 .dbg-title { overflow-wrap: anywhere; }
 .dbg-result { grid-column: 3; color: var(--muted); font-size: 12px; }
 .dbg-entry.call.ok .dbg-tag { color: #05a37b; }
-.dbg-entry.error .dbg-tag, .dbg-entry.call.error .dbg-tag, .dbg-entry.cancelled .dbg-tag { color: var(--coral); }
+.dbg-entry.error .dbg-tag, .dbg-entry.call.error .dbg-tag { color: var(--coral); }
+.dbg-entry.cancelled .dbg-tag, .dbg-entry.cancelled .dbg-result { color: var(--muted); }
 .dbg-entry.game .dbg-title { color: var(--muted); }
 .dbg-body { padding: 4px 6px 10px 2.4em; }
 .dbg-body h4 { margin: 8px 0 4px; font: 700 12px/1.2 var(--plain); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
