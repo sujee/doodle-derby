@@ -13,6 +13,7 @@ const MUTED = '#6d6252';
 const PAPER = '#fff8e7';
 const BOT_COLORS = ['#ff6b6b', '#4cc9f0', '#9b5de5'];
 const MINT = '#06d6a0';
+const STRIKE = 'rgb(229 56 59 / 0.45)'; // see-through red through wrong guesses
 const HAND = '"Gochi Hand", "Comic Sans MS", cursive';
 const BODY = '"Patrick Hand", "Comic Sans MS", cursive';
 
@@ -151,8 +152,8 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
 /**
  * Card 2, "What were the bots thinking?": a notebook table with one row per round (doodle + word)
- * and one column per bot. Each cell is that bot's guess trail: wrong guesses with a wavy underline in the
- * bot's color, the right one circled.
+ * and one column per bot. Each cell is that bot's guess trail: wrong guesses struck through in
+ * see-through red, the right one in the bot's color and circled.
  */
 export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
@@ -244,7 +245,7 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
   return toPng(c);
 }
 
-/** Lay out guesses left to right, wrapping, up to 3 lines: wrong ones underlined with a squiggle, the right one circled. */
+/** Lay out guesses left to right, wrapping, up to 3 lines: wrong ones struck through, the right one circled. */
 function drawTrail(
   ctx: CanvasRenderingContext2D,
   trail: { text: string; right: boolean }[],
@@ -292,18 +293,14 @@ function drawTrail(
       ctx.fillText('✓', x + w + 20, y);
       x += need + 8;
     } else {
-      // Wrong guess: the word stays fully readable, with a light wavy underline in the bot's color
-      // (nothing drawn through the letters).
+      // Wrong guess: struck through in see-through red, so the word stays readable.
       ctx.fillStyle = INK;
       ctx.fillText(text, x, y);
       ctx.beginPath();
-      for (let dx = 0; dx <= w; dx += 2) {
-        const wy = y + 6 + Math.sin(dx / 3) * 2;
-        if (dx === 0) ctx.moveTo(x + dx, wy);
-        else ctx.lineTo(x + dx, wy);
-      }
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = color;
+      ctx.moveTo(x - 2, y - 7);
+      ctx.lineTo(x + w + 2, y - 7);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = STRIKE;
       ctx.stroke();
       x += w + 14;
     }
