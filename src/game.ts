@@ -55,6 +55,8 @@ type Player = {
   label: string;
   score: number;
   wrong: string[];
+  /** Every guess this round, oldest first, for the pause screen. */
+  history: { guess: string; right: boolean; confidence: number | null; secs: string }[];
   inFlight: boolean;
   lastVersion: number;
   backoffUntil: number;
@@ -82,7 +84,7 @@ export class Game {
   private advanceTimer = 0;
   private countdownTick: (() => void) | null = null;
   private pausedAt = 0; // 0 = not paused
-  private pauseBtn = el('button', { type: 'button', class: 'icon-btn pause', title: 'Pause', 'aria-label': 'Pause' }, '⏸');
+  private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)' }, '⏸ Pause');
   private pauseEl = el('div', { class: 'pause-layer', hidden: '' });
   private stopped = false;
   private playerScore = 0;
@@ -144,6 +146,7 @@ export class Game {
       label: '',
       score: 0,
       wrong: [],
+      history: [],
       inFlight: false,
       lastVersion: -1,
       backoffUntil: 0,
@@ -167,6 +170,7 @@ export class Game {
         label: 'You',
         score: 0,
         wrong: [],
+        history: [],
         inFlight: false,
         lastVersion: -1,
         backoffUntil: 0,
@@ -218,9 +222,16 @@ export class Game {
     const stop = el('button', { type: 'button', class: 'icon-btn stop', title: 'Stop game', 'aria-label': 'Stop game' }, '✕');
     stop.addEventListener('click', () => this.stop());
     this.pauseBtn.addEventListener('click', () => (this.pausedAt ? this.resume() : this.pause()));
-    const resume = el('button', { type: 'button', class: 'primary big' }, 'Keep drawing!');
-    resume.addEventListener('click', () => this.resume());
-    this.pauseEl.replaceChildren(el('div', { class: 'reveal card' }, [el('h2', {}, 'Paused ☕'), el('p', {}, 'Take a breather. The bots will wait.'), resume]));
+    // P pauses / resumes (unless you're typing a guess).
+    const onKey = (e: KeyboardEvent) => {
+      if (!this.paper.isConnected) return document.removeEventListener('keydown', onKey);
+      if (e.key.toLowerCase() !== 'p' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.target as HTMLElement)?.closest('input, textarea, select')) return;
+      e.preventDefault();
+      if (this.pausedAt) this.resume();
+      else this.pause();
+    };
+    document.addEventListener('keydown', onKey);
     this.paper.append(this.pauseEl);
     this.container.replaceChildren(
       el('section', { class: 'game' }, [
@@ -288,6 +299,7 @@ export class Game {
     this.drawLabel.textContent = this.doodler ? 'Guess the doodle: ' : 'Your turn to draw: ';
     for (const p of this.players) {
       p.wrong = [];
+      p.history = [];
       p.lastVersion = -1;
       p.feedEl.replaceChildren();
       p.lane.reset();
@@ -501,6 +513,7 @@ export class Game {
 
   private addGuess(p: Player, guess: string, right: boolean, confidence: number | null) {
     const secs = ((performance.now() - this.roundStart) / 1000).toFixed(1);
+    p.history.push({ guess, right, confidence, secs });
     sfx.pop(this.players.indexOf(p));
     if (!right) setTimeout(sfx.wrong, 260);
     p.feedEl.prepend(
@@ -596,6 +609,45 @@ export class Game {
     next.focus({ preventScroll: true });
   }
 
+  /** The pause screen: every guess so far this round, one column per guesser. */
+  private renderPauseCard() {
+    const resume = el('button', { type: 'button', class: 'primary big' }, this.doodler ? 'Keep guessing!' : 'Keep drawing!');
+    resume.addEventListener('click', () => this.resume());
+    const total = this.players.reduce((n, p) => n + p.history.length, 0);
+    const word = this.roundOver || !this.doodler ? this.words[this.round].word : '???';
+    const columns = this.players.map((p, i) =>
+      el('div', { class: `pause-col ${p.human ? 'human' : `p${i}`}` }, [
+        el('h3', { title: p.label }, p.label),
+        p.history.length
+          ? el(
+              'ol',
+              { class: 'pause-guesses' },
+              p.history.map((h) =>
+                el('li', { class: h.right ? 'right' : 'nope' }, [
+                  el('span', { class: 'mark', 'aria-hidden': 'true' }, h.right ? '✓' : '✗'),
+                  el('span', { class: 'guess' }, h.guess),
+                  el('span', { class: 'when' }, `${h.confidence === null ? '' : `${h.confidence}% · `}${h.secs}s`),
+                ]),
+              ),
+            )
+          : el('p', { class: 'note' }, p.human ? 'no guesses yet' : 'still thinking…'),
+      ]),
+    );
+    this.pauseEl.replaceChildren(
+      el('div', { class: 'reveal card pause-card' }, [
+        el('h2', {}, 'Paused ☕'),
+        el('p', { class: 'kicker' }, [
+          `Round ${this.round + 1} · `,
+          el('strong', {}, word),
+          ` · ${total} guess${total === 1 ? '' : 'es'} so far`,
+        ]),
+        el('div', { class: 'pause-cols' }, columns),
+        resume,
+      ]),
+    );
+    resume.focus({ preventScroll: true });
+  }
+
   /** Freeze the round (or the countdown between rounds). In-flight requests are cancelled and re-sent on resume. */
   private pause() {
     if (this.pausedAt || this.stopped) return;
@@ -613,9 +665,9 @@ export class Game {
         if (!p.disabled) this.setBadge(p, '');
       }
     }
-    this.pauseBtn.textContent = '▶';
-    this.pauseBtn.title = 'Resume';
-    this.pauseBtn.setAttribute('aria-label', 'Resume');
+    this.pauseBtn.textContent = '▶ Resume';
+    this.pauseBtn.title = 'Resume (P)';
+    this.renderPauseCard();
     this.pauseEl.hidden = false;
     this.paper.closest('.game')?.classList.add('paused');
   }
@@ -642,9 +694,8 @@ export class Game {
         this.startSketchTimer(); // carry on drawing where it paused
       }
     }
-    this.pauseBtn.textContent = '⏸';
-    this.pauseBtn.title = 'Pause';
-    this.pauseBtn.setAttribute('aria-label', 'Pause');
+    this.pauseBtn.textContent = '⏸ Pause';
+    this.pauseBtn.title = 'Pause and see this round’s guesses (P)';
     this.pauseEl.hidden = true;
     this.paper.closest('.game')?.classList.remove('paused');
   }
