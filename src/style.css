@@ -637,7 +637,13 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 /* Bot-doodler mode */
 .doodler-side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .doodler-side .slot { flex: none; width: min(320px, 100%); } /* in a column, flex-basis would be its height */
-.pick-label { margin: 0; font-family: var(--hand); font-size: 1.4rem; }
+.pick-label { margin: 0; font-family: var(--hand); font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
+.step-num {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; font: 700 1rem/1 var(--round);
+  background: var(--sun); color: var(--on-bright); border: 2.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--shadow);
+}
+.guessers-side { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 1 1 320px; min-width: 0; }
+.guesser-row { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: flex-start; width: 100%; }
 .pick { cursor: pointer; transition: opacity 0.15s, filter 0.15s; }
 .pick:not(.picked) { opacity: 0.55; filter: saturate(0.5); }
 .pick:not(.picked):hover, .pick:not(.picked):focus-visible { opacity: 0.95; filter: none; }

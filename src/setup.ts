@@ -48,11 +48,16 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const lede = el('p', { class: 'lede' });
   const slotsEl = el('div', { class: 'slots' });
   const doodlerSide = el('div', { class: 'doodler-side', role: 'group', 'aria-label': 'Pick the doodler' }, [
-    el('p', { class: 'pick-label' }, 'Pick the doodler'),
+    el('p', { class: 'pick-label' }, [el('span', { class: 'step-num' }, '1'), 'Pick the doodler']),
     youCard,
     botCard,
   ]);
   const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
+  const guesserRow = el('div', { class: 'guesser-row' });
+  const guessersSide = el('div', { class: 'guessers-side', role: 'group', 'aria-label': 'Pick the guessers' }, [
+    el('p', { class: 'pick-label' }, [el('span', { class: 'step-num' }, '2'), 'Pick the guessers']),
+    guesserRow,
+  ]);
   let count = 1;
   const addLabel = el('span');
   const add = el('button', { type: 'button', class: 'add-bot' }, [
@@ -71,7 +76,8 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     doodlerSlot.root.classList.toggle('picked', bot);
     // A picked Bot shows its settings in place of the compact card.
     doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, bot ? doodlerSlot.root : botCard);
-    slotsEl.replaceChildren(doodlerSide, vs, ...slots.map((s) => s.root), add);
+    guesserRow.replaceChildren(...slots.map((s) => s.root), add);
+    slotsEl.replaceChildren(doodlerSide, vs, guessersSide);
     syncNote();
   };
   doodlerSlot.onChange(syncNote);
