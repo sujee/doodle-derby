@@ -161,7 +161,8 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
 .lede { color: var(--muted); margin: 0 auto 32px; max-width: 34em; font-size: 1.15rem; }
 
 /* Bot cards side by side, with the + to the right. */
-.slots { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: flex-start; text-align: left; }
+/* Doodler | VS | guessers. The group is centered; extra guesser cards wrap inside their own column. */
+.slots { display: grid; grid-template-columns: auto auto minmax(0, max-content); gap: 22px; justify-content: center; align-items: start; text-align: left; }
 .slot { flex: 1 1 300px; min-width: 280px; max-width: 360px; }
 .you-card {
   flex: none; width: 150px; align-self: center; text-align: center; padding: 14px 10px;
@@ -171,8 +172,8 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
 .you-card h2 { margin: 4px 0 0; font-size: 2rem; }
 .you-card p { margin: 0; color: var(--muted); font-size: 1rem; }
 .vs {
-  flex: none; align-self: center; font: 2.6rem/1 var(--hand); color: var(--grape);
-  text-shadow: 2px 2px 0 var(--shadow); rotate: -8deg; margin: 0 -4px;
+  align-self: start; font: 2.6rem/1 var(--hand); color: var(--grape);
+  text-shadow: 2px 2px 0 var(--shadow); rotate: -8deg; margin: 140px -4px 0; /* level with the cards */
 }
 .slot.p0 { background: color-mix(in srgb, var(--coral) var(--tint), var(--surface)); transform: rotate(-1deg); }
 .slot.p1 { background: color-mix(in srgb, var(--sky) var(--tint), var(--surface)); transform: rotate(1deg); }
@@ -642,8 +643,8 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; font: 700 1rem/1 var(--round);
   background: var(--sun); color: var(--on-bright); border: 2.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--shadow);
 }
-.guessers-side { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 1 1 320px; min-width: 0; }
-.guesser-row { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: flex-start; width: 100%; }
+.guessers-side { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 0 1 auto; min-width: 0; } /* only as wide as its cards, so the row centers */
+.guesser-row { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: flex-start; }
 .pick { cursor: pointer; transition: opacity 0.15s, filter 0.15s; }
 .pick:not(.picked) { opacity: 0.55; filter: saturate(0.5); }
 .pick:not(.picked):hover, .pick:not(.picked):focus-visible { opacity: 0.95; filter: none; }
@@ -732,3 +733,8 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
   .rung-star { font-size: 9px; -webkit-text-stroke-width: 0.8px; }
 }
 @media (prefers-reduced-motion: reduce) { .rung-star.pop { animation: none; } }
+
+@media (max-width: 760px) {
+  .slots { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .vs { margin: 0; }
+}
