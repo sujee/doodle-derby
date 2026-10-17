@@ -305,7 +305,13 @@ export class Game {
           ? [el('p', { class: 'kicker' }, 'Time’s up! It was a…'), el('h2', { class: 'reveal-word' }, `${word}!`), el('p', {}, 'Nobody scores this round.')]
           : [
               el('div', { class: 'stamp', 'aria-hidden': 'true' }, 'DING! ✓'),
-              el('h2', {}, who.human ? 'You nailed it!' : `${who.label} nailed it!`),
+              el(
+                'h2',
+                {},
+                who.human
+                  ? 'You nailed it!'
+                  : [el('span', { class: 'winner-name', style: `--who: ${this.laneColor(winner!)}` }, who.label), ' nailed it!'],
+              ),
               el(
                 'p',
                 {},
@@ -320,6 +326,11 @@ export class Game {
     this.overlay.classList.toggle('won', !!who);
     this.overlay.hidden = false;
     next.focus({ preventScroll: true });
+  }
+
+  /** The bot's own color, read off its lane, so its name matches its box. */
+  private laneColor(i: number): string {
+    return getComputedStyle(this.views[i].lane.el).getPropertyValue('--lane').trim() || 'var(--grape)';
   }
 
   private onPause(paused: boolean) {

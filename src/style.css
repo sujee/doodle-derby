@@ -462,6 +462,8 @@ button.icon-btn.stop { color: var(--muted); }
 }
 .reveal h2 { margin: 0 0 4px; overflow-wrap: anywhere; }
 .reveal p { margin: 0 0 6px; }
+/* The winning bot's name, in its lane color (darkened a little so it reads on the card). */
+.reveal .winner-name { color: color-mix(in srgb, var(--who) 78%, var(--ink)); }
 .reveal.got-it { margin-top: 40px; }
 .reveal .kicker { color: var(--muted); font-size: 1.15rem; }
 .reveal-word { font-size: 2.8rem; color: var(--grape); }
