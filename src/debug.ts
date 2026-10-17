@@ -1,8 +1,8 @@
 /**
- * Debug logging: a 🐞 toggle next to the sound button. When on, every API call is logged to the
- * browser console as a readable report (what was asked, how the image was sent, what came back),
- * with the raw request and response underneath as expandable sections. Game events are logged too.
- * API keys are never logged.
+ * Debug logging: a 🐞 toggle next to the sound button. When on, every API call becomes a readable
+ * report (what was asked, how the image was sent, what came back) with the raw request and response
+ * underneath. Reports go to the browser console and to the in-game log panel (debugPanel.ts).
+ * Game events are logged too. API keys are never logged.
  */
 
 import { parseGuess } from './providers/types';
@@ -20,6 +20,59 @@ function load(): boolean {
 
 export const debugOn = () => on;
 
+// ---------------------------------------------------------------------------------------------
+// The log: structured entries, shared by the console output and the in-game panel.
+
+export type Line = { label: string; text: string; data?: unknown };
+export type Section = { lines: Line[]; images: string[] };
+export type LogEntry = {
+  id: number;
+  at: number; // ms since page load
+  kind: 'call' | 'game' | 'error';
+  /** One-line summary: what was called, then (for calls) status, time and tokens once known. */
+  title: string;
+  status: 'pending' | 'ok' | 'error' | 'cancelled' | 'info';
+  result?: string;
+  request?: Section;
+  response?: Section;
+  rawRequest?: { method: string; url: string; headers: Record<string, string>; body: unknown };
+  rawResponse?: { status: string; headers: Record<string, string>; body: unknown };
+  /** Game events: an optional image (snapshot) and details. */
+  image?: string;
+  data?: unknown;
+};
+
+const MAX_ENTRIES = 300;
+const entries: LogEntry[] = [];
+const listeners = new Set<(e: LogEntry | null) => void>();
+const modeListeners = new Set<(on: boolean) => void>();
+let nextId = 0;
+
+export const getLog = (): readonly LogEntry[] => entries;
+/** Called with the entry that was added or changed, or null when the log was cleared. */
+export const onLog = (fn: (e: LogEntry | null) => void) => listeners.add(fn);
+export const onDebugChange = (fn: (on: boolean) => void) => modeListeners.add(fn);
+
+export function clearLog() {
+  entries.length = 0;
+  listeners.forEach((fn) => fn(null));
+}
+
+function record(e: Omit<LogEntry, 'id' | 'at'>): LogEntry {
+  const entry = { ...e, id: ++nextId, at: performance.now() };
+  entries.push(entry);
+  if (entries.length > MAX_ENTRIES) entries.shift();
+  listeners.forEach((fn) => fn(entry));
+  return entry;
+}
+
+function changed(entry: LogEntry) {
+  listeners.forEach((fn) => fn(entry));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Console styles
+
 const STYLE = {
   request: 'color:#fff;background:#4cc9f0;padding:1px 6px;border-radius:4px;font-weight:bold',
   response: 'color:#fff;background:#06a37b;padding:1px 6px;border-radius:4px;font-weight:bold',
@@ -30,11 +83,12 @@ const LABEL = 'font-weight:bold;color:#6d6252';
 const PLAIN = 'font-weight:normal;color:inherit';
 const DIM = 'color:#888;font-weight:normal';
 
-type Kind = keyof typeof STYLE;
+type Kind = 'game' | 'error';
 
 /** A game event, with optional details shown when expanded. */
 export function debug(kind: Kind, title: string, data?: unknown) {
   if (!on) return;
+  record({ kind, title, status: kind === 'error' ? 'error' : 'info', data });
   const label = `%c${kind}%c ${title}`;
   if (data === undefined) return console.log(label, STYLE[kind], PLAIN);
   console.groupCollapsed(label, STYLE[kind], PLAIN);
@@ -42,30 +96,56 @@ export function debug(kind: Kind, title: string, data?: unknown) {
   console.groupEnd();
 }
 
-/** Show a snapshot as an image in the console (Chrome, Edge, Firefox). */
+/** A snapshot sent to the bots, shown as an image (console and panel). */
 export function debugImage(title: string, dataUrl: string) {
   if (!on) return;
-  console.log(`%c ${title}: ${describeImage(dataUrl)}`, thumbnail(dataUrl));
+  const text = `${title}: ${describeImage(dataUrl)}`;
+  record({ kind: 'game', title: text, status: 'info', image: dataUrl });
+  console.log(`%c ${text}`, thumbnail(dataUrl));
 }
 
 const thumbnail = (dataUrl: string) =>
   `padding:64px 0 0 136px;line-height:2;background:#fff url("${dataUrl}") no-repeat left top/128px 128px;border:1px solid #2b2b2b;font-size:11px`;
 
+function printSection(section: Section) {
+  for (const line of section.lines) {
+    if (line.data !== undefined) console.log(`%c${line.label}%c ${line.text}`, LABEL, PLAIN, line.data);
+    else console.log(`%c${line.label}%c ${line.text}`, LABEL, PLAIN);
+  }
+  for (const img of section.images) console.log('%c ', thumbnail(img));
+}
+
 // ---------------------------------------------------------------------------------------------
 // API calls: a fetch wrapper that both providers use (the Anthropic SDK takes it as `fetch`).
 
-let callId = 0;
-
-/** fetch(), plus a readable report of the request and response in the console when debug is on. */
+/** fetch(), plus a readable report of the request and response when debug is on. */
 export const debugFetch: typeof fetch = async (input, init) => {
   if (!on) return fetch(input, init);
-  const id = ++callId;
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
   const raw = typeof init?.body === 'string' ? init.body : undefined;
   const body = parseJson(raw);
   const call = describeCall(url, method, body);
-  logRequest(id, call, url, method, headersOf(init?.headers), body, raw ? new Blob([raw]).size : 0);
+  const headers = hideKeys(headersOf(init?.headers));
+  const bytes = raw ? new Blob([raw]).size : 0;
+  const request = requestSection(call, method, headers, body, bytes);
+  const entry = record({
+    kind: 'call',
+    title: `${call.title}${bytes ? ` · ${formatBytes(bytes)} sent` : ''}`,
+    status: 'pending',
+    request,
+    rawRequest: { method, url, headers, body },
+  });
+
+  console.groupCollapsed(`%c→ request%c #${entry.id} ${entry.title} %c${method} ${url}`, STYLE.request, PLAIN, DIM);
+  printSection(request);
+  console.groupCollapsed('Raw request');
+  console.log(`${method} ${url}`);
+  console.log('Headers', headers);
+  if (body !== undefined) console.log('Body (JSON, exactly as sent)', body);
+  console.groupEnd();
+  console.groupEnd();
+
   const started = performance.now();
   try {
     const res = await fetch(input, init);
@@ -73,12 +153,15 @@ export const debugFetch: typeof fetch = async (input, init) => {
     res
       .clone()
       .text()
-      .then((text) => logResponse(id, call, res, ms, parseJson(text) ?? text, new Blob([text]).size))
+      .then((text) => logResponse(entry, call, res, ms, parseJson(text) ?? text, new Blob([text]).size))
       .catch(() => {});
     return res;
   } catch (e) {
     const cancelled = (e as Error)?.name === 'AbortError';
-    console.log(`%c${cancelled ? 'cancelled' : 'failed'}%c #${id} ${call.title}: ${cancelled ? 'request cancelled (round ended or paused)' : (e as Error)?.message}`, STYLE.error, PLAIN);
+    entry.status = cancelled ? 'cancelled' : 'error';
+    entry.result = cancelled ? 'cancelled (round ended or paused)' : `failed: ${(e as Error)?.message}`;
+    changed(entry);
+    console.log(`%c${cancelled ? 'cancelled' : 'failed'}%c #${entry.id} ${call.title}: ${entry.result}`, STYLE.error, PLAIN);
     throw e;
   }
 };
@@ -100,77 +183,67 @@ function describeCall(url: string, method: string, body: any): Call {
   return { provider, purpose, model, title: [provider, model, purpose].filter(Boolean).join(' · ') };
 }
 
-function logRequest(id: number, call: Call, url: string, method: string, headers: Record<string, string>, body: any, bytes: number) {
+function requestSection(call: Call, method: string, headers: Record<string, string>, body: any, bytes: number): Section {
   const anthropic = call.provider === 'Anthropic';
   const images = imagesOf(body, anthropic);
-  const sizeNote = bytes ? ` · ${formatBytes(bytes)} sent` : '';
-  console.groupCollapsed(`%c→ request%c #${id} ${call.title}${sizeNote} %c${method} ${url}`, STYLE.request, PLAIN, DIM);
-
+  const lines: Line[] = [];
   if (bytes) {
     // Image bytes as they travel: the base64 text inside the JSON body.
     const imageBytes = images.reduce((n, img) => n + (img.dataUrl.length - img.dataUrl.indexOf(',') - 1), 0);
     const parts = images.length
       ? ` = ${images.length} image${images.length > 1 ? 's' : ''} ${formatBytes(imageBytes)} (base64) + text and JSON ${formatBytes(bytes - imageBytes)}`
       : '';
-    console.log(`%cInput size%c ${formatBytes(bytes)} request body${parts}`, LABEL, PLAIN);
+    lines.push({ label: 'Input size', text: `${formatBytes(bytes)} request body${parts}` });
   }
-
   const prompt = promptOf(body, anthropic);
-  if (prompt) console.log(`%cPrompt%c\n${prompt}`, LABEL, PLAIN);
+  if (prompt) lines.push({ label: 'Prompt', text: `\n${prompt}` });
   for (const img of images) {
     const b64Bytes = img.dataUrl.length - img.dataUrl.indexOf(',') - 1;
-    console.log(
-      `%cImage%c ${describeImage(img.dataUrl)} file → ${formatBytes(b64Bytes)} as base64 text in the request\nSent as ${img.how}\nAt ${img.path}`,
-      LABEL,
-      PLAIN,
-    );
-    console.log('%c ', thumbnail(img.dataUrl));
+    lines.push({
+      label: 'Image',
+      text: `${describeImage(img.dataUrl)} file → ${formatBytes(b64Bytes)} as base64 text in the request\nSent as ${img.how}\nAt ${img.path}`,
+    });
   }
   const settings = settingsOf(body, headers);
-  if (Object.keys(settings).length) console.log('%cSettings', LABEL, settings);
-  if (!body) console.log(`%cBody%c none (${method} request)`, LABEL, PLAIN);
-
-  console.groupCollapsed('Raw request');
-  console.log(`${method} ${url}`);
-  console.log('Headers', hideKeys(headers));
-  if (body !== undefined) console.log('Body (JSON, exactly as sent)', body);
-  console.groupEnd();
-  console.groupEnd();
+  if (Object.keys(settings).length) lines.push({ label: 'Settings', text: '', data: settings });
+  if (!body) lines.push({ label: 'Body', text: `none (${method} request)` });
+  return { lines, images: images.map((i) => i.dataUrl) };
 }
 
-function logResponse(id: number, call: Call, res: Response, ms: number, body: any, bytes: number) {
-  const style = res.ok ? STYLE.response : STYLE.error;
+function logResponse(entry: LogEntry, call: Call, res: Response, ms: number, body: any, bytes: number) {
   const usage = tokensOf(body);
-  const tokenNote = usage ? ` · tokens ${usage.input} in / ${usage.output} out` : '';
-  console.groupCollapsed(
-    `%c← response%c #${id} ${res.status} ${res.statusText} · ${ms} ms${tokenNote} · ${formatBytes(bytes)} · ${call.title}`,
-    style,
-    PLAIN,
-  );
-
+  const lines: Line[] = [];
   if (!res.ok) {
-    console.log(`%cError%c ${body?.error?.message ?? body?.message ?? (typeof body === 'string' ? body : JSON.stringify(body))}`, LABEL, PLAIN);
+    lines.push({ label: 'Error', text: body?.error?.message ?? body?.message ?? (typeof body === 'string' ? body : JSON.stringify(body)) });
   } else if (call.purpose === 'list models') {
     const list = Array.isArray(body) ? body : (body?.data ?? []);
-    console.log(`%cModels%c ${list.length} returned`, LABEL, PLAIN, list.map((m: any) => m?.id));
+    lines.push({ label: 'Models', text: `${list.length} returned: ${list.map((m: any) => m?.id).join(', ')}` });
   } else {
     const reply = replyOf(body);
-    if (reply.thinking) console.log(`%cThinking%c ${reply.thinking}`, LABEL, PLAIN);
+    if (reply.thinking) lines.push({ label: 'Thinking', text: reply.thinking });
     if (reply.text !== null) {
       const shown = reply.text.length > 600 ? `${reply.text.slice(0, 600)}… (${reply.text.length} chars; full text in Raw response)` : reply.text;
-      console.log(`%cReply%c\n${shown}`, LABEL, PLAIN);
+      lines.push({ label: 'Reply', text: `\n${shown}` });
       if (call.purpose === 'guess the drawing') {
         const { guess, confidence } = parseGuess(reply.text);
-        console.log(`%cParsed%c guess "${guess}", confidence ${confidence === null ? 'not given' : `${confidence}%`}`, LABEL, PLAIN);
+        lines.push({ label: 'Parsed', text: `guess "${guess}", confidence ${confidence === null ? 'not given' : `${confidence}%`}` });
       }
     }
-    if (reply.stop) console.log(`%cStopped because%c ${reply.stop}`, LABEL, PLAIN);
-    if (reply.tokens) console.log(`%cTokens%c ${reply.tokens}`, LABEL, PLAIN);
+    if (reply.stop) lines.push({ label: 'Stopped because', text: reply.stop });
+    if (reply.tokens) lines.push({ label: 'Tokens', text: reply.tokens });
   }
+  const resHeaders = Object.fromEntries(res.headers.entries());
+  entry.status = res.ok ? 'ok' : 'error';
+  entry.result = `${res.status} ${res.statusText} · ${ms} ms${usage ? ` · tokens ${usage.input} in / ${usage.output} out` : ''} · ${formatBytes(bytes)}`.replace('  ', ' ');
+  entry.response = { lines, images: [] };
+  entry.rawResponse = { status: `HTTP ${res.status} ${res.statusText}`.trim(), headers: resHeaders, body };
+  changed(entry);
 
+  console.groupCollapsed(`%c← response%c #${entry.id} ${entry.result} · ${call.title}`, res.ok ? STYLE.response : STYLE.error, PLAIN);
+  printSection(entry.response);
   console.groupCollapsed('Raw response');
-  console.log(`HTTP ${res.status} ${res.statusText}`);
-  console.log('Headers', Object.fromEntries(res.headers.entries()));
+  console.log(entry.rawResponse.status);
+  console.log('Headers', resHeaders);
   console.log('Body (exactly as received)', body);
   console.groupEnd();
   console.groupEnd();
@@ -348,6 +421,7 @@ export function installDebug(): HTMLButtonElement {
       // storage blocked: the setting lasts until reload
     }
     sync();
+    modeListeners.forEach((fn) => fn(on));
     console.info(
       on
         ? '%c🐞 Doodle Duel debug logging ON. Each API call shows a readable report with the raw request and response underneath (API keys are never logged).'
