@@ -32,24 +32,24 @@ export class Lane {
   readonly el: HTMLElement;
   private climbing = el('div', { class: 'climber' });
   private level = 0;
-  /** One star per rung, bottom rung first; lit for each round won. */
-  private rungStars: HTMLElement[] = [];
+  /** A column of stars beside the ladder, one per rung, lit from the bottom for each round won. */
+  private stars = new Stars();
 
   /** bubbles: the badge and guess feed shown above the ladder. */
   /** art: the climber (defaults to robot i); you() when You are guessing in bot-doodler mode. */
   constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element) {
     this.climbing.append(art ?? robot(index));
     const rungs = el('div', { class: 'rungs' });
-    for (let i = 0; i < RUNGS; i++) {
-      const star = el('span', { class: 'rung-star', 'aria-hidden': 'true' }, '★');
-      this.rungStars.unshift(star); // rungs are laid out top to bottom
-      rungs.append(el('span', { class: 'rung' }, star));
-    }
+    for (let i = 0; i < RUNGS; i++) rungs.append(el('span', { class: 'rung' }));
+    this.stars.el.classList.add('vertical', 'ladder-stars');
     this.el = el('div', { class: art ? 'lane card human' : `lane card p${index}` }, [
       el('div', { class: 'lane-head' }, [el('h3', { title: label }, label), score]),
       ...(meter ? [meter] : []),
       el('div', { class: 'thoughts' }, bubbles),
-      el('div', { class: 'ladder' }, [el('span', { class: 'bell', 'aria-hidden': 'true' }, '🔔'), rungs, this.climbing]),
+      el('div', { class: 'ladder-wrap' }, [
+        el('div', { class: 'ladder' }, [el('span', { class: 'bell', 'aria-hidden': 'true' }, '🔔'), rungs, this.climbing]),
+        this.stars.el,
+      ]),
     ]);
   }
 
@@ -69,10 +69,7 @@ export class Lane {
   /** Won a round: climb to the rung for the new score and ring the bell. */
   win(score: number) {
     this.climbTo(score);
-    this.rungStars.forEach((s, i) => {
-      s.classList.toggle('on', i < score);
-      if (i === score - 1) replay(s, 'pop');
-    });
+    this.stars.fill(score);
     replay(this.el, 'rang');
   }
 
