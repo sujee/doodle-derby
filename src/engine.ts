@@ -146,7 +146,8 @@ export class Engine {
 
   private roundId = 0;
   private roundStart = 0;
-  private pausedAt = 0;
+  /** When the game was paused, or null when it isn't (0 is a valid time, so no 0 sentinel). */
+  private pausedAt: number | null = null;
   private abort = new AbortController();
   private timers: number[] = [];
   private guessers: Guesser[];
@@ -185,10 +186,11 @@ export class Engine {
       this.guessers.push({ label: 'You', guess: () => Promise.reject(new Error('You guess by typing')) });
       this.players.push({ ...newPlayer('You', { kind: 'free', why: 'you' }), human: true });
     }
-    // Same model twice gets numbered labels so the scoreboard stays readable.
+    // Same model twice gets numbered labels so the scoreboard stays readable. Compare the original
+    // names: renaming one bot must not hide that the next one is a duplicate too.
+    const names = this.players.map((p) => p.label);
     this.players.forEach((p, i) => {
-      if (p.human) return;
-      if (this.players.filter((q) => q.label === p.label).length > 1) p.label = `${p.label} #${i + 1}`;
+      if (!p.human && names.filter((n) => n === names[i]).length > 1) p.label = `${names[i]} #${i + 1}`;
     });
   }
 
@@ -197,7 +199,7 @@ export class Engine {
   }
 
   get paused(): boolean {
-    return this.pausedAt !== 0;
+    return this.pausedAt !== null;
   }
 
   get humanIndex(): number {
@@ -207,7 +209,7 @@ export class Engine {
   /** ms left on the round clock (the full 30 s until the clock starts). */
   timeLeft(): number {
     if (!this.clockRunning) return ROUND_MS;
-    const now = this.paused ? this.pausedAt : this.clock.now();
+    const now = this.pausedAt ?? this.clock.now();
     return Math.max(0, ROUND_MS - (now - this.roundStart));
   }
 
@@ -410,9 +412,9 @@ export class Engine {
 
   resume() {
     if (!this.paused) return;
-    const pausedFor = this.clock.now() - this.pausedAt;
+    const pausedFor = this.clock.now() - this.pausedAt!;
     this.log('game', `Resumed after ${(pausedFor / 1000).toFixed(1)}s`);
-    this.pausedAt = 0;
+    this.pausedAt = null;
     if (!this.roundOver) {
       this.roundStart += pausedFor;
       for (const p of this.players) p.backoffUntil += pausedFor;

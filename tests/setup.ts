@@ -64,6 +64,30 @@ if (!window.matchMedia) {
   })) as unknown as typeof window.matchMedia;
 }
 
+// Node 22+ has its own (flag-gated) localStorage global, which hides jsdom's. Use a plain in-memory one.
+class MemoryStorage implements Storage {
+  private data = new Map<string, string>();
+  get length() {
+    return this.data.size;
+  }
+  clear() {
+    this.data.clear();
+  }
+  getItem(key: string) {
+    return this.data.has(key) ? this.data.get(key)! : null;
+  }
+  key(i: number) {
+    return [...this.data.keys()][i] ?? null;
+  }
+  removeItem(key: string) {
+    this.data.delete(key);
+  }
+  setItem(key: string, value: string) {
+    this.data.set(key, String(value));
+  }
+}
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: new MemoryStorage() });
+
 // No sound in tests.
 (window as unknown as { AudioContext: unknown }).AudioContext = undefined;
 
