@@ -78,7 +78,7 @@ export type RoundResult = {
 
 export type GameResult = {
   labels: string[];
-  /** Tokens and calls per player (successful calls only; cancelled requests report nothing). */
+  /** Tokens and calls per player. Calls count every request sent; tokens come only from answered ones. */
   usage: Usage[];
   prices: Price[];
   scores: number[];
@@ -293,11 +293,13 @@ export class Engine {
     const roundId = this.roundId;
     const signal = this.abort.signal;
     p.inFlight = true;
+    // Counted when sent, so the meter shows every bot is being asked even while its reply is slow.
+    p.usage.calls++;
+    this.events.usage?.(i);
     this.events.badge?.(i, 'thinking…', 'thinking');
     try {
       const { guess, confidence, usage } = await this.guessers[i].guess({ image, wrongGuesses: [...p.wrong], signal });
       // Billed even if the answer arrives too late to count.
-      p.usage.calls++;
       if (usage) {
         p.usage.input += usage.input;
         p.usage.output += usage.output;
@@ -448,9 +450,10 @@ export class Engine {
     if (!p) {
       const word = this.words[r].word;
       const signal = this.doodleAbort.signal;
-      const attempt = () =>
-        this.doodler!.draw(word, signal).then((d) => {
-          this.doodlerUsage.calls++;
+      const attempt = () => {
+        this.doodlerUsage.calls++;
+        this.events.doodlerUsage?.();
+        return this.doodler!.draw(word, signal).then((d) => {
           if (d.usage) {
             this.doodlerUsage.input += d.usage.input;
             this.doodlerUsage.output += d.usage.output;
@@ -458,6 +461,7 @@ export class Engine {
           this.events.doodlerUsage?.();
           return d;
         });
+      };
       p = attempt().catch((e) => {
         if ((e as Error)?.name === 'AbortError') throw e;
         return attempt();

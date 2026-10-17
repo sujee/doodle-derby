@@ -431,7 +431,7 @@ export class Game {
   }
 }
 
-/** Live token meter: ↑ tokens in, ↓ tokens out, cost and calls, updated after every response. */
+/** Live token meter: ↑ tokens in, ↓ tokens out, cost and calls, updated as requests go out and come back. */
 export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
   if (price.kind === 'free' && price.why === 'fake bot') {
     meter.replaceChildren(el('span', { class: 'chip quiet' }, 'fake bot · no tokens'));
@@ -444,7 +444,7 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
     el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
     el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
     el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Answered requests (cancelled ones aren’t counted)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
+    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
 }

@@ -50,6 +50,17 @@ describe('round start', () => {
 });
 
 describe('polling the bots', () => {
+  it('counts a call as soon as it is sent, even while a slow bot is still thinking', async () => {
+    const slow = new ScriptedBot('Slow', [{ guess: 'dog', confidence: 1 }], { hold: true });
+    const fast = new ScriptedBot('Fast', [{ guess: 'cat', confidence: 90 }]);
+    const { engine, clock, board } = setup([slow, fast]);
+    engine.start();
+    await drawAndPoll(clock, board);
+    expect(engine.players[0].usage.calls).toBe(1); // no reply yet
+    expect(engine.roundOver).toBe(true); // Fast won; Slow's request was cancelled
+    expect(engine.players[0].usage).toEqual({ input: 0, output: 0, calls: 1 });
+  });
+
   it('sends one shared snapshot to every bot, and starts the clock then', async () => {
     const a = new ScriptedBot('A');
     const b = new ScriptedBot('B');
