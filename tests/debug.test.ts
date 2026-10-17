@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearLog, debug, debugFetch, debugOn, getLog, installDebug } from '../src/debug';
+import { clearLog, debug, debugFetch, getLog } from '../src/debug';
 import { installDebugPanel } from '../src/debugPanel';
 import { flush } from './helpers';
 
-const toggle = installDebug();
-const setDebug = (on: boolean) => {
-  if (debugOn() !== on) toggle.click();
-};
 
 const IMAGE = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
 const guessBody = JSON.stringify({
@@ -30,24 +26,12 @@ beforeEach(() => {
   clearLog();
 });
 afterEach(() => {
-  setDebug(false);
   vi.unstubAllGlobals();
-});
-
-describe('debug logging off', () => {
-  it('passes requests straight through and records nothing', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ok()));
-    setDebug(false);
-    const res = await call();
-    expect(res.status).toBe(200);
-    expect(getLog()).toHaveLength(0);
-  });
 });
 
 describe('debug logging on', () => {
   it('records the call as one entry that fills in when the response arrives', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ok()));
-    setDebug(true);
     await (await call()).text();
     await flush();
     const [e] = getLog();
@@ -67,7 +51,6 @@ describe('debug logging on', () => {
 
   it('never records the API key', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ok()));
-    setDebug(true);
     await (await call({ headers: { Authorization: 'Bearer sk-SECRET-123', 'x-api-key': 'sk-ant-SECRET' } })).text();
     await flush();
     const dump = JSON.stringify(getLog());
@@ -78,7 +61,6 @@ describe('debug logging on', () => {
 
   it('marks a call cancelled when the round ends before any response', async () => {
     vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))))));
-    setDebug(true);
     const ac = new AbortController();
     const p = call({ signal: ac.signal }).catch(() => {});
     ac.abort();
@@ -99,7 +81,6 @@ describe('debug logging on', () => {
         return new Response(body, { status: 200 });
       }),
     );
-    setDebug(true);
     const ac = new AbortController();
     const res = await call({ signal: ac.signal });
     expect(getLog()[0].result).toMatch(/headers after .* reading body/);
@@ -111,7 +92,6 @@ describe('debug logging on', () => {
   });
 
   it('marks network failures and HTTP errors', async () => {
-    setDebug(true);
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
     await call().catch(() => {});
     expect(getLog()[0]).toMatchObject({ status: 'error' });
@@ -125,28 +105,23 @@ describe('debug logging on', () => {
   });
 
   it('game events are recorded too', () => {
-    setDebug(true);
     debug('game', 'Round 1: "cat" (easy)');
     expect(getLog()[0]).toMatchObject({ kind: 'game', title: 'Round 1: "cat" (easy)' });
   });
 });
 
 describe('debug panel', () => {
-  it('shows a pill only while debugging is on; opens, lists entries, and closes with Esc', async () => {
-    const [pill, panel] = installDebugPanel();
-    document.body.append(pill, panel);
-    setDebug(false);
-    expect(pill.hidden).toBe(true);
-    setDebug(true);
-    expect(pill.hidden).toBe(false);
-
+  it('🐞 opens the log, shows a count, lists entries, and Esc closes it', async () => {
+    const { button, panel } = installDebugPanel();
+    document.body.append(button, panel);
     vi.stubGlobal('fetch', vi.fn(async () => ok()));
     await (await call()).text();
     await flush();
     debug('game', 'Round 1');
-    expect(pill.textContent).toContain('2');
+    expect(button.textContent).toContain('2');
+    expect(panel.hidden).toBe(true);
 
-    pill.click();
+    button.click();
     expect(panel.hidden).toBe(false);
     const rows = panel.querySelectorAll('.dbg-entry');
     expect(rows).toHaveLength(2);
@@ -155,12 +130,10 @@ describe('debug panel', () => {
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(panel.hidden).toBe(true);
-
+    button.click();
     clearLog();
     expect(panel.querySelectorAll('.dbg-entry')).toHaveLength(0);
-    setDebug(false);
-    expect(pill.hidden).toBe(true);
-    pill.remove();
+    button.remove();
     panel.remove();
   });
 });

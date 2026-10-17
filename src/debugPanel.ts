@@ -1,14 +1,18 @@
-import { clearLog, debugOn, getLog, onDebugChange, onLog, type LogEntry, type Section } from './debug';
+import { clearLog, getLog, onLog, type LogEntry, type Section } from './debug';
 import { el } from './dom';
 
 /**
- * The in-game debug log: a "🐞 Log" pill in the corner (only while debug logging is on) that opens a
- * drawer listing every API call and game event. Each call is one row that fills in when its
- * response arrives; expanding it shows the readable report and the raw request / response.
+ * The debug log: the 🐞 button (with a count of entries) opens a drawer listing every API call and
+ * game event. Each call is one row that fills in when its response arrives; expanding it shows the
+ * readable report and the raw request / response. While the drawer is closed it only updates the
+ * count, and builds the rows when opened.
  */
-export function installDebugPanel(): HTMLElement[] {
+export function installDebugPanel(): { button: HTMLButtonElement; panel: HTMLElement } {
   const count = el('span', { class: 'dbg-count' }, '0');
-  const pill = el('button', { type: 'button', class: 'dbg-pill', 'aria-expanded': 'false', title: 'Show the debug log' }, ['🐞 Log ', count]);
+  const button = el('button', { type: 'button', class: 'debug-toggle', 'aria-expanded': 'false', title: 'Debug log: every API call and game event', 'aria-label': 'Open the debug log' }, [
+    el('span', { 'aria-hidden': 'true' }, '🐞'),
+    count,
+  ]) as HTMLButtonElement;
   const list = el('div', { class: 'dbg-list', role: 'log', 'aria-live': 'off' });
   const empty = el('p', { class: 'dbg-empty' }, 'Nothing yet. API calls and game events will show up here as they happen.');
   const clear = el('button', { type: 'button', class: 'dbg-btn' }, 'Clear');
@@ -30,36 +34,38 @@ export function installDebugPanel(): HTMLElement[] {
   makeResizable(panel, head);
 
   const rows = new Map<number, HTMLElement>();
-  const setOpen = (open: boolean) => {
-    panel.hidden = !open;
-    pill.setAttribute('aria-expanded', String(open));
-    if (open) list.scrollTop = list.scrollHeight;
+  const rebuild = () => {
+    rows.clear();
+    list.replaceChildren(empty, ...getLog().map((e) => rows.set(e.id, renderEntry(e)).get(e.id)!));
   };
   const sync = () => {
-    pill.hidden = !debugOn();
-    if (!debugOn()) setOpen(false);
     count.textContent = String(getLog().length);
+    count.hidden = getLog().length === 0;
     empty.hidden = getLog().length > 0;
   };
+  const setOpen = (open: boolean) => {
+    if (open) rebuild();
+    panel.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    button.setAttribute('aria-label', open ? 'Close the debug log' : 'Open the debug log');
+    if (open) list.scrollTop = list.scrollHeight;
+  };
 
-  pill.addEventListener('click', () => setOpen(panel.hidden));
+  button.addEventListener('click', () => setOpen(panel.hidden));
   // Esc closes the log (leaving other Esc handlers, like the share dialog, alone when it's closed).
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || panel.hidden) return;
     e.stopPropagation();
     setOpen(false);
-    pill.focus({ preventScroll: true });
+    button.focus({ preventScroll: true });
   });
   close.addEventListener('click', () => setOpen(false));
   clear.addEventListener('click', clearLog);
 
-  onDebugChange(sync);
   onLog((entry) => {
-    if (!entry) {
-      rows.clear();
-      list.replaceChildren(empty);
-      return sync();
-    }
+    sync();
+    if (panel.hidden) return; // built when opened
+    if (!entry) return rebuild();
     // Stick to the bottom if we were already there.
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
     const existing = rows.get(entry.id);
@@ -75,7 +81,6 @@ export function installDebugPanel(): HTMLElement[] {
       }
     }
     if (atBottom) list.scrollTop = list.scrollHeight;
-    sync();
   });
 
   // Tick the elapsed time on pending calls while the panel is open.
@@ -88,10 +93,8 @@ export function installDebugPanel(): HTMLElement[] {
     }
   }, 1000);
 
-  list.append(empty);
-  for (const e of getLog()) list.append(rows.set(e.id, renderEntry(e)).get(e.id)!);
   sync();
-  return [pill, panel];
+  return { button, panel };
 }
 
 const SIZE_KEY = 'doodle-duel-debug-size';
@@ -99,9 +102,9 @@ const SIZE_KEY = 'doodle-duel-debug-size';
 /** Drag the left edge, bottom edge or bottom-left corner to resize; the size is remembered. */
 function makeResizable(panel: HTMLElement, head: HTMLElement) {
   const apply = (w: number, h: number) => {
-    // Keep it on screen: the panel is fixed 10px from the right and 104px from the top.
+    // Keep it on screen: the panel is fixed 12px from the right and 72px from the top.
     const width = Math.round(Math.min(Math.max(w, 280), window.innerWidth - 20));
-    const height = Math.round(Math.min(Math.max(h, 180), window.innerHeight - 114));
+    const height = Math.round(Math.min(Math.max(h, 180), window.innerHeight - 82));
     // On phones the drawer stays full width; only the height is adjustable.
     panel.style.width = window.innerWidth > 760 ? `${width}px` : '';
     panel.style.height = `${height}px`;

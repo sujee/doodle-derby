@@ -1,24 +1,11 @@
 /**
- * Debug logging: a 🐞 toggle next to the sound button. When on, every API call becomes a readable
- * report (what was asked, how the image was sent, what came back) with the raw request and response
- * underneath. Reports go to the browser console and to the in-game log panel (debugPanel.ts).
- * Game events are logged too. API keys are never logged.
+ * The debug log. Every API call is recorded as a readable report (what was asked, how the image was
+ * sent, what came back) with the raw request and response, alongside the game's own events. The
+ * 🐞 button opens it (debugPanel.ts). Recording is always on: it's local, cheap and capped at
+ * MAX_ENTRIES, so the history is there whenever something goes wrong. API keys are never recorded.
  */
 
 import { parseGuess } from './providers/types';
-
-const KEY = 'doodle-duel-debug';
-let on = load();
-
-function load(): boolean {
-  try {
-    return localStorage.getItem(KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export const debugOn = () => on;
 
 // ---------------------------------------------------------------------------------------------
 // The log: structured entries, shared by the console output and the in-game panel.
@@ -47,13 +34,11 @@ export type LogEntry = {
 const MAX_ENTRIES = 300;
 const entries: LogEntry[] = [];
 const listeners = new Set<(e: LogEntry | null) => void>();
-const modeListeners = new Set<(on: boolean) => void>();
 let nextId = 0;
 
 export const getLog = (): readonly LogEntry[] => entries;
 /** Called with the entry that was added or changed, or null when the log was cleared. */
 export const onLog = (fn: (e: LogEntry | null) => void) => listeners.add(fn);
-export const onDebugChange = (fn: (on: boolean) => void) => modeListeners.add(fn);
 
 export function clearLog() {
   entries.length = 0;
@@ -72,57 +57,23 @@ function changed(entry: LogEntry) {
   listeners.forEach((fn) => fn(entry));
 }
 
-// ---------------------------------------------------------------------------------------------
-// Console styles
-
-const STYLE = {
-  request: 'color:#fff;background:#4cc9f0;padding:1px 6px;border-radius:4px;font-weight:bold',
-  response: 'color:#fff;background:#06a37b;padding:1px 6px;border-radius:4px;font-weight:bold',
-  error: 'color:#fff;background:#e85555;padding:1px 6px;border-radius:4px;font-weight:bold',
-  game: 'color:#2b2b2b;background:#ffd23f;padding:1px 6px;border-radius:4px;font-weight:bold',
-} as const;
-const LABEL = 'font-weight:bold;color:#6d6252';
-const PLAIN = 'font-weight:normal;color:inherit';
-const DIM = 'color:#888;font-weight:normal';
-
 type Kind = 'game' | 'error';
 
 /** A game event, with optional details shown when expanded. */
 export function debug(kind: Kind, title: string, data?: unknown) {
-  if (!on) return;
   record({ kind, title, status: kind === 'error' ? 'error' : 'info', data });
-  const label = `%c${kind}%c ${title}`;
-  if (data === undefined) return console.log(label, STYLE[kind], PLAIN);
-  console.groupCollapsed(label, STYLE[kind], PLAIN);
-  console.log(data);
-  console.groupEnd();
 }
 
-/** A snapshot sent to the bots, shown as an image (console and panel). */
+/** A snapshot sent to the bots, shown as an image in the log. */
 export function debugImage(title: string, dataUrl: string) {
-  if (!on) return;
-  const text = `${title}: ${describeImage(dataUrl)}`;
-  record({ kind: 'game', title: text, status: 'info', image: dataUrl });
-  console.log(`%c ${text}`, thumbnail(dataUrl));
-}
-
-const thumbnail = (dataUrl: string) =>
-  `padding:64px 0 0 136px;line-height:2;background:#fff url("${dataUrl}") no-repeat left top/128px 128px;border:1px solid #2b2b2b;font-size:11px`;
-
-function printSection(section: Section) {
-  for (const line of section.lines) {
-    if (line.data !== undefined) console.log(`%c${line.label}%c ${line.text}`, LABEL, PLAIN, line.data);
-    else console.log(`%c${line.label}%c ${line.text}`, LABEL, PLAIN);
-  }
-  for (const img of section.images) console.log('%c ', thumbnail(img));
+  record({ kind: 'game', title: `${title}: ${describeImage(dataUrl)}`, status: 'info', image: dataUrl });
 }
 
 // ---------------------------------------------------------------------------------------------
 // API calls: a fetch wrapper that both providers use (the Anthropic SDK takes it as `fetch`).
 
-/** fetch(), plus a readable report of the request and response when debug is on. */
+/** fetch(), plus a readable report of the request and response in the log. */
 export const debugFetch: typeof fetch = async (input, init) => {
-  if (!on) return fetch(input, init);
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
   const raw = typeof init?.body === 'string' ? init.body : undefined;
@@ -139,14 +90,6 @@ export const debugFetch: typeof fetch = async (input, init) => {
     rawRequest: { method, url, headers, body },
   });
 
-  console.groupCollapsed(`%c→ request%c #${entry.id} ${entry.title} %c${method} ${url}`, STYLE.request, PLAIN, DIM);
-  printSection(request);
-  console.groupCollapsed('Raw request');
-  console.log(`${method} ${url}`);
-  console.log('Headers', headers);
-  if (body !== undefined) console.log('Body (JSON, exactly as sent)', body);
-  console.groupEnd();
-  console.groupEnd();
 
   const started = performance.now();
   entry.startedAt = started;
@@ -169,7 +112,6 @@ export const debugFetch: typeof fetch = async (input, init) => {
           entry.result = `${res.status} · ${ms} ms · couldn't build the report: ${(err as Error)?.message}`;
           entry.rawResponse = { status: `HTTP ${res.status} ${res.statusText}`.trim(), headers: Object.fromEntries(res.headers.entries()), body: text };
           changed(entry);
-          console.error(`#${entry.id} couldn't build the response report`, err);
         }
       })
       .catch((err) => {
@@ -181,7 +123,6 @@ export const debugFetch: typeof fetch = async (input, init) => {
           ? `${res.status} · cancelled after ${ms} ms while the response was arriving (round ended or paused)`
           : `${res.status} · failed reading the response after ${ms} ms: ${(err as Error)?.message}`;
         changed(entry);
-        console.log(`%c${cancelled ? 'cancelled' : 'failed'}%c #${entry.id} ${call.title}: ${entry.result}`, STYLE.error, PLAIN);
       });
     return res;
   } catch (e) {
@@ -192,7 +133,6 @@ export const debugFetch: typeof fetch = async (input, init) => {
       ? `cancelled after ${ms} ms, before any response (round ended or paused)`
       : `failed after ${ms} ms: ${(e as Error)?.message} (network error, blocked by CORS, or wrong URL)`;
     changed(entry);
-    console.log(`%c${cancelled ? 'cancelled' : 'failed'}%c #${entry.id} ${call.title}: ${entry.result}`, STYLE.error, PLAIN);
     throw e;
   }
 };
@@ -270,14 +210,6 @@ function logResponse(entry: LogEntry, call: Call, res: Response, ms: number, bod
   entry.rawResponse = { status: `HTTP ${res.status} ${res.statusText}`.trim(), headers: resHeaders, body };
   changed(entry);
 
-  console.groupCollapsed(`%c← response%c #${entry.id} ${entry.result} · ${call.title}`, res.ok ? STYLE.response : STYLE.error, PLAIN);
-  printSection(entry.response);
-  console.groupCollapsed('Raw response');
-  console.log(entry.rawResponse.status);
-  console.log('Headers', resHeaders);
-  console.log('Body (exactly as received)', body);
-  console.groupEnd();
-  console.groupEnd();
 }
 
 /** Input / output token counts from either API's usage block. */
@@ -430,35 +362,4 @@ function kb(b64: string) {
 
 function formatBytes(bytes: number) {
   return bytes < 1024 ? `${Math.round(bytes)} bytes` : `${(bytes / 1024).toFixed(1)} KB`;
-}
-
-/** The 🐞 button, fixed next to the sound toggle on every screen. */
-export function installDebug(): HTMLButtonElement {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'debug-toggle';
-  const sync = () => {
-    btn.textContent = '🐞';
-    btn.title = on ? 'Debug logging on: requests and responses go to the browser console' : 'Debug logging off';
-    btn.setAttribute('aria-label', on ? 'Turn debug logging off' : 'Turn debug logging on');
-    btn.setAttribute('aria-pressed', String(on));
-  };
-  sync();
-  btn.addEventListener('click', () => {
-    on = !on;
-    try {
-      localStorage.setItem(KEY, on ? '1' : '0');
-    } catch {
-      // storage blocked: the setting lasts until reload
-    }
-    sync();
-    modeListeners.forEach((fn) => fn(on));
-    console.info(
-      on
-        ? '%c🐞 Doodle Duel debug logging ON. Each API call shows a readable report with the raw request and response underneath (API keys are never logged).'
-        : '%c🐞 Doodle Duel debug logging OFF.',
-      'font-weight:bold',
-    );
-  });
-  return btn;
 }

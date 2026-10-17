@@ -1,6 +1,5 @@
-import { installDebug } from './debug';
-import { installDebugPanel } from './debugPanel';
 import './style.css';
+import { installDebugPanel } from './debugPanel';
 import { confetti, doodlerBot, robot, you } from './art';
 import { el } from './dom';
 import { Game, type GameResult } from './game';
@@ -12,7 +11,9 @@ import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
 const app = document.getElementById('app')!;
-document.body.append(installSound(), installDebug(), ...installDebugPanel());
+// Corner tools on every screen: the debug log and the sound toggle, spaced out in one row.
+const debugLog = installDebugPanel();
+document.body.append(el('div', { class: 'corner-tools' }, [debugLog.button, installSound()]), debugLog.panel);
 let lastConfigs: GuesserConfig[] = [];
 let lastDoodler: GuesserConfig | null = null;
 

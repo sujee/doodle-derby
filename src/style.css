@@ -138,22 +138,19 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
 .bot .cheek { fill: #fff; opacity: 0.55; }
 .bot .arms { display: none; }
 
-/* Sound toggle, on every screen */
-.sound-toggle {
-  position: fixed; top: 10px; right: 10px; z-index: 50;
-  width: 48px; height: 48px; padding: 0;
+/* Corner tools on every screen: the debug log and the sound toggle, in one spaced-out row */
+.corner-tools { position: fixed; top: 12px; right: 12px; z-index: 50; display: flex; gap: 14px; align-items: center; }
+.sound-toggle, .debug-toggle {
+  position: relative; width: 48px; height: 48px; padding: 0;
   font-size: 1.4rem; line-height: 1;
   border-radius: 50% 45% 52% 48% / 48% 52% 45% 50%;
 }
-
-/* Debug toggle, next to sound: dim when off */
-.debug-toggle {
-  position: fixed; top: 10px; right: 66px; z-index: 50;
-  width: 48px; height: 48px; padding: 0; font-size: 1.3rem; line-height: 1;
-  border-radius: 48% 52% 46% 50% / 50% 46% 52% 48%;
+.debug-toggle { border-radius: 48% 52% 46% 50% / 50% 46% 52% 48%; font-size: 1.3rem; }
+.debug-toggle[aria-expanded='true'] { background: var(--sun); }
+.debug-toggle .dbg-count {
+  position: absolute; top: -6px; right: -8px; min-width: 1.5em; padding: 1px 5px;
+  border-radius: 9px; background: var(--ink); color: var(--paper); font: 700 0.7rem/1.2 var(--plain); text-align: center;
 }
-.debug-toggle[aria-pressed='false'] { opacity: 0.45; filter: grayscale(1); }
-.debug-toggle[aria-pressed='true'] { background: var(--sun); }
 
 /* ---------- Setup ---------- */
 .setup { max-width: 1180px; margin: 0 auto; text-align: center; }
@@ -227,7 +224,7 @@ button.start:hover { animation-play-state: paused; }
 .hud, .tools { -webkit-user-select: none; user-select: none; }
 .hud {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
-  padding-right: 56px; margin-bottom: 18px;
+  padding-right: 136px; margin-bottom: 18px; /* clear of the corner tools */
 }
 .round { display: flex; gap: 10px; align-items: center; font: 600 1.05rem var(--round); white-space: nowrap; }
 .prompt {
@@ -758,15 +755,9 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 }
 
 /* ---------- In-game debug log ---------- */
-.dbg-pill {
-  position: fixed; right: 10px; top: 66px; z-index: 55; /* under the 🐞 toggle, clear of the bottom bars */
-  padding: 6px 12px; font: 700 0.95rem/1.2 var(--round); background: var(--sun); color: var(--on-bright);
-  border-radius: 16px 12px 18px 13px; box-shadow: 3px 3px 0 var(--shadow);
-}
-.dbg-count { display: inline-block; min-width: 1.6em; padding: 0 5px; margin-left: 2px; border-radius: 9px; background: var(--ink); color: var(--paper); font-size: 0.8rem; text-align: center; }
 .dbg-panel {
-  position: fixed; right: 10px; top: 104px; z-index: 55;
-  width: min(560px, calc(100vw - 20px)); height: min(70vh, calc(100dvh - 120px));
+  position: fixed; right: 12px; top: 72px; z-index: 55; /* just under the corner tools */
+  width: min(560px, calc(100vw - 24px)); height: min(70vh, calc(100dvh - 88px));
   display: flex; flex-direction: column;
   background: var(--surface); color: var(--ink); border: 3px solid var(--ink); border-radius: 12px;
   box-shadow: 5px 5px 0 var(--shadow); font: 13px/1.4 var(--plain); text-align: left;
@@ -809,7 +800,7 @@ button.dbg-btn.small { padding: 1px 8px; margin-left: 8px; font-size: 11px; box-
 .dbg-raw > summary { cursor: pointer; font-weight: 700; color: var(--muted); }
 .dbg-dim { color: var(--muted); margin: 0; }
 @media (max-width: 760px) {
-  .dbg-panel { right: 8px; left: 8px; width: auto; height: calc(100dvh - 120px); }
+  .dbg-panel { right: 8px; left: 8px; width: auto; height: calc(100dvh - 88px); }
   .dbg-body { padding-left: 4px; }
   .dbg-line { grid-template-columns: 1fr; }
 }
