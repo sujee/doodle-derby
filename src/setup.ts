@@ -117,8 +117,8 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
       el('div', { class: 'mode', role: 'group', 'aria-label': 'Who doodles?' }, [el('span', { class: 'mode-label' }, 'Who doodles?'), ...modeBtns]),
       slotsEl,
       note,
-      error,
-      start,
+      // Pinned to the bottom of the screen, so Play stays in view however tall the bot cards get.
+      el('div', { class: 'start-bar' }, [error, start]),
     ]),
   );
 }

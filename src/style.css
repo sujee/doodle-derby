@@ -199,7 +199,12 @@ button.quiet { background: transparent; box-shadow: none; border-color: color-mi
 .field { display: grid; gap: 4px; margin-bottom: 12px; }
 .field > span { font-size: 1.05rem; color: var(--muted); }
 .setup > .note { margin: 20px auto 0; max-width: 34em; font-size: 0.95rem; }
-.setup > .start { margin-top: 18px; }
+.start-bar {
+  position: sticky; bottom: 0; z-index: 30; margin: 18px -16px 0; padding: 12px 16px 16px;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--paper) 92%, transparent) 30%);
+}
+.start-bar .error { margin: 0 0 6px; }
+.start-bar .error:empty { display: none; }
 button.start {
   font-family: var(--hand); font-size: 2.3rem; padding: 12px 56px;
   border-width: 4px; box-shadow: 6px 6px 0 var(--shadow);
