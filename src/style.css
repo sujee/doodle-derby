@@ -162,8 +162,9 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
 
 /* Bot cards side by side, with the + to the right. */
 /* Doodler | VS | guessers. The group is centered; extra guesser cards wrap inside their own column. */
-.slots { display: grid; grid-template-columns: auto auto minmax(0, max-content); gap: 22px; justify-content: center; align-items: start; text-align: left; }
-.slot { flex: 1 1 300px; min-width: 280px; max-width: 360px; }
+.slots { display: flex; flex-wrap: nowrap; gap: 22px; justify-content: center; align-items: flex-start; text-align: left; }
+.slots > .doodler-side, .slots > .vs { flex: none; }
+.slot { flex: 1 1 260px; min-width: 190px; max-width: 340px; }
 .you-card {
   flex: none; width: 150px; align-self: center; text-align: center; padding: 14px 10px;
   background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); transform: rotate(1.5deg);
@@ -179,7 +180,7 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
 .slot.p1 { background: color-mix(in srgb, var(--sky) var(--tint), var(--surface)); transform: rotate(1deg); }
 .slot.p2 { background: color-mix(in srgb, var(--grape) var(--tint), var(--surface)); transform: rotate(-0.6deg); }
 .slot { animation: pop-in 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); }
-.slot-head .remove { margin-left: auto; width: 34px; height: 34px; font-size: 0.95rem; color: var(--muted); }
+.slot-head .remove { flex: none; margin-left: auto; width: 34px; height: 34px; font-size: 0.95rem; color: var(--muted); }
 button.add-bot {
   align-self: center; flex: none; display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
   width: 112px; white-space: normal; text-align: center; line-height: 1.15;
@@ -191,9 +192,9 @@ button.add-bot:hover { color: var(--ink); box-shadow: none; }
   background: var(--mint); color: #2b2b2b; border: 2.5px solid var(--ink); font: 700 2.6rem/1 var(--round); padding-bottom: 3px;
 }
 button.quiet { background: transparent; box-shadow: none; border-color: color-mix(in srgb, var(--ink) 40%, transparent); color: var(--muted); }
-.slot-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.slot-head .bot { width: 60px; }
-.slot-head h2 { margin: 0; font-size: 1.8rem; }
+.slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; min-width: 0; }
+.slot-head .bot { width: 52px; flex: none; }
+.slot-head h2 { margin: 0; font-size: clamp(1.3rem, 2.4vw, 1.8rem); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; }
 .check input { width: 20px; height: 20px; accent-color: var(--mint); }
 .check.small { font-size: 1rem; color: var(--muted); margin: -4px 0 12px; }
@@ -637,14 +638,14 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 
 /* Bot-doodler mode */
 .doodler-side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.doodler-side .slot { flex: none; width: min(320px, 100%); } /* in a column, flex-basis would be its height */
+.doodler-side .slot { flex: none; width: min(260px, 100%); } /* in a column, flex-basis would be its height */
 .pick-label { margin: 0; font-family: var(--hand); font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
 .step-num {
   display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; font: 700 1rem/1 var(--round);
   background: var(--sun); color: var(--on-bright); border: 2.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--shadow);
 }
 .guessers-side { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 0 1 auto; min-width: 0; } /* only as wide as its cards, so the row centers */
-.guesser-row { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: flex-start; }
+.guesser-row { display: flex; flex-wrap: nowrap; gap: 18px; justify-content: center; align-items: flex-start; max-width: 100%; } /* all bots on one row, shrinking to fit */
 .pick { cursor: pointer; transition: opacity 0.15s, filter 0.15s; }
 .pick:not(.picked) { opacity: 0.55; filter: saturate(0.5); }
 .pick:not(.picked):hover, .pick:not(.picked):focus-visible { opacity: 0.95; filter: none; }
@@ -735,6 +736,9 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 @media (prefers-reduced-motion: reduce) { .rung-star.pop { animation: none; } }
 
 @media (max-width: 760px) {
-  .slots { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .slots { flex-direction: column; align-items: center; }
   .vs { margin: 0; }
+}
+@media (max-width: 760px) {
+  .guesser-row { flex-wrap: wrap; }
 }

@@ -88,8 +88,8 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
       s.removeBtn.hidden = i === 0 || i !== n - 1;
     });
     add.hidden = n >= MAX_BOTS;
-    addLabel.textContent = `Doodlebot #${n + 1}`;
-    add.setAttribute('aria-label', `Add Doodlebot #${n + 1}`);
+    addLabel.textContent = `Bot #${n + 1}`;
+    add.setAttribute('aria-label', `Add Bot #${n + 1}`);
     error.textContent = '';
     syncNote();
   };
@@ -162,7 +162,7 @@ function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
   const providerRow = field('Provider', kind);
   const sameBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
   sameBox.checked = !!leader;
-  const sameRow = el('label', { class: 'check' }, [sameBox, 'Same provider as Doodlebot #1']);
+  const sameRow = el('label', { class: 'check' }, [sameBox, 'Same provider as Bot #1']);
   sameRow.hidden = !leader;
   const isSame = () => !!leader && sameBox.checked;
   let ids: ModelInfo[] = [];
@@ -315,10 +315,10 @@ function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
     }
   });
 
-  const removeBtn = el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove this Doodlebot', 'aria-label': `Remove Doodlebot #${n}` }, '✕');
+  const removeBtn = el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove this bot', 'aria-label': `Remove Bot #${n}` }, '✕');
   if (doodler) removeBtn.hidden = true;
   const root = el('div', { class: doodler ? 'slot card doodler-slot' : `slot card p${n - 1}` }, [
-    el('div', { class: 'slot-head' }, doodler ? [doodlerBot(), el('h2', {}, 'Doodler bot ✏️'), removeBtn] : [robot(n - 1), el('h2', {}, `Doodlebot #${n}`), removeBtn]),
+    el('div', { class: 'slot-head' }, doodler ? [doodlerBot(), el('h2', {}, 'Doodler bot ✏️'), removeBtn] : [robot(n - 1), el('h2', {}, `Bot #${n}`), removeBtn]),
     sameRow,
     providerRow,
     urlRow,
