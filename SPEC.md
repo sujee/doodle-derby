@@ -53,7 +53,7 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - models.dev's image-support data also fills in "accepts images" when a provider's model list doesn't say.
 
 ## Sharing
-- "Share your doodles" on the results screen makes two images: **Doodles** (the 10 drawings with who guessed each and a funny wrong guess) and **Bot brains** (a table of every bot's guess trail per round, wrong guesses struck through, right ones circled, plus a "Wildest guess" award).
+- "Share your doodles" on the results screen makes two images: **Doodles** (the 10 drawings with who guessed each and a funny wrong guess) and **Bot brains** (a table of every bot's guess trail per round, wrong guesses with a wavy underline (still easy to read), right ones circled, plus a "Wildest guess" award).
 - Share (Web Share with both images, where supported), Download, Copy image, Copy text.
 
 ## Look and sound

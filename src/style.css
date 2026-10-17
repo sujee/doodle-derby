@@ -380,9 +380,13 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .feed .guess { min-width: 0; overflow-wrap: break-word; }
 .feed .when { flex: none; margin-left: auto; color: #8a8070; font: 600 0.72rem var(--round); font-variant-numeric: tabular-nums; }
 .feed .conf { margin-right: 6px; opacity: 0.8; }
-/* Wrong guesses: light text and a ✗, still easy to read. */
-.feed li.nope { color: #8a8070; border-color: #b9ae9a; }
-.feed li.nope .guess::before { content: '✗ '; color: var(--coral); font-weight: 700; }
+/*
+ * Wrong guesses stay fully readable: normal ink (just a little softer), a coral ✗ in front and a light
+ * wavy underline, like a teacher's squiggle. Nothing ever runs through the letters.
+ */
+.feed li.nope { border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+.feed li.nope .guess { color: color-mix(in srgb, var(--ink) 82%, transparent); text-decoration: underline wavy color-mix(in srgb, var(--coral) 70%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 4px; text-decoration-skip-ink: none; }
+.feed li.nope .guess::before { content: '✗'; margin-right: 5px; color: var(--coral); font-weight: 700; display: inline-block; text-decoration: none; }
 .feed li.right { background: var(--mint); color: #2b2b2b; font-weight: 700; }
 .feed li.right .guess::before { content: '✓ '; }
 .feed li.right .when { color: #2b2b2b; }
@@ -714,7 +718,7 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 .pause-guesses li { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: baseline; font-size: 1rem; }
 .pause-guesses .mark { font-weight: 700; color: var(--coral); }
 .pause-guesses .right .mark, .pause-guesses .right .guess { color: #05a37b; font-weight: 700; }
-.pause-guesses .nope .guess { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.pause-guesses .nope .guess { color: color-mix(in srgb, var(--ink) 82%, transparent); text-decoration: underline wavy color-mix(in srgb, var(--coral) 70%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 4px; text-decoration-skip-ink: none; }
 .pause-guesses .guess { overflow-wrap: anywhere; }
 .pause-guesses .when { font: 12px/1.2 var(--plain); color: var(--muted); white-space: nowrap; }
 @media (max-width: 760px) {
