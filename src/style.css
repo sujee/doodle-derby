@@ -461,11 +461,8 @@ button.icon-btn.stop { color: var(--muted); }
   rotate: -10deg; box-shadow: 3px 3px 0 var(--shadow);
   animation: stamp 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
 }
-.countdown { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 6px 0 10px; color: var(--muted); }
-.count-num {
-  display: inline-block; font: 700 2.6rem/1 var(--round); color: var(--grape); min-width: 1ch;
-  animation: count-bounce 0.6s cubic-bezier(0.3, 1.8, 0.5, 1);
-}
+.reveal .next-round { margin-top: 8px; animation: wiggle 2.4s ease-in-out infinite; }
+.reveal .next-round:hover { animation-play-state: paused; }
 .confetti {
   position: absolute; left: 50%; top: 45%; z-index: 5; width: 10px; height: 14px; pointer-events: none;
   animation: confetti 1.4s cubic-bezier(0.15, 0.7, 0.4, 1) forwards;
@@ -538,12 +535,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 @keyframes rise { from { transform: scaleY(0); transform-origin: bottom; } }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes stamp { from { opacity: 0; scale: 2.6; } }
-@keyframes count-bounce { from { scale: 2; translate: 0 -12px; opacity: 0; } }
-@keyframes confetti {
-  from { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
-  55% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 1; }
-  to { transform: translate(var(--dx), calc(var(--dy) + 140px)) rotate(calc(var(--rot) * 1.6)); opacity: 0; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -644,7 +635,8 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .receipt .note { font-size: 0.9rem; margin: 8px 0 0; }
 
 /* Bot-doodler mode */
-.mode { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -6px 0 18px; flex-wrap: wrap; }
+.doodler-side { display: grid; justify-items: center; gap: 12px; }
+.mode { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .mode-label { font-family: var(--hand); font-size: 1.3rem; margin-right: 4px; }
 .mode-btn[aria-pressed='true'] { background: var(--sun); color: var(--on-bright); font-weight: 700; }
 .slot.doodler-slot { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); transform: rotate(-1deg); }

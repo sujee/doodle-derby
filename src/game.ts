@@ -11,7 +11,6 @@ import { pickWords, ROUNDS, tierForRound, type Word } from './words';
 
 const ROUND_MS = 30_000;
 const POLL_MS = 2_500;
-const NEXT_ROUND_SECS = 5;
 const TIERS = ['easy', 'medium', 'hard'] as const;
 const HINT_KEY = 'doodle-duel-hint-seen';
 
@@ -81,8 +80,6 @@ export class Game {
   private roundOver = true;
   private abort = new AbortController();
   private timers: number[] = [];
-  private advanceTimer = 0;
-  private countdownTick: (() => void) | null = null;
   private pausedAt = 0; // 0 = not paused
   private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)' }, '⏸ Pause');
   private pauseEl = el('div', { class: 'pause-layer', hidden: '' });
@@ -274,7 +271,6 @@ export class Game {
 
   private nextRound() {
     if (!this.roundOver) return; // a round is still being played
-    clearInterval(this.advanceTimer);
     if (this.stopped) return;
     this.round++;
     if (this.round >= ROUNDS) return this.finish();
@@ -565,22 +561,10 @@ export class Game {
       image: this.canvas.isEmpty ? null : this.canvas.snapshot(),
     });
 
+    // The next round starts only when you click (or press Enter on the focused button).
     const last = this.round === ROUNDS - 1;
-    const next = el('button', { class: 'primary' }, last ? 'See results' : 'Next round');
+    const next = el('button', { class: 'primary big next-round' }, last ? 'See results 🏆' : `Start round ${this.round + 2} ✏️`);
     next.addEventListener('click', () => this.nextRound());
-    const countdown = el('p', { class: 'countdown' });
-    let secs = NEXT_ROUND_SECS;
-    const tick = () => {
-      countdown.replaceChildren(
-        el('span', { class: 'count-label' }, last ? 'Results in' : 'Next round in'),
-        el('span', { class: 'count-num' }, String(secs)),
-      );
-      if (secs > 0 && secs <= 3) sfx.blip(secs);
-      if (secs-- === 0) this.nextRound();
-    };
-    tick();
-    this.countdownTick = tick;
-    this.advanceTimer = window.setInterval(tick, 1000);
     this.overlay.replaceChildren(
       el('div', { class: `reveal card ${winner === null ? 'missed' : 'got-it'}` }, [
         ...(winner === null
@@ -600,7 +584,6 @@ export class Game {
                   : `“${word}” in ${seconds!.toFixed(1)}s. A star for the bot and a star for you!`,
               ),
             ]),
-        countdown,
         next,
       ]),
     );
@@ -648,13 +631,11 @@ export class Game {
     resume.focus({ preventScroll: true });
   }
 
-  /** Freeze the round (or the countdown between rounds). In-flight requests are cancelled and re-sent on resume. */
+  /** Freeze the round. In-flight requests are cancelled and re-sent on resume. Between rounds it just shows the guesses. */
   private pause() {
     if (this.pausedAt || this.stopped) return;
     this.pausedAt = performance.now();
-    if (this.roundOver) {
-      clearInterval(this.advanceTimer);
-    } else {
+    if (!this.roundOver) {
       this.timers.forEach(clearInterval);
       this.timers = [];
       this.abort.abort();
@@ -676,9 +657,7 @@ export class Game {
     if (!this.pausedAt) return;
     const pausedFor = performance.now() - this.pausedAt;
     this.pausedAt = 0;
-    if (this.roundOver) {
-      if (this.countdownTick) this.advanceTimer = window.setInterval(this.countdownTick, 1000);
-    } else {
+    if (!this.roundOver) {
       this.roundStart += pausedFor;
       for (const p of this.players) p.backoffUntil += pausedFor;
       this.abort = new AbortController();
@@ -707,7 +686,6 @@ export class Game {
     this.roundOver = true;
     this.abort.abort();
     this.timers.forEach(clearInterval);
-    clearInterval(this.advanceTimer);
     this.canvas.setEnabled(false);
     this.finish();
   }

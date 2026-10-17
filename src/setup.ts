@@ -40,12 +40,18 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   let botDraws = false;
   const youCard = el('div', { class: 'you-card card' }, [you(), el('h2', {}, 'You'), el('p', { class: 'you-role' })]);
   const lede = el('p', { class: 'lede' });
-  const modeBtns = (['You', 'A bot'] as const).map((label, i) => {
+  const modeBtns = (['You', 'Bot'] as const).map((label, i) => {
     const b = el('button', { type: 'button', class: 'mode-btn', 'aria-pressed': 'false' }, label);
     b.addEventListener('click', () => setMode(i === 1));
     return b;
   });
   const slotsEl = el('div', { class: 'slots' });
+  // Left side: pick the doodler, with the chosen doodler's card right under the choice.
+  const doodlerHolder = el('div', { class: 'doodler-holder' });
+  const doodlerSide = el('div', { class: 'doodler-side' }, [
+    el('div', { class: 'mode', role: 'group', 'aria-label': 'Pick the doodler' }, [el('span', { class: 'mode-label' }, 'Pick the doodler'), ...modeBtns]),
+    doodlerHolder,
+  ]);
   const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
   let count = 1;
   const addLabel = el('span');
@@ -61,11 +67,8 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     modeBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i === (bot ? 1 : 0))));
     lede.textContent = bot ? 'A bot doodles. You and the bots race to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
     youCard.querySelector('.you-role')!.textContent = bot ? 'a guesser 🔍' : 'the doodler ✏️';
-    slotsEl.replaceChildren(
-      ...(bot ? [doodlerSlot.root, vs, youCard] : [youCard, vs]),
-      ...slots.map((s) => s.root),
-      add,
-    );
+    doodlerHolder.replaceChildren(bot ? doodlerSlot.root : youCard);
+    slotsEl.replaceChildren(doodlerSide, vs, ...(bot ? [youCard] : []), ...slots.map((s) => s.root), add);
     syncNote();
   };
   doodlerSlot.onChange(syncNote);
@@ -114,7 +117,6 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     el('section', { class: 'setup' }, [
       el('h1', { class: 'logo' }, [robot(0), el('span', {}, [el('span', { class: 'w1' }, 'Doodle'), ' ', el('span', { class: 'w2' }, 'Duel')]), robot(1)]),
       lede,
-      el('div', { class: 'mode', role: 'group', 'aria-label': 'Who doodles?' }, [el('span', { class: 'mode-label' }, 'Who doodles?'), ...modeBtns]),
       slotsEl,
       note,
       // Pinned to the bottom of the screen, so Play stays in view however tall the bot cards get.
