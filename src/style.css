@@ -599,14 +599,14 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   main { padding-top: 64px; } /* room for the sound toggle */
   .logo { font-size: 2.7rem; gap: 6px; }
   .logo .bot { width: 46px; }
-  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto auto; grid-template-areas: 'round clock pause share stop'; padding-right: 0; gap: 6px; }
+  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'clock pause share stop'; padding-right: 0; gap: 6px; }
   .hud-right .share-btn { grid-area: share; }
   .hud-right .pause-btn { grid-area: pause; }
-  .round { grid-area: round; gap: 6px; font-size: 0.92rem; }
+  .round { gap: 6px; font-size: 0.92rem; }
   .round .tier { padding: 2px 7px; font-size: 0.68rem; }
   .round-word { display: none; }
   .hud-right { display: contents; }
-  .clock { grid-area: clock; justify-self: end; margin-right: 2px; }
+  .clock { grid-area: clock; justify-self: start; margin-right: 2px; } /* the round moved down, so the clock takes the left */
   .hud-right .stop { grid-area: stop; justify-self: end; }
   .prompt { padding: 5px 16px 7px; }
   .word { font-size: 1.7rem; }
@@ -760,7 +760,8 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 }
 
 /* Above the paper: the word on its scrap of paper, and "5 correct" on the right. */
-.paper-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 4px 14px; min-width: 0; }
+.paper-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 4px 14px; min-width: 0; }
+.paper-head .round { flex: none; }
 .paper-head .prompt { min-width: 0; overflow-wrap: anywhere; }
 .paper-badge {
   flex: none; white-space: nowrap;
