@@ -509,12 +509,17 @@ export class Engine {
     if (this.finished) return;
     this.finished = true;
     this.doodleAbort.abort(); // drop any drawing fetched ahead
-    const humanIndex = this.humanIndex;
     this.log('game', this.stopped ? 'Game stopped' : 'Game over', {
       scores: Object.fromEntries(this.players.map((p) => [p.label, p.score])),
       usage: Object.fromEntries(this.players.map((p) => [p.label, p.usage])),
     });
-    this.events.finish?.({
+    this.events.finish?.(this.resultSoFar());
+  }
+
+  /** The game so far as a GameResult: what the results screen and the share cards show. */
+  resultSoFar(): GameResult {
+    const humanIndex = this.humanIndex;
+    return {
       ...(this.doodler ? { doodler: { label: this.doodler.label, usage: { ...this.doodlerUsage }, price: this.doodlerPrice }, humanIndex } : {}),
       usage: this.players.map((p) => ({ ...p.usage })),
       prices: this.players.map((p) => p.price),
@@ -522,8 +527,8 @@ export class Engine {
       labels: this.players.map((p) => p.label),
       scores: this.players.map((p) => p.score),
       playerScore: this.playerScore,
-      rounds: this.results,
-    });
+      rounds: [...this.results],
+    };
   }
 
   private log(kind: 'game' | 'error', message: string, data?: unknown) {

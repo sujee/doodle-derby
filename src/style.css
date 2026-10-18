@@ -495,7 +495,9 @@ button.icon-btn.stop { color: var(--muted); }
 .result-text span { font-size: 0.8rem; color: rgb(255 248 231 / 0.7); overflow-wrap: anywhere; }
 /* The winner's name in its row color, lifted so it reads on the dark bar. */
 .result-bar .winner-name { color: color-mix(in srgb, var(--who) 70%, #fff); }
-.result-bar .next-round { grid-column: 1 / -1; padding: 10px 14px; font-size: 1.05rem; white-space: nowrap; border-color: #fff8e7; }
+.result-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+.result-actions button { padding: 10px 14px; font-size: 1.05rem; white-space: nowrap; border-color: #fff8e7; }
+.result-bar .next-round { flex: 1; }
 .pad-wrap.round-over .tools, .pad-wrap.round-over .guess-form { display: none; }
 @media (min-width: 761px) {
   .sticker { width: 118px; height: 118px; top: -22px; right: -18px; }
@@ -506,7 +508,9 @@ button.icon-btn.stop { color: var(--muted); }
   .result-avatar .bot { width: 42px; }
   .result-text strong { font-size: 1.25rem; }
   .result-text span { font-size: 0.9rem; }
-  .result-bar .next-round { grid-column: auto; padding: 12px 22px; font-size: 1.15rem; }
+  .result-actions { grid-column: auto; }
+  .result-actions button { padding: 12px 18px; font-size: 1.15rem; }
+  .result-bar .next-round { padding-inline: 22px; }
 }
 .confetti {
   position: absolute; left: 50%; top: 45%; z-index: 5; width: 10px; height: 14px; pointer-events: none;
