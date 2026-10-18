@@ -299,6 +299,7 @@ export class Game {
       sfx.ding();
       confetti(this.paper);
       this.views[winner].row.win(players[winner].score, seconds);
+      this.views[winner].row.moveToTop(!sfx.reducedMotion()); // and stays there until another row wins
     } else {
       sfx.wahWah();
       for (const v of this.views) v.row.shrug();

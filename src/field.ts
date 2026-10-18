@@ -53,6 +53,25 @@ export class FieldRow {
     this.winsEl.textContent = `${score} win${score === 1 ? '' : 's'}`;
   }
 
+  /**
+   * The round's winner moves to the top of the field. With animate, the rows slide to their new
+   * places (FLIP: measure, move in the DOM, then animate from the old spot back to none).
+   */
+  moveToTop(animate: boolean) {
+    const list = this.el.parentElement;
+    if (!list || list.firstElementChild === this.el) return;
+    const rows = [...list.children] as HTMLElement[];
+    const before = rows.map((r) => r.getBoundingClientRect().top);
+    list.prepend(this.el);
+    if (!animate) return;
+    rows.forEach((r, n) => {
+      const dy = before[n] - r.getBoundingClientRect().top;
+      if (dy && typeof r.animate === 'function') {
+        r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 450, easing: 'cubic-bezier(0.3, 1.25, 0.5, 1)' });
+      }
+    });
+  }
+
   /** New round: back to a plain row (the win count stays). */
   reset() {
     this.el.classList.remove('won', 'shrug');

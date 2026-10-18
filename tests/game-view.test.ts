@@ -108,3 +108,18 @@ describe('the wrong guess of the game', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('the round winner', () => {
+  it('moves to the top of the field and stays there', async () => {
+    const { FieldRow } = await import('../src/field');
+    const list = document.createElement('div');
+    container.append(list);
+    const rows = [0, 1, 2].map((i) => new FieldRow(i, `bot ${i}`, [document.createElement('span'), document.createElement('ol')], document.createElement('span')));
+    list.append(...rows.map((r) => r.el));
+    rows[2].moveToTop(true);
+    expect([...list.children]).toEqual([rows[2].el, rows[0].el, rows[1].el]);
+    rows[2].reset(); // next round: the order stays
+    rows[1].moveToTop(false);
+    expect([...list.children]).toEqual([rows[1].el, rows[2].el, rows[0].el]);
+  });
+});
