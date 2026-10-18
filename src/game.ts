@@ -189,7 +189,10 @@ export class Game {
           (this.padWrap.replaceChildren(
             // Just the word, right on top of the canvas, with your "N correct" beside it.
             el('div', { class: 'paper-head' }, [
-              el('div', { class: 'prompt', title: this.botDraws ? 'The word to guess' : 'The word to draw' }, this.wordEl),
+              el('div', { class: 'prompt', title: this.botDraws ? 'The word to guess' : 'The word to draw' }, [
+                el('span', { class: 'prompt-verb' }, this.botDraws ? 'guess ' : 'draw '),
+                this.wordEl,
+              ]),
               this.correctEl,
             ]),
             this.paper,

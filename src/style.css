@@ -247,7 +247,9 @@ button.start:hover { animation-play-state: paused; }
   clip-path: polygon(0 6%, 6% 0, 13% 5%, 21% 1%, 29% 6%, 38% 0, 46% 4%, 55% 0, 63% 5%, 72% 1%, 80% 6%, 89% 0, 95% 5%, 100% 2%,
     99% 92%, 93% 100%, 85% 95%, 77% 100%, 68% 94%, 59% 100%, 50% 95%, 41% 100%, 33% 94%, 24% 100%, 16% 95%, 8% 100%, 1% 94%);
 }
-.word { font: 2rem/1 var(--hand); color: var(--scrap-ink); } /* Short Stack runs wide */
+/* "draw CHAIR": the verb small and grey, the word big and bold. */
+.prompt-verb { font: 1rem/1 var(--hand); color: #6d6252; }
+.word { font: 700 2rem/1 var(--hand); color: var(--scrap-ink); text-transform: uppercase; letter-spacing: 0.02em; } /* Short Stack runs wide */
 .hud-right { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
 .clock { display: flex; align-items: center; gap: 8px; }
 .clock.waiting { opacity: 0.55; } /* clock hasn't started: waiting for the first guess */
