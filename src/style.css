@@ -248,30 +248,21 @@ button.start:hover { animation-play-state: paused; }
 .hud-right { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
 .clock { display: flex; align-items: center; gap: 8px; }
 .clock.waiting { opacity: 0.55; } /* clock hasn't started: waiting for the first guess */
-.timer { font: 700 1.6rem var(--round); font-variant-numeric: tabular-nums; min-width: 2.6ch; text-align: right; }
-.timer.low { color: var(--coral); animation: shake 0.35s linear infinite; }
+.timer { position: relative; font: 700 1.25rem/1 var(--round); font-variant-numeric: tabular-nums; } /* above the ring */
 
-/* The pencil timer: the body shrinks as time runs out. */
-.pencil { display: flex; align-items: center; width: 140px; height: 22px; }
-.pencil > span { display: block; height: 100%; flex: none; }
-.pencil-end {
-  width: 18px; background: #ff9eb5;
-  border: 2.5px solid var(--ink); border-right-width: 6px; border-right-color: #b9b9b9;
-  border-radius: 7px 0 0 7px;
+/* The ring timer: the arc empties clockwise as time runs out, sun yellow, then coral when low. */
+.ring { position: relative; display: grid; place-items: center; width: 56px; height: 56px; flex: none; }
+.ring svg { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -90deg; overflow: visible; }
+.ring circle { fill: none; stroke-width: 6; }
+.ring .ring-track { stroke: color-mix(in srgb, var(--ink) 12%, transparent); fill: var(--surface); }
+.ring-arc {
+  stroke: var(--sun); stroke-linecap: round;
+  stroke-dasharray: 100; stroke-dashoffset: calc((var(--left, 1) - 1) * 100); /* the gap grows clockwise from 12 */
+  transition: stroke-dashoffset 0.1s linear, stroke 0.3s;
 }
-.pencil-body {
-  width: calc(var(--left, 1) * 96px);
-  background: linear-gradient(var(--sun) 0 33%, #f5bf1d 33% 66%, var(--sun) 66%);
-  border-block: 2.5px solid var(--ink);
-  transition: width 0.1s linear, background 0.3s;
-}
-.pencil-tip {
-  width: 24px;
-  background: linear-gradient(90deg, #f1c98d 0 62%, #2b2b2b 62%);
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
-}
-.pencil.low .pencil-body { background: linear-gradient(var(--coral) 0 33%, #e85555 33% 66%, var(--coral) 66%); }
-.pencil.low { animation: shake 0.35s linear infinite; }
+.ring.low .ring-arc { stroke: var(--coral); }
+.ring.low .timer { color: var(--coral); }
+.ring.low { animation: shake 0.35s linear infinite; }
 
 .tier {
   display: inline-block; font: 700 0.78rem var(--round); text-transform: uppercase; letter-spacing: 0.04em;
@@ -448,7 +439,7 @@ button.icon-btn.stop { color: var(--muted); }
   background: color-mix(in srgb, var(--paper) 85%, transparent);
 }
 .game.paused .tools { pointer-events: none; opacity: 0.45; }
-.game.paused .pencil, .game.paused .timer { animation-play-state: paused; }
+.game.paused .ring { animation-play-state: paused; }
 .hint {
   position: absolute; z-index: 2; left: 50%; top: 50%; translate: -50% -50%; pointer-events: none;
   max-width: 70%; text-align: center; font: 1.4rem/1.2 var(--hand); color: #9a8f7c;
@@ -600,17 +591,16 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .hud-right .pause-btn { grid-area: pause; }
   .round { grid-area: round; }
   .hud-right { display: contents; }
-  .clock { grid-area: clock; }
+  .clock { grid-area: clock; justify-self: end; }
   .hud-right .stop { grid-area: stop; justify-self: end; }
   .prompt { grid-area: prompt; justify-self: start; padding: 6px 16px 8px; }
   .draw-label { font-size: 0.85rem; white-space: normal; }
   .word { font-size: 1.7rem; }
-  .pencil { width: 104px; }
+  .ring { width: 46px; height: 46px; }
   .tape { width: 56px; }
   .tape.tl, .tape.bl { left: -12px; }
   .tape.tr, .tape.br { right: -12px; }
-  .pencil-body { width: calc(var(--left, 1) * 62px); }
-  .timer { font-size: 1.3rem; }
+  .timer { font-size: 1.05rem; }
   .board { grid-template-columns: 1fr; }
   .pad-wrap { width: auto; min-width: 0; }
   .paper { max-width: min(620px, calc(100dvh - 260px)); }

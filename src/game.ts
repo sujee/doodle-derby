@@ -43,12 +43,9 @@ export class Game {
   private roundEl = el('span');
   private tierEl = el('span', { class: 'tier' });
   private wordEl = el('span', { class: 'word' });
+  // The ring timer: a ring that empties clockwise around the seconds left.
   private timerEl = el('span', { class: 'timer' });
-  private timerBar = el('div', { class: 'pencil', 'aria-hidden': 'true' }, [
-    el('span', { class: 'pencil-end' }),
-    el('span', { class: 'pencil-body' }),
-    el('span', { class: 'pencil-tip' }),
-  ]);
+  private timerBar = el('div', { class: 'ring', title: 'Seconds left' }, [ringSvg(), this.timerEl]);
   private paper = el('div', { class: 'paper' });
   private lastBeat = '';
   private youScoreEl = el('span', { class: 'sr-only' }, '0');
@@ -171,7 +168,7 @@ export class Game {
         el('header', { class: 'hud' }, [
           el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
           el('div', { class: 'prompt' }, [this.drawLabel, this.wordEl]),
-          el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, [this.timerBar, this.timerEl]), this.pauseBtn, stop]),
+          el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, this.timerBar), this.pauseBtn, stop]),
         ]),
         el('div', { class: 'board' }, [
           (this.padWrap.replaceChildren(
@@ -248,9 +245,8 @@ export class Game {
 
   private onTick(left: number, running: boolean) {
     this.timerBar.parentElement?.classList.toggle('waiting', !running);
-    this.timerEl.textContent = `${Math.ceil(left / 1000)}s`;
+    this.timerEl.textContent = String(Math.ceil(left / 1000));
     this.timerBar.style.setProperty('--left', String(left / ROUND_MS));
-    this.timerEl.classList.toggle('low', left < 8000);
     this.timerBar.classList.toggle('low', left < 8000);
     // Tick-tock in the last 5 s, twice as fast in the last 3.
     if (left > 0 && left <= 5000 && !sfx.reducedMotion()) {
@@ -455,6 +451,24 @@ export class Game {
     if (p.human) return; // your row keeps its "type your guesses" hint
     renderMeter(this.views[i].meterEl, p.usage, p.price);
   }
+}
+
+/** The ring's track and its arc; pathLength 100 lets CSS empty it with --left (1 → 0). */
+function ringSvg(): SVGSVGElement {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 48 48');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const cls of ['ring-track', 'ring-arc']) {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('class', cls);
+    c.setAttribute('cx', '24');
+    c.setAttribute('cy', '24');
+    c.setAttribute('r', '20');
+    c.setAttribute('pathLength', '100');
+    svg.append(c);
+  }
+  return svg;
 }
 
 /** Live token meter: ↑ tokens in, ↓ tokens out, cost and calls, updated as requests go out and come back. */
