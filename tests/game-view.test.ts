@@ -83,7 +83,7 @@ describe('the result bar', () => {
   });
 });
 
-describe('the wrong guess for this round', () => {
+describe('the hall of shame (this round’s worst guess)', () => {
   it('stays hidden until a round ends with a wrong guess, then shows word → guess', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99); // the Fake guesser misses
     const { game, draw } = startGame();
@@ -98,6 +98,7 @@ describe('the wrong guess for this round', () => {
     expect(wild.hidden).toBe(false);
     expect(wild.querySelector('.wild-word')!.textContent).toBe(game.engine.word.word);
     expect(wild.querySelector('.wild-guess')!.textContent).toBe(guess);
+    expect(container.querySelector('.feed .guess.circled')!.textContent).toBe(guess); // circled in its row too
 
     game.engine.nextRound(); // round 2: another miss replaces it
     draw();

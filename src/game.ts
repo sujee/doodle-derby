@@ -56,7 +56,7 @@ export class Game {
   // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
-  /** "Wrong guess for this round": the wrong guess its bot was surest of (see wildestGuess). */
+  /** "Hall of shame": the round's wrong guess its bot was surest of (see wildestGuess), circled. */
   private wildEl = el('div', { class: 'wild card', hidden: '', role: 'status' });
   private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
 
@@ -349,12 +349,15 @@ export class Game {
     this.wildEl.hidden = !wild;
     if (!wild) return;
     const who = this.engine.players[wild.bot];
+    // Circle the same guess in its bot's row, so you can spot it there too.
+    const chip = [...this.views[wild.bot].feedEl.querySelectorAll('.guess')].find((g) => g.textContent === wild.guess);
+    chip?.classList.add('circled');
     this.wildEl.replaceChildren(
-      el('p', { class: 'wild-title' }, 'Wrong guess for this round'),
+      el('p', { class: 'wild-title' }, 'Hall of shame 🙈'),
       el('p', { class: 'wild-line' }, [
         el('span', { class: 'wild-word' }, wild.word),
         el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),
-        el('s', { class: 'wild-guess' }, wild.guess),
+        el('span', { class: 'wild-guess circled' }, wild.guess),
       ]),
       el('p', { class: 'wild-who' }, [
         'by ',

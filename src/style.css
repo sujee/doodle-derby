@@ -494,7 +494,15 @@ button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; tran
 .wild-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font: 1.35rem/1.25 var(--hand); }
 .wild-word { font-weight: 700; }
 .wild-arrow { color: #6d6252; }
-.wild-guess { text-decoration: line-through 3px var(--strike); text-decoration-skip-ink: none; overflow-wrap: anywhere; }
+.wild-guess { overflow-wrap: anywhere; }
+/* The round's worst guess, circled in red marker (on the card and in its bot's row). */
+.circled { position: relative; }
+.circled::before {
+  content: ''; position: absolute; inset: -4px -9px -3px; pointer-events: none;
+  border: 2.5px solid var(--strike); border-radius: 50% 46% 52% 44% / 56% 48% 52% 46%; rotate: -3deg;
+  animation: circle-in 0.4s ease-out backwards;
+}
+@keyframes circle-in { from { opacity: 0; scale: 1.4; } }
 .wild-who { font-size: 0.85rem; color: #6d6252; }
 .wild .winner-name { color: color-mix(in srgb, var(--who) 75%, #2b2b2b); font-weight: 700; }
 @media (min-width: 761px) {
