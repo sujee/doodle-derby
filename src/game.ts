@@ -497,13 +497,13 @@ export class Game {
   }
 
   private updateDoodlerMeter() {
-    renderMeter(this.doodlerMeter, this.engine.doodlerUsage, this.engine.doodlerPrice);
+    renderMeter(this.doodlerMeter, this.engine.doodlerUsage, this.engine.doodlerPrice, this.engine.doodlerRoundCalls);
   }
 
   private updateMeter(i: number) {
     const p = this.engine.players[i];
     if (p.human) return; // your row keeps its "type your guesses" hint
-    renderMeter(this.views[i].meterEl, p.usage, p.price);
+    renderMeter(this.views[i].meterEl, p.usage, p.price, p.roundCalls);
   }
 }
 
@@ -533,8 +533,8 @@ function ringSvg(): SVGSVGElement {
   return svg;
 }
 
-/** Live token meter: ↑ tokens in, ↓ tokens out, cost and calls, updated as requests go out and come back. */
-export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
+/** Live token meter: ↑ tokens in, ↓ tokens out, cost, and calls as "this round / all game". */
+export function renderMeter(meter: HTMLElement, usage: Usage, price: Price, roundCalls: number) {
   if (price.kind === 'free' && price.why === 'fake bot') {
     meter.replaceChildren(el('span', { class: 'chip quiet' }, 'fake bot · no tokens'));
     meter.title = 'The fake bot makes no API calls';
@@ -546,7 +546,7 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
     el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
     el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
     el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
+    el('span', { class: 'chip quiet', title: 'Requests sent this round / over the whole game (tokens count only answered ones)' }, `calls: ${roundCalls} / ${usage.calls} tot`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
 }
