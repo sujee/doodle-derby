@@ -40,9 +40,8 @@ describe('a bot whose request is cancelled when the round ends', () => {
     draw();
     await vi.advanceTimersByTimeAsync(POLL_MS); // the Fake guesser is asked and takes 0.6–2 s to answer
     expect(game.engine.players[0].inFlight).toBe(true);
-    expect(badge.classList.contains('thinking')).toBe(true);
-    expect(badge.querySelectorAll('.dots i')).toHaveLength(3); // three bouncing dots, not the word
-    expect(badge.getAttribute('aria-label')).toBe('thinking');
+    expect(badge.hidden).toBe(true); // no chip: the bot just bounces
+    expect(container.querySelector('.field-row')!.classList.contains('thinking')).toBe(true);
 
     game.engine.skip();
     await flush();

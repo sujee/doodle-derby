@@ -452,18 +452,17 @@ export class Game {
   }
 
   /**
-   * A bot's status chip: three bouncing dots while it is being asked, else the given word (a
-   * rate-limit warning, an error). An idle bot shows no chip at all.
+   * A bot's status chip: only a warning or an error shows anything. While a bot is being asked it
+   * just bounces (the row's "thinking" class) and an idle bot is still.
    */
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
     const thinking = kind === 'thinking';
     v.badgeEl.className = `badge ${kind}`;
-    v.badgeEl.title = thinking ? 'Thinking of a guess…' : detail;
-    v.badgeEl.replaceChildren(thinking ? thinkingDots() : document.createTextNode(text));
-    if (thinking) v.badgeEl.setAttribute('aria-label', 'thinking');
-    else v.badgeEl.removeAttribute('aria-label');
-    v.badgeEl.hidden = !text; // idle: nothing to show
+    v.badgeEl.title = thinking ? '' : detail;
+    v.badgeEl.textContent = thinking ? '' : text;
+    v.badgeEl.removeAttribute('aria-label');
+    v.badgeEl.hidden = thinking || !text;
     v.row.setThinking(thinking);
   }
 
@@ -551,9 +550,4 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price, roun
     el('span', { class: 'chip quiet', title: 'Requests sent this round / over the whole game (tokens count only answered ones)' }, `calls: ${roundCalls} / ${usage.calls} tot`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
-}
-
-/** Three dots that bounce in turn: the bot's "thinking" chip (visual only; the badge says "thinking" to screen readers). */
-function thinkingDots(): HTMLElement {
-  return el('span', { class: 'dots', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')]);
 }
