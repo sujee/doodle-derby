@@ -131,11 +131,13 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 
 /* Doodlebots */
 .bot { width: 56px; height: auto; flex: none; overflow: visible; }
-.bot0 { --bot: var(--coral); }
-.bot1 { --bot: var(--sky); }
-.bot2 { --bot: var(--grape); }
+/* The robot takes its colour from the row/card it sits in (--lane), else its own --bot. */
+.bot0, .bot1, .bot2 { --bot: var(--lane, var(--coral)); }
 .you-face { --bot: var(--mint); }
 .doodler-bot { --bot: var(--sun); }
+/* The logo's two robots keep the game's own colours. */
+.logo .bot0 { --bot: var(--coral); }
+.logo .bot1 { --bot: var(--sky); }
 .bot .ink { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .bot .bot-fill { fill: var(--bot); }
 .bot .face { fill: #fffdf6; }
@@ -194,7 +196,7 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 /* Doodler | VS | guessers. The group is centered; extra guesser cards wrap inside their own column. */
 .slots { display: flex; flex-wrap: nowrap; gap: 22px; justify-content: center; align-items: flex-start; text-align: left; }
 .slots > .doodler-side, .slots > .vs { flex: none; }
-.slot { flex: 1 1 260px; min-width: 190px; max-width: 340px; }
+.slot { flex: 1 1 260px; min-width: 190px; max-width: 340px; background: color-mix(in srgb, var(--lane, var(--grape)) var(--tint), var(--surface)); }
 .you-card {
   flex: none; width: 150px; align-self: center; text-align: center; padding: 14px 10px;
   background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); transform: rotate(1.5deg);
@@ -206,9 +208,10 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
   align-self: start; font: 2.6rem/1 var(--hand); color: var(--grape);
   text-shadow: 2px 2px 0 var(--shadow); rotate: -8deg; margin: 140px -4px 0; /* level with the cards */
 }
-.slot.p0 { background: color-mix(in srgb, var(--coral) var(--tint), var(--surface)); transform: rotate(-1deg); }
-.slot.p1 { background: color-mix(in srgb, var(--sky) var(--tint), var(--surface)); transform: rotate(1deg); }
-.slot.p2 { background: color-mix(in srgb, var(--grape) var(--tint), var(--surface)); transform: rotate(-0.6deg); }
+/* Cards tilt a little; the tint and lane colour come from --lane (set per bot). */
+.slot.p0 { transform: rotate(-1deg); }
+.slot.p1 { transform: rotate(1deg); }
+.slot.p2 { transform: rotate(-0.6deg); }
 .slot { animation: pop-in 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); }
 .slot-head .remove { flex: none; margin-left: auto; width: 34px; height: 34px; font-size: 0.95rem; color: var(--muted); }
 button.add-bot {
@@ -377,9 +380,6 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   border: 2.5px solid color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 22px;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
-.field-row.p0 { --lane: var(--coral); }
-.field-row.p1 { --lane: var(--sky); }
-.field-row.p2 { --lane: var(--grape); }
 .field-row.human { --lane: var(--mint); }
 .row-avatar {
   width: 56px; height: 56px; display: grid; place-items: center;
@@ -394,15 +394,13 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .row-provider { font-size: 0.82em; color: var(--muted); }
-.field-row .meter { margin: 0; }
-.field-row.human .meter { display: block; font-weight: 500; color: var(--muted); }
 .row-guesses {
   display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 2.4rem; margin-top: 4px; overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent);
 }
 .row-side { display: grid; justify-items: end; gap: 2px; text-align: right; }
-.row-time { font: 700 1.3rem var(--round); font-variant-numeric: tabular-nums; }
-.row-time:empty { display: none; }
+.row-guess-count { font: 600 0.85rem/1.2 var(--round); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row-guess-count:empty { display: none; }
 /* Rounds won: a badge on the row's top-right corner, in the bot's color once it has a win. */
 .row-wins {
   position: absolute; top: -11px; right: 14px; z-index: 1;
@@ -435,6 +433,9 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   animation: pop-in 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 .feed li:first-child { padding: 0 4px 0 0; background: none; font: 1.55rem/1.2 var(--hand); }
+/* Earlier guesses are greyed out; only the latest line is full strength. */
+.feed li:not(:first-child) { color: var(--muted); background: color-mix(in srgb, var(--ink) 4%, var(--surface)); }
+.feed li:not(:first-child) .guess { color: var(--muted); }
 .feed .when { display: none; }
 .feed li.nope .guess {
   color: color-mix(in srgb, var(--ink) 72%, transparent);
@@ -619,14 +620,12 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .row-avatar { width: 34px; height: 34px; border-radius: 11px; }
   .row-avatar .bot { width: 27px; }
   .row-head h3 { font-size: 0.95rem; }
-  .field-row .meter, .field-row.human .meter { display: none; }
-  /* Bot-doodler mode: the doodle matters more than the doodler's meter (the star column shows it). */
+  /* Bot-doodler mode: the doodle matters more than the doodler's row. */
   .field .doodler-row { display: none; }
   .row-guesses { min-height: 1.7rem; margin-top: 0; }
   .feed li { font-size: 0.8rem; padding: 1px 9px; }
   .feed li:first-child { font-size: 1.2rem; }
   .badge { font-size: 0.72rem; padding: 0 8px; }
-  .row-time { font-size: 1.05rem; }
   .row-wins { top: -10px; right: 10px; font-size: 0.7rem; padding: 0 7px; }
   /* More than 3 bots: two compact columns, so the canvas stays in view. */
   .rows.many { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 8px; }
@@ -673,28 +672,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .share-tab { padding: 6px 16px; }
 .share-tab[aria-selected='true'] { background: var(--sun); color: var(--on-bright); }
 .share-preview img { max-height: calc(100dvh - 300px); width: auto; max-width: 100%; margin: 0 auto; }
-
-/* Token meter on each row, and the results receipt */
-.meter { display: flex; flex-wrap: wrap; gap: 3px; font: 600 11.5px/1.2 var(--plain); color: var(--ink); margin: 0 0 6px; }
-.meter .chip {
-  padding: 2px 6px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums;
-  background: var(--field); border: 1.5px solid color-mix(in srgb, var(--ink) 55%, transparent);
-}
-.meter .chip.cost { background: color-mix(in srgb, var(--sun) 45%, var(--field)); }
-.meter .chip.quiet { border-style: dashed; color: var(--muted); font-weight: 500; }
-.receipt {
-  width: min(520px, 100%); margin: 18px auto 0; padding: 12px 18px;
-  background: var(--scrap); color: var(--scrap-ink);
-  border: 3px solid var(--ink); border-radius: 6px; box-shadow: 4px 4px 0 var(--shadow);
-  text-align: left; rotate: 0.6deg;
-}
-.receipt summary { cursor: pointer; font-family: var(--hand); font-size: 1.3rem; }
-.receipt table { width: 100%; border-collapse: collapse; margin-top: 10px; font: 14px/1.4 var(--plain); }
-.receipt th, .receipt td { padding: 4px 6px; text-align: right; border-bottom: 1px dashed color-mix(in srgb, var(--scrap-ink) 30%, transparent); }
-.receipt th:first-child, .receipt td:first-child { text-align: left; }
-.receipt .bot-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.receipt tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--scrap-ink); }
-.receipt .note { font-size: 0.9rem; margin: 8px 0 0; }
 
 /* Bot-doodler mode */
 .doodler-side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -747,10 +724,7 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 .pause-card { width: min(640px, 94%); max-height: 94%; overflow-y: auto; }
 .pause-card .kicker strong { color: var(--grape); }
 .pause-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 14px; text-align: left; }
-.pause-col { border: 2.5px solid var(--ink); border-radius: 12px 8px 14px 9px; padding: 8px 10px; min-width: 0; }
-.pause-col.p0 { background: color-mix(in srgb, var(--coral) var(--tint), var(--surface)); }
-.pause-col.p1 { background: color-mix(in srgb, var(--sky) var(--tint), var(--surface)); }
-.pause-col.p2 { background: color-mix(in srgb, var(--grape) var(--tint), var(--surface)); }
+.pause-col { border: 2.5px solid var(--ink); border-radius: 12px 8px 14px 9px; padding: 8px 10px; min-width: 0; background: color-mix(in srgb, var(--lane, var(--grape)) var(--tint), var(--surface)); }
 .pause-col.human { background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); }
 .pause-col h3 { margin: 0 0 6px; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pause-col .note { margin: 0; font-size: 0.95rem; }

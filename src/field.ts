@@ -1,16 +1,17 @@
 /**
  * "The field": one row per guesser, stacked beside the canvas. A row shows the bot, its latest guess
- * big (crossed out in red if wrong, ✓ if right), its earlier guesses as crossed-out chips, and on the
- * right its winning time, with its rounds won as a badge on the corner. The round's winner gets a spinning star and its own color.
- * Display only; no game logic here.
+ * big (crossed out in red if wrong, ✓ if right), its earlier guesses as greyed chips, and at the
+ * right how many guesses it has made this round, with its rounds won as a badge on the corner. The
+ * round's winner gets a spinning star and its own color. Display only; no game logic here.
  */
 
-import { replay, robot } from './art';
+import { botColor, replay, robot } from './art';
 import { el } from './dom';
 
 export class FieldRow {
   readonly el: HTMLElement;
-  private timeEl = el('span', { class: 'row-time' });
+  /** Guesses made this round, at the row's right end ("10 guesses"). */
+  private guessesEl = el('span', { class: 'row-guess-count' });
   /** Rounds won, as a badge on the row's top-right corner. */
   private winsEl = el('span', { class: 'row-wins', 'aria-hidden': 'true' }, '0 wins');
 
@@ -21,9 +22,9 @@ export class FieldRow {
    * art: the avatar (defaults to robot i); you() when You are guessing in bot-doodler mode.
    * provider: who serves the model ("Fireworks"), shown muted after its name.
    */
-  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element, provider?: string | null) {
+  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, art?: Element, provider?: string | null) {
     score.classList.add('sr-only');
-    this.el = el('div', { class: art ? 'field-row human' : `field-row p${index % 3}` }, [
+    this.el = el('div', { class: art ? 'field-row human' : 'field-row' }, [
       el('span', { class: 'win-star', 'aria-hidden': 'true' }, starSvg()),
       this.winsEl,
       el('div', { class: 'row-avatar', 'aria-hidden': 'true' }, art ?? robot(index)),
@@ -36,31 +37,35 @@ export class FieldRow {
             ]),
             bubbles[0],
           ]),
-          ...(meter ? [meter] : []),
         ]),
         el('div', { class: 'row-guesses' }, bubbles.slice(1)),
       ]),
-      el('div', { class: 'row-side' }, [this.timeEl, score]),
+      el('div', { class: 'row-side' }, [this.guessesEl, score]),
     ]);
+    if (!art) this.el.style.setProperty('--lane', botColor(index));
+  }
+
+  /** How many guesses the bot has made this round. Hidden at zero. */
+  setGuesses(n: number) {
+    this.guessesEl.textContent = n > 0 ? `${n} guess${n === 1 ? '' : 'es'}` : '';
   }
 
   setThinking(on: boolean) {
     this.el.classList.toggle('thinking', on);
   }
 
-  /** Won this round: the star, its color, the time it took, and the new win count. */
-  win(score: number, seconds: number | null) {
+  /** Won this round: the star, its color and the new win count. */
+  win(score: number) {
     this.el.classList.add('won');
-    this.timeEl.textContent = seconds === null ? '' : `${seconds.toFixed(1)}s`;
     this.winsEl.textContent = `${score} win${score === 1 ? '' : 's'}`;
     this.winsEl.classList.add('has-wins');
     replay(this.winsEl, 'bump');
   }
 
-  /** New round: back to a plain row (the win count stays). */
+  /** New round: back to a plain row (the win count stays, the guess count restarts). */
   reset() {
     this.el.classList.remove('won', 'shrug');
-    this.timeEl.textContent = '';
+    this.setGuesses(0);
   }
 
   /** Nobody got it this round. */

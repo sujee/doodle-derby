@@ -3,7 +3,7 @@
  * engine, and draws whatever the engine reports (rounds, guesses, scores, pause, results).
  */
 
-import { confetti, replay, robot, tapes, trash, undoArrow, you } from './art';
+import { botColor, confetti, replay, robot, tapes, trash, undoArrow, you } from './art';
 import { DrawingCanvas } from './canvas';
 import { doodlerRow } from './climb';
 import { FieldRow } from './field';
@@ -11,7 +11,7 @@ import { debug, debugImage } from './debug';
 import { el } from './dom';
 import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
-import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
+import { priceFor } from './pricing';
 import { createGuesser, providerName, type GuesserConfig } from './providers';
 import { openShareDialog, shortName } from './share';
 import * as sfx from './sound';
@@ -30,7 +30,7 @@ function hintSeen(): boolean {
 }
 
 /** Per-player widgets (same index as engine.players). */
-type PlayerView = { row: FieldRow; meterEl: HTMLElement; scoreEl: HTMLElement; badgeEl: HTMLElement; feedEl: HTMLElement };
+type PlayerView = { row: FieldRow; scoreEl: HTMLElement; badgeEl: HTMLElement; feedEl: HTMLElement };
 
 export class Game {
   readonly engine: Engine;
@@ -61,7 +61,6 @@ export class Game {
   private rowsEl = el('div', { class: 'rows' });
 
   // Bot-doodler mode
-  private doodlerMeter = el('div', { class: 'meter' });
   private sketcher: Sketcher | null = null;
   private sketchTimer = 0;
   private sketchEl = el('div', { class: 'sketching', hidden: '' });
@@ -94,8 +93,6 @@ export class Game {
         snapshot: (image, players) => debugImage(`Snapshot → ${players.map((i) => this.engine.players[i].label).join(', ')}`, image),
         badge: (i, text, kind, detail) => this.setBadge(i, text, kind, detail),
         guess: (i, entry) => this.onGuess(i, entry),
-        usage: (i) => this.updateMeter(i),
-        doodlerUsage: () => this.updateDoodlerMeter(),
         doodleStatus: (status, message) => this.onDoodleStatus(status, message),
         sketch: (doodle) => {
           this.sketchEl.hidden = true;
@@ -115,7 +112,6 @@ export class Game {
     });
     this.views = this.engine.players.map(() => ({
       row: null as unknown as FieldRow, // built in render()
-      meterEl: el('div', { class: 'meter', title: 'Tokens in / out and cost so far' }),
       scoreEl: el('span', { class: 'score', title: 'Rounds won' }, '0'),
       badgeEl: el('span', { class: 'badge', hidden: '' }),
       feedEl: el('ol', { class: 'feed' }),
@@ -217,15 +213,13 @@ export class Game {
             this.rowsEl.replaceChildren(
               ...this.engine.players.map((p, i) => {
                 const v = this.views[i];
-                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined, p.human ? null : providerName(this.configs[i]));
-                if (p.human) v.meterEl.textContent = 'type your guesses below';
-                this.updateMeter(i);
+                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, p.human ? you() : undefined, p.human ? null : providerName(this.configs[i]));
                 this.setBadge(i, '', '');
                 return v.row.el;
               }),
             ),
             this.rowsEl),
-            ...(this.engine.doodler ? [(this.updateDoodlerMeter(), doodlerRow(this.engine.doodler.label, this.doodlerMeter))] : []),
+            ...(this.engine.doodler ? [doodlerRow(this.engine.doodler.label)] : []),
           ]),
         ]),
       ]),
@@ -289,6 +283,7 @@ export class Game {
   private onGuess(i: number, entry: GuessEntry) {
     // No sound per guess: with the bots guessing every few seconds it was too much. Only the
     // round's ding / wah-wah and the countdown ticks play.
+    this.views[i].row.setGuesses(this.engine.players[i].history.length);
     this.views[i].feedEl.prepend(
       el('li', { class: entry.right ? 'right' : 'nope' }, [
         el('span', { class: 'guess' }, entry.guess),
@@ -324,7 +319,7 @@ export class Game {
       replay(this.correctEl, 'bump');
       sfx.ding();
       confetti(this.paper);
-      this.views[winner].row.win(players[winner].score, seconds);
+      this.views[winner].row.win(players[winner].score);
       this.orderField(!sfx.reducedMotion()); // rows by right guesses: the leader rises to the top
     } else {
       sfx.wahWah();
@@ -422,8 +417,8 @@ export class Game {
     const players = this.engine.players;
     const total = players.reduce((n, p) => n + p.history.length, 0);
     const word = this.engine.roundOver || !this.youGuess ? this.engine.word.word : '???';
-    const columns = players.map((p, i) =>
-      el('div', { class: `pause-col ${p.human ? 'human' : `p${i % 3}`}` }, [
+    const columns = players.map((p, i) => {
+      const col = el('div', { class: `pause-col${p.human ? ' human' : ''}` }, [
         el('h3', { title: p.label }, p.label),
         p.history.length
           ? el(
@@ -438,8 +433,10 @@ export class Game {
               ),
             )
           : el('p', { class: 'note' }, p.human ? 'no guesses yet' : 'still thinking…'),
-      ]),
-    );
+      ]);
+      if (!p.human) col.style.setProperty('--lane', botColor(i));
+      return col;
+    });
     this.pauseEl.replaceChildren(
       el('div', { class: 'reveal card pause-card' }, [
         el('h2', {}, 'Paused ☕'),
@@ -496,16 +493,6 @@ export class Game {
       // storage blocked: the hint just shows again next time
     }
   }
-
-  private updateDoodlerMeter() {
-    renderMeter(this.doodlerMeter, this.engine.doodlerUsage, this.engine.doodlerPrice, this.engine.doodlerRoundCalls);
-  }
-
-  private updateMeter(i: number) {
-    const p = this.engine.players[i];
-    if (p.human) return; // your row keeps its "type your guesses" hint
-    renderMeter(this.views[i].meterEl, p.usage, p.price, p.roundCalls);
-  }
 }
 
 /** The pause button's face: an icon, and a label that phones hide. */
@@ -534,20 +521,3 @@ function ringSvg(): SVGSVGElement {
   return svg;
 }
 
-/** Live token meter: ↑ tokens in, ↓ tokens out, cost, and calls as "this round / all game". */
-export function renderMeter(meter: HTMLElement, usage: Usage, price: Price, roundCalls: number) {
-  if (price.kind === 'free' && price.why === 'fake bot') {
-    meter.replaceChildren(el('span', { class: 'chip quiet' }, 'fake bot · no tokens'));
-    meter.title = 'The fake bot makes no API calls';
-    return;
-  }
-  const cost = costOf(usage, price);
-  const costText = price.kind === 'free' ? 'free' : cost === null ? 'price ?' : formatUsd(cost);
-  meter.replaceChildren(
-    el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
-    el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
-    el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Requests sent this round / over the whole game (tokens count only answered ones)' }, `calls: ${roundCalls} / ${usage.calls} tot`),
-  );
-  meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
-}
