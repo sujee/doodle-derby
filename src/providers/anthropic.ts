@@ -1,5 +1,6 @@
 import { debugFetch } from '../debug';
 import Anthropic from '@anthropic-ai/sdk';
+import { thinkingMode } from '../settings';
 import { sortModels, visionFromName, type ModelInfo } from './vision';
 import { GuessError, promptFor, parseGuess, type Guesser, type GuessRequest, type GuessResult } from './types';
 
@@ -25,12 +26,14 @@ export class AnthropicGuesser implements Guesser {
   async guess({ image, wrongGuesses, signal }: GuessRequest): Promise<GuessResult> {
     const data = image.slice(image.indexOf(',') + 1);
     const useFallback = FALLBACK_MODELS.test(this.model);
+    // Thinking off: ask for low effort, where the model takes it. Default: send nothing.
+    const lowEffort = thinkingMode() === 'off' && EFFORT_MODELS.test(this.model);
     try {
       const response = await this.client.beta.messages.create(
         {
           model: this.model,
           max_tokens: 2000,
-          ...(EFFORT_MODELS.test(this.model) ? { output_config: { effort: 'low' as const } } : {}),
+          ...(lowEffort ? { output_config: { effort: 'low' as const } } : {}),
           ...(useFallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
           messages: [
             {

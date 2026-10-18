@@ -6,14 +6,20 @@ import { Game, type GameResult } from './game';
 import type { GuesserConfig } from './providers';
 import { costOf, formatTokens, formatUsd, PRICES_FETCHED } from './pricing';
 import { renderSetup } from './setup';
+import { installSettings } from './settings';
 import { headlineFor, openShareDialog } from './share';
 import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
 const app = document.getElementById('app')!;
-// Corner tools on every screen: the debug log and the sound toggle, spaced out in one row.
+// Corner tools on every screen: the debug log, the sound toggle and the settings menu.
 const debugLog = installDebugPanel();
-document.body.append(el('div', { class: 'corner-tools' }, [debugLog.button, installSound()]), debugLog.panel);
+const settings = installSettings();
+document.body.append(
+  el('div', { class: 'corner-tools' }, [debugLog.button, installSound(), settings.button]),
+  settings.panel,
+  debugLog.panel,
+);
 let lastConfigs: GuesserConfig[] = [];
 let lastDoodler: GuesserConfig | null = null;
 
