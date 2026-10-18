@@ -78,12 +78,16 @@ export async function listOpenAIModels(baseUrl: string, apiKey: string): Promise
  * dialects to try in order, ending with no setting at all:
  * - OpenAI: reasoning_effort "none" (GPT-5.1 and later), else "minimal" (GPT-5); older models take neither.
  * - Ollama: reasoning_effort "none", plus its own think: false.
- * - Other hosts (mostly vLLM / SGLang): the chat template's enable_thinking (Qwen3) / thinking (DeepSeek) flags.
+ * - Other hosts (mostly vLLM / SGLang): the chat template's enable_thinking (Qwen3) / thinking (DeepSeek)
+ *   flags, plus reasoning_effort "low" for models that ignore them.
  */
 export function thinkingOff(baseUrl: string): Record<string, unknown>[] {
   if (/api\.openai\.com/.test(baseUrl)) return [{ reasoning_effort: 'none' }, { reasoning_effort: 'minimal' }, {}];
   if (isOllama(baseUrl)) return [{ reasoning_effort: 'none', think: false }, {}];
-  return [{ chat_template_kwargs: { enable_thinking: false, thinking: false } }, { reasoning_effort: 'none' }, {}];
+  // Measured on Nebius: the template flags stop Qwen, DeepSeek, Kimi…; GLM ignores them but stops at
+  // reasoning_effort "low"; Muse Spark can't stop, and "low" is its least (it rejects "none").
+  const template = { chat_template_kwargs: { enable_thinking: false, thinking: false } };
+  return [{ ...template, reasoning_effort: 'low' }, template, {}];
 }
 
 function isOllama(baseUrl: string) {

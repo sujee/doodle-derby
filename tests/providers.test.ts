@@ -58,6 +58,7 @@ describe('OpenAI-compatible guesser', () => {
       const calls = mockFetch(() => reply('cat | 72'));
       await ask(new OpenAICompatGuesser('https://api.tokenfactory.nebius.com/v1', 'k', 'Qwen/Qwen3-VL'));
       expect(calls[0].body.chat_template_kwargs).toEqual({ enable_thinking: false, thinking: false });
+      expect(calls[0].body.reasoning_effort).toBe('low'); // for models that ignore the template flags (GLM)
     });
 
     it('Ollama gets think: false', async () => {
