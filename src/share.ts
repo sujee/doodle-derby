@@ -58,12 +58,23 @@ export function shareText(r: GameResult): string {
   );
 }
 
-/** The wildest wrong guess of the game: the wordiest one (long guesses tend to be the funny ones). */
-export function wildestGuess(r: GameResult): { guess: string; word: string; bot: number } | null {
-  let best: { guess: string; word: string; bot: number } | null = null;
+/**
+ * The wildest wrong guess: the one the bot was surest of ("toaster, 95%" for a cat is the funny
+ * kind of wrong). Ties, and guesses with no confidence, go to the wordier one.
+ */
+export function wildestGuess(r: GameResult): { guess: string; word: string; bot: number; confidence: number | null } | null {
+  let best: { guess: string; word: string; bot: number; confidence: number | null } | null = null;
+  const sure = (c: number | null) => c ?? -1;
   for (const round of r.rounds) {
     round.guesses.forEach((list, bot) => {
-      for (const guess of list) if (!best || guess.length > best.guess.length) best = { guess, word: round.word, bot };
+      list.forEach((guess, n) => {
+        const confidence = round.confidences?.[bot]?.[n] ?? null;
+        const better =
+          !best ||
+          sure(confidence) > sure(best.confidence) ||
+          (sure(confidence) === sure(best.confidence) && guess.length > best.guess.length);
+        if (better) best = { guess, word: round.word, bot, confidence };
+      });
     });
   }
   return best;

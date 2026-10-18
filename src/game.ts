@@ -56,7 +56,7 @@ export class Game {
   // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
-  /** "Wrong guess for this round": the round's wordiest wrong guess (the funny ones tend to be long). */
+  /** "Wrong guess for this round": the wrong guess its bot was surest of (see wildestGuess). */
   private wildEl = el('div', { class: 'wild card', hidden: '', role: 'status' });
   private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
 
@@ -356,7 +356,11 @@ export class Game {
         el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),
         el('s', { class: 'wild-guess' }, wild.guess),
       ]),
-      el('p', { class: 'wild-who' }, ['by ', el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild.bot)}` }, who.human ? 'You' : shortName(who.label))]),
+      el('p', { class: 'wild-who' }, [
+        'by ',
+        el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild.bot)}` }, who.human ? 'You' : shortName(who.label)),
+        wild.confidence === null ? '' : `, ${wild.confidence}% sure`,
+      ]),
     );
   }
 

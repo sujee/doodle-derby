@@ -72,6 +72,8 @@ export type RoundResult = {
   seconds: number | null;
   /** Each player's distinct wrong guesses. */
   guesses: string[][];
+  /** How sure the player was of each wrong guess (same shape as guesses; null if it didn't say). */
+  confidences?: (number | null)[][];
   /** JPEG data URL of the final drawing, or null if the board was empty. */
   image: string | null;
 };
@@ -388,6 +390,7 @@ export class Engine {
       winner,
       seconds,
       guesses: this.players.map((p) => [...p.wrong]),
+      confidences: this.players.map((p) => p.wrong.map((g) => sureness(p.history, g))),
       image: this.board.isEmpty ? null : this.board.snapshot(),
     };
     this.results.push(result);
@@ -550,4 +553,10 @@ function newPlayer(label: string, price: Price): PlayerState {
     usage: { input: 0, output: 0, calls: 0 },
     price,
   };
+}
+
+/** The highest confidence a player gave a wrong guess (asked again, it may have said another %). */
+function sureness(history: GuessEntry[], guess: string): number | null {
+  const said = history.filter((h) => !h.right && h.guess === guess && h.confidence !== null).map((h) => h.confidence!);
+  return said.length ? Math.max(...said) : null;
 }

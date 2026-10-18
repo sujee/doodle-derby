@@ -69,7 +69,12 @@ describe('share text', () => {
   });
 
   it('wildest guess is the wordiest wrong guess', () => {
-    expect(wildestGuess(game())).toEqual({ guess: 'a very sad cat', word: 'hat', bot: 1 });
+    expect(wildestGuess(game())).toEqual({ guess: 'a very sad cat', word: 'hat', bot: 1, confidence: null }); // no %: the wordiest
+    // With confidences, the surest wrong guess wins, however short.
+    const sure = game({
+      rounds: [{ word: 'hat', winner: 0, seconds: 4, guesses: [['bowl'], ['a very sad cat']], confidences: [[90], [40]], image: null }],
+    });
+    expect(wildestGuess(sure)).toMatchObject({ guess: 'bowl', confidence: 90 });
     expect(wildestGuess(game({ rounds: [] }))).toBeNull();
   });
 

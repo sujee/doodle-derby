@@ -124,7 +124,7 @@ describe('guessing and scoring (you draw)', () => {
     expect(engine.players[0].score).toBe(1);
     expect(engine.playerScore).toBe(1);
     const round = engine.results[0];
-    expect(round).toMatchObject({ word: 'cat', winner: 0, guesses: [['dog']] });
+    expect(round).toMatchObject({ word: 'cat', winner: 0, guesses: [['dog']], confidences: [[20]] });
     expect(round.seconds).toBeCloseTo(POLL_MS / 1000, 5);
     expect(round.image).toMatch(/^data:image\/jpeg/);
     expect(rec.names()).toContain('roundEnding');
