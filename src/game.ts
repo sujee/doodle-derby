@@ -287,8 +287,8 @@ export class Game {
   }
 
   private onGuess(i: number, entry: GuessEntry) {
-    sfx.pop(i);
-    if (!entry.right) setTimeout(sfx.wrong, 260);
+    // No sound per guess: with the bots guessing every few seconds it was too much. Only the
+    // round's ding / wah-wah and the countdown ticks play.
     this.views[i].feedEl.prepend(
       el('li', { class: entry.right ? 'right' : 'nope' }, [
         el('span', { class: 'guess' }, entry.guess),

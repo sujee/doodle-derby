@@ -125,18 +125,6 @@ export function roundStart() {
   for (let i = 0; i < 4; i++) noise(0.07, 2500 + (i % 2) * 1500, { delay: 0.3 + i * 0.08, gain: 0.35, to: 1800 });
 }
 
-/** A guess bubble pops up. Each robot has its own pitch. */
-export function pop(robot: number) {
-  const base = [700, 1050, 520][robot % 3];
-  tone(base, 0.12, { to: base / 2.6, gain: 0.5 });
-}
-
-/** Wrong guess: a scratchy squiggle. */
-export function wrong() {
-  tone(340, 0.28, { type: 'sawtooth', to: 180, gain: 0.12, vibrato: 40 });
-  noise(0.22, 1400, { gain: 0.18, to: 600 });
-}
-
 /** Clock tick (true) or tock (false). */
 export function tick(hi: boolean) {
   tone(hi ? 1500 : 1100, 0.04, { type: 'square', gain: 0.12, attack: 0.002 });
