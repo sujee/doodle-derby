@@ -546,7 +546,7 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
     el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
     el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
     el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'} total`), // the whole game so far, like the tokens
+    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
 }
