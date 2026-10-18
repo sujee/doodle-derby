@@ -56,7 +56,7 @@ export class Game {
   // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
-  /** "Wrong guess of each round": every round's wordiest wrong guess (the funny ones tend to be long). */
+  /** "Wrong guess for this round": the round's wordiest wrong guess (the funny ones tend to be long). */
   private wildEl = el('div', { class: 'wild card', hidden: '', role: 'status' });
   private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
 
@@ -343,30 +343,19 @@ export class Game {
   /** Updated at round end only: mid-round the word may be secret (a bot is drawing). */
   private renderWild() {
     const so = this.engine.resultSoFar();
-    // Each round's wordiest wrong guess, newest first; rounds nobody guessed wrong are skipped.
-    const lines = so.rounds
-      .map((round, n) => ({ n, wild: wildestGuess({ ...so, rounds: [round] }) }))
-      .filter((r) => r.wild)
-      .reverse();
-    this.wildEl.hidden = !lines.length;
+    const round = so.rounds[so.rounds.length - 1];
+    const wild = round ? wildestGuess({ ...so, rounds: [round] }) : null;
+    this.wildEl.hidden = !wild;
+    if (!wild) return;
+    const who = this.engine.players[wild.bot];
     this.wildEl.replaceChildren(
-      el('p', { class: 'wild-title' }, 'Wrong guess of each round'),
-      el(
-        'ol',
-        { class: 'wild-list' },
-        lines.map(({ n, wild }) => {
-          const who = this.engine.players[wild!.bot];
-          return el('li', {}, [
-            el('p', { class: 'wild-line' }, [
-              el('span', { class: 'wild-round' }, `R${n + 1}`),
-              el('span', { class: 'wild-word' }, wild!.word),
-              el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),
-              el('s', { class: 'wild-guess' }, wild!.guess),
-            ]),
-            el('p', { class: 'wild-who' }, ['by ', el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild!.bot)}` }, who.human ? 'You' : shortName(who.label))]),
-          ]);
-        }),
-      ),
+      el('p', { class: 'wild-title' }, 'Wrong guess for this round'),
+      el('p', { class: 'wild-line' }, [
+        el('span', { class: 'wild-word' }, wild.word),
+        el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),
+        el('s', { class: 'wild-guess' }, wild.guess),
+      ]),
+      el('p', { class: 'wild-who' }, ['by ', el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild.bot)}` }, who.human ? 'You' : shortName(who.label))]),
     );
   }
 

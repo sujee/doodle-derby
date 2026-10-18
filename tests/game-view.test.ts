@@ -83,7 +83,7 @@ describe('the result bar', () => {
   });
 });
 
-describe('the wrong guess of each round', () => {
+describe('the wrong guess for this round', () => {
   it('stays hidden until a round ends with a wrong guess, then shows word → guess', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99); // the Fake guesser misses
     const { game, draw } = startGame();
@@ -99,12 +99,13 @@ describe('the wrong guess of each round', () => {
     expect(wild.querySelector('.wild-word')!.textContent).toBe(game.engine.word.word);
     expect(wild.querySelector('.wild-guess')!.textContent).toBe(guess);
 
-    game.engine.nextRound(); // round 2: another miss, listed first
+    game.engine.nextRound(); // round 2: another miss replaces it
     draw();
     await vi.advanceTimersByTimeAsync(POLL_MS + 2500);
     game.engine.skip();
     await flush();
-    expect([...wild.querySelectorAll('.wild-round')].map((r) => r.textContent)).toEqual(['R2', 'R1']);
+    expect(wild.querySelectorAll('.wild-line')).toHaveLength(1); // only this round's
+    expect(wild.querySelector('.wild-word')!.textContent).toBe(game.engine.word.word);
     game.engine.stop();
     vi.restoreAllMocks();
   });
