@@ -6,7 +6,7 @@ import { FakeBoard, FakeClock, ScriptedBot, WORDS, flush, recordEvents } from '.
 
 const FREE = { kind: 'free', why: 'fake bot' } as const;
 
-function setup(bots: ScriptedBot[], opts: { doodler?: Doodler } = {}) {
+function setup(bots: ScriptedBot[], opts: { doodler?: Doodler; youGuess?: boolean } = {}) {
   const clock = new FakeClock();
   const board = new FakeBoard();
   const rec = recordEvents();
@@ -16,7 +16,7 @@ function setup(bots: ScriptedBot[], opts: { doodler?: Doodler } = {}) {
     board,
     clock,
     words: WORDS,
-    doodler: opts.doodler ? { doodler: opts.doodler, price: { kind: 'unknown' } } : undefined,
+    doodler: opts.doodler ? { doodler: opts.doodler, price: { kind: 'unknown' }, youGuess: opts.youGuess } : undefined,
     events: { ...rec.events, finish: (r) => (result = r) },
   });
   return { engine, clock, board, rec, result: () => result };
@@ -332,10 +332,22 @@ describe('a bot draws (bot-doodler mode)', () => {
     return { label: 'Painter', words, draw: (word) => (words.push(word), draw(word)) };
   }
 
-  it('adds You as a guesser; you can guess only once the drawing has started', async () => {
+  it('by default you just watch: only the bots guess', async () => {
+    const doodler = doodlerThat(async () => doodle);
+    const { engine, result } = setup([new ScriptedBot('A'), new ScriptedBot('B')], { doodler });
+    engine.start();
+    await flush();
+    expect(engine.players.map((p) => p.label)).toEqual(['A', 'B']);
+    expect(engine.humanIndex).toBe(-1);
+    expect(engine.submitGuess('cat')).toBe(false);
+    engine.stop();
+    expect(result()).not.toHaveProperty('humanIndex');
+  });
+
+  it('with youGuess, adds You as a guesser; you can guess only once the drawing has started', async () => {
     let finishDrawing!: (d: Doodle) => void;
     const doodler = doodlerThat(() => new Promise((r) => (finishDrawing = r)));
-    const { engine, rec } = setup([new ScriptedBot('A')], { doodler });
+    const { engine, rec } = setup([new ScriptedBot('A')], { doodler, youGuess: true });
     engine.start();
     expect(engine.players.map((p) => p.label)).toEqual(['A', 'You']);
     expect(engine.humanIndex).toBe(1);
@@ -395,7 +407,7 @@ describe('a bot draws (bot-doodler mode)', () => {
 
   it('the results name the doodler and where You are', async () => {
     const doodler = doodlerThat(async () => doodle);
-    const { engine, result } = setup([new ScriptedBot('A')], { doodler });
+    const { engine, result } = setup([new ScriptedBot('A')], { doodler, youGuess: true });
     engine.start();
     await flush();
     engine.stop();
@@ -409,7 +421,7 @@ describe('a bot draws (bot-doodler mode)', () => {
     engine.start();
     await flush();
     await drawAndPoll(clock, board); // the sketch puts lines on the board
-    expect(engine.players.map((p) => p.score)).toEqual([1, 0]);
+    expect(engine.players.map((p) => p.score)).toEqual([1]); // no "You" row: you watch
     expect(engine.playerScore).toBe(1);
   });
 });

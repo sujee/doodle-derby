@@ -14,8 +14,8 @@ import { createDoodler } from './doodler';
 import { el } from './dom';
 
 const CUSTOM = '__custom__';
-/** Bot-doodler mode is hidden from setup for now (the user draws); the engine and game still support it. */
-const SHOW_DOODLER_PICK = false;
+/** Show the doodler picker (You | Bot). When a bot draws, you watch and the bots race to guess. */
+const SHOW_DOODLER_PICK = true;
 
 type Slot = {
   root: HTMLElement;
@@ -88,7 +88,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
   const guesserRow = el('div', { class: 'guesser-row' });
   const guessersSide = el('div', { class: 'guessers-side', role: 'group', 'aria-label': 'Pick the guessers' }, [
-    el('p', { class: 'pick-label' }, 'Pick the guessers'),
+    el('p', { class: 'pick-label' }, [el('span', { class: 'step-num' }, '2'), 'Pick the guessers']),
     guesserRow,
   ]);
   const addLabel = el('span');
@@ -101,15 +101,13 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     (note.hidden = ![...slots.slice(0, count), ...(botDraws ? [doodlerSlot] : [])].some((s) => s.kind() !== 'fake'));
   const setMode = (bot: boolean) => {
     botDraws = bot;
-    lede.textContent = bot ? 'A bot doodles. You and the bots race to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
-    youRole.textContent = bot ? 'guessing 🔍' : 'the doodler ✏️';
+    lede.textContent = bot ? 'A bot doodles. The other bots race to guess it. You watch.' : 'You doodle. The bots guess. Fastest bot wins.';
+    youRole.textContent = bot ? 'watching 👀' : 'the doodler ✏️';
     setPicked(youCard, !bot);
     setPicked(botCard, bot);
     // A picked Bot keeps its card (highlighted) and shows its settings below both cards.
     doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, botCard, ...(bot ? [doodlerSlot.root] : []));
     guesserRow.replaceChildren(...slots.map((s) => s.root), add);
-    // You always draw for now: the doodler picker (You | Bot) and VS are hidden. To bring bot-doodler
-    // mode back, render doodlerSide and vs before guessersSide again.
     slotsEl.replaceChildren(...(SHOW_DOODLER_PICK ? [doodlerSide, vs] : []), guessersSide);
     syncNote();
   };

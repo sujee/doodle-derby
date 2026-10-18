@@ -86,8 +86,8 @@ export type GameResult = {
   rounds: RoundResult[];
   stopped: boolean;
   /**
-   * Set when a bot drew. Then playerScore is the doodler's score (drawings guessed), and "You" are
-   * one of the guessers, at index humanIndex in labels/scores/usage/prices.
+   * Set when a bot drew. Then playerScore is the doodler's score (drawings guessed). If you guessed
+   * too, "You" are one of the guessers, at index humanIndex in labels/scores/usage/prices.
    */
   doodler?: { label: string; usage: Usage; price: Price };
   humanIndex?: number;
@@ -128,8 +128,11 @@ export type EngineOptions = {
   clock?: Clock;
   /** The 10 words to play (default: random, getting harder). */
   words?: Word[];
-  /** Set when a bot draws instead of you. */
-  doodler?: { doodler: Doodler; price: Price };
+  /**
+   * Set when a bot draws instead of you. By default you just watch (bots-only race); with youGuess
+   * you join the guessers and type your guesses.
+   */
+  doodler?: { doodler: Doodler; price: Price; youGuess?: boolean };
 };
 
 export class Engine {
@@ -181,7 +184,7 @@ export class Engine {
     const bots = opts.bots(fake);
     this.guessers = bots.map((b) => b.guesser);
     this.players = bots.map((b) => newPlayer(b.guesser.label, b.price));
-    if (this.doodler) {
+    if (opts.doodler?.youGuess) {
       // You join the guessers, after the bots.
       this.guessers.push({ label: 'You', guess: () => Promise.reject(new Error('You guess by typing')) });
       this.players.push({ ...newPlayer('You', { kind: 'free', why: 'you' }), human: true });
@@ -519,7 +522,8 @@ export class Engine {
   resultSoFar(): GameResult {
     const humanIndex = this.humanIndex;
     return {
-      ...(this.doodler ? { doodler: { label: this.doodler.label, usage: { ...this.doodlerUsage }, price: this.doodlerPrice }, humanIndex } : {}),
+      ...(this.doodler ? { doodler: { label: this.doodler.label, usage: { ...this.doodlerUsage }, price: this.doodlerPrice } } : {}),
+      ...(humanIndex >= 0 ? { humanIndex } : {}),
       usage: this.players.map((p) => ({ ...p.usage })),
       prices: this.players.map((p) => p.price),
       stopped: this.stopped,

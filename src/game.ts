@@ -98,7 +98,7 @@ export class Game {
         sketch: (doodle) => {
           this.sketchEl.hidden = true;
           this.sketcher = new Sketcher(this.canvas, doodle.strokes);
-          this.guessInput.focus({ preventScroll: true });
+          if (this.youGuess) this.guessInput.focus({ preventScroll: true });
           this.startSketchTimer();
         },
         roundEnding: () => this.sketcher?.tick(Infinity), // show the whole doodle at the reveal and in the share card
@@ -187,8 +187,8 @@ export class Game {
           (this.padWrap.replaceChildren(
             // Just the word, right on top of the canvas, with your "N correct" beside it.
             el('div', { class: 'paper-head' }, [
-              el('div', { class: 'prompt', title: this.botDraws ? 'The word to guess' : 'The word to draw' }, [
-                el('span', { class: 'prompt-verb' }, this.botDraws ? 'guess ' : 'draw '),
+              el('div', { class: 'prompt', title: this.botDraws ? (this.youGuess ? 'The word to guess' : 'The word the bot is drawing') : 'The word to draw' }, [
+                el('span', { class: 'prompt-verb' }, this.botDraws ? (this.youGuess ? 'guess ' : 'drawing ') : 'draw '),
                 this.wordEl,
               ]),
               this.correctEl,
@@ -196,7 +196,9 @@ export class Game {
             this.paper,
             this.resultBar,
             this.botDraws
-              ? this.guessForm(skip())
+              ? this.youGuess
+                ? this.guessForm(skip())
+                : el('div', { class: 'tools' }, [skip()]) // you watch: just Skip
               : el('div', { class: 'tools' }, [
                   pen,
                   eraser,
@@ -227,7 +229,12 @@ export class Game {
     );
   }
 
-  /** Bot-doodler mode: a text box for your guesses, plus Skip. */
+  /** A bot draws and you guess along (the engine's youGuess): your text box, unless you just watch. */
+  private get youGuess(): boolean {
+    return this.engine.humanIndex >= 0;
+  }
+
+  /** Bot-doodler mode with youGuess: a text box for your guesses, plus Skip. */
   private guessForm(skip: HTMLElement): HTMLElement {
     const form = el('form', { class: 'guess-form' }, [
       this.guessInput,
@@ -255,7 +262,7 @@ export class Game {
     this.roundEl.replaceChildren(el('span', { class: 'round-word' }, 'Round '), `${round + 1}/${ROUNDS}`); // phones show just "3/10"
     this.tierEl.textContent = tier;
     this.tierEl.className = `tier ${tier}`;
-    this.wordEl.textContent = this.botDraws ? '???' : word.word;
+    this.wordEl.textContent = this.youGuess ? '???' : word.word; // watching a bot draw, you see the word
     for (const v of this.views) {
       v.feedEl.replaceChildren();
       v.row.reset();
@@ -389,11 +396,11 @@ export class Game {
 
   /** The pause screen: every guess so far this round, one column per guesser. */
   private renderPauseCard() {
-    const resume = el('button', { type: 'button', class: 'primary big' }, this.botDraws ? 'Keep guessing!' : 'Keep drawing!');
+    const resume = el('button', { type: 'button', class: 'primary big' }, this.botDraws ? (this.youGuess ? 'Keep guessing!' : 'Keep watching!') : 'Keep drawing!');
     resume.addEventListener('click', () => this.engine.resume());
     const players = this.engine.players;
     const total = players.reduce((n, p) => n + p.history.length, 0);
-    const word = this.engine.roundOver || !this.botDraws ? this.engine.word.word : '???';
+    const word = this.engine.roundOver || !this.youGuess ? this.engine.word.word : '???';
     const columns = players.map((p, i) =>
       el('div', { class: `pause-col ${p.human ? 'human' : `p${i % 3}`}` }, [
         el('h3', { title: p.label }, p.label),
