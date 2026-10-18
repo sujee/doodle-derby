@@ -342,20 +342,20 @@ button.tool.active .tool-icon { color: #2b2b2b; }
  */
 .field { display: grid; gap: 10px; align-content: start; min-width: 0; }
 .field-title { margin: 0 6px; font: 1.05rem var(--body); color: var(--muted); }
-.rows { display: grid; gap: 12px; }
+.rows { display: grid; gap: 16px; } /* room for the wins badges on the corners */
 /* The sticker's pop-in and the confetti can poke past the screen edge: never let them cause a sideways scroll. */
 .game { overflow-x: clip; }
-.row {
+.field-row {
   --lane: var(--ink);
   position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 4px 14px;
   padding: 12px 16px; background: var(--surface);
   border: 2.5px solid color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 22px;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
-.row.p0 { --lane: var(--coral); }
-.row.p1 { --lane: var(--sky); }
-.row.p2 { --lane: var(--grape); }
-.row.human { --lane: var(--mint); }
+.field-row.p0 { --lane: var(--coral); }
+.field-row.p1 { --lane: var(--sky); }
+.field-row.p2 { --lane: var(--grape); }
+.field-row.human { --lane: var(--mint); }
 .row-avatar {
   width: 56px; height: 56px; display: grid; place-items: center;
   background: color-mix(in srgb, var(--lane) 30%, var(--surface)); border-radius: 18px;
@@ -369,8 +369,8 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .row-provider { font-size: 0.82em; color: var(--muted); }
-.row .meter { margin: 0; }
-.row.human .meter { display: block; font-weight: 500; color: var(--muted); }
+.field-row .meter { margin: 0; }
+.field-row.human .meter { display: block; font-weight: 500; color: var(--muted); }
 .row-guesses {
   display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 2.4rem; margin-top: 4px; overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent);
@@ -378,18 +378,26 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .row-side { display: grid; justify-items: end; gap: 2px; text-align: right; }
 .row-time { font: 700 1.3rem var(--round); font-variant-numeric: tabular-nums; }
 .row-time:empty { display: none; }
-.row-wins { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+/* Rounds won: a badge on the row's top-right corner, in the bot's color once it has a win. */
+.row-wins {
+  position: absolute; top: -11px; right: 14px; z-index: 1;
+  padding: 0 9px; border-radius: 999px; white-space: nowrap;
+  font: 600 0.78rem/1.5 var(--round); color: var(--muted);
+  background: var(--surface); border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent);
+}
+.row-wins.has-wins { color: var(--on-bright); background: var(--lane); border-color: var(--ink); box-shadow: 2px 2px 0 var(--shadow); }
+.row-wins.bump { animation: pop-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
 .crown {
   position: absolute; top: -18px; left: 12px; font-size: 1.6rem; rotate: -14deg; pointer-events: none;
   opacity: 0; transform: translateY(8px) scale(0.5); transition: opacity 0.25s, transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 /* The round's winner: its own color, a solid outline, a crown. */
-.row.won { background: color-mix(in srgb, var(--lane) 24%, var(--surface)); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--shadow); }
-.row.won .crown { opacity: 1; transform: none; }
-.row.won .row-avatar .bot { animation: spin-hop 0.55s ease-out 2; }
-.row.thinking .row-avatar .bot { animation: fidget 0.7s ease-in-out infinite; }
-.row.shrug .row-avatar .bot { animation: shrug 0.7s ease-in-out 2; }
-.row.shrug .bot .arms { display: inline; }
+.field-row.won { background: color-mix(in srgb, var(--lane) 24%, var(--surface)); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--shadow); }
+.field-row.won .crown { opacity: 1; transform: none; }
+.field-row.won .row-avatar .bot { animation: spin-hop 0.55s ease-out 2; }
+.field-row.thinking .row-avatar .bot { animation: fidget 0.7s ease-in-out infinite; }
+.field-row.shrug .row-avatar .bot { animation: shrug 0.7s ease-in-out 2; }
+.field-row.shrug .bot .arms { display: inline; }
 
 /* Guesses, latest first: the first one big, the rest as small chips. */
 .feed { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -414,7 +422,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   flex: none; padding: 0 10px; border-radius: 999px; white-space: nowrap;
   background: var(--scrap); color: var(--scrap-ink); border: 2px solid var(--ink); font-size: 0.8rem; line-height: 1.4;
 }
-.row:has(.badge:not([hidden])) .feed:empty::before { content: none; }
+.field-row:has(.badge:not([hidden])) .feed:empty::before { content: none; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
 .badge.cancelled { background: none; color: var(--muted); border-style: dashed; }
@@ -619,13 +627,13 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .paper { max-width: min(620px, calc(100dvh - 260px)); }
   /* The field sits above the canvas, with compact rows. */
   .field { order: -1; gap: 6px; }
-  .rows { gap: 8px; }
+  .rows { gap: 14px; }
   .field-title { font-size: 0.9rem; }
-  .row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 10px; border-radius: 16px; }
+  .field-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 10px; border-radius: 16px; }
   .row-avatar { width: 34px; height: 34px; border-radius: 11px; }
   .row-avatar .bot { width: 27px; }
   .row-head h3 { font-size: 0.95rem; }
-  .row .meter, .row.human .meter { display: none; }
+  .field-row .meter, .field-row.human .meter { display: none; }
   /* Bot-doodler mode: the doodle matters more than the doodler's meter (the star column shows it). */
   .field .doodler-row { display: none; }
   .row-guesses { min-height: 1.7rem; margin-top: 0; }
@@ -633,7 +641,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .feed li:first-child { font-size: 1.2rem; }
   .badge { font-size: 0.72rem; padding: 0 8px; }
   .row-time { font-size: 1.05rem; }
-  .row-wins { font-size: 0.75rem; }
+  .row-wins { top: -10px; right: 10px; font-size: 0.7rem; padding: 0 7px; }
   .crown { top: -14px; left: 6px; font-size: 1.2rem; }
   .you-row .stars { font-size: 0.8rem; }
   .you-row { padding-top: 6px; }

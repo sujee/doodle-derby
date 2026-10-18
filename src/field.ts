@@ -1,17 +1,18 @@
 /**
  * "The field": one row per guesser, stacked beside the canvas. A row shows the bot, its latest guess
  * big (crossed out in red if wrong, ✓ if right), its earlier guesses as crossed-out chips, and on the
- * right its winning time and rounds won. The round's winner gets a crown and its own color.
+ * right its winning time, with its rounds won as a badge on the corner. The round's winner gets a crown and its own color.
  * Display only; no game logic here.
  */
 
-import { robot } from './art';
+import { replay, robot } from './art';
 import { el } from './dom';
 
 export class FieldRow {
   readonly el: HTMLElement;
   private timeEl = el('span', { class: 'row-time' });
-  private winsEl = el('span', { class: 'row-wins' }, '0 wins');
+  /** Rounds won, as a badge on the row's top-right corner. */
+  private winsEl = el('span', { class: 'row-wins', 'aria-hidden': 'true' }, '0 wins');
 
   /**
    * bubbles: [badge, feed]. The status badge (thinking, cancelled…) goes beside the name; the feed
@@ -22,8 +23,9 @@ export class FieldRow {
    */
   constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element, provider?: string | null) {
     score.classList.add('sr-only');
-    this.el = el('div', { class: art ? 'row human' : `row p${index}` }, [
+    this.el = el('div', { class: art ? 'field-row human' : `field-row p${index}` }, [
       el('span', { class: 'crown', 'aria-hidden': 'true' }, '👑'),
+      this.winsEl,
       el('div', { class: 'row-avatar', 'aria-hidden': 'true' }, art ?? robot(index)),
       el('div', { class: 'row-main' }, [
         el('div', { class: 'row-head' }, [
@@ -38,7 +40,7 @@ export class FieldRow {
         ]),
         el('div', { class: 'row-guesses' }, bubbles.slice(1)),
       ]),
-      el('div', { class: 'row-side' }, [this.timeEl, this.winsEl, score]),
+      el('div', { class: 'row-side' }, [this.timeEl, score]),
     ]);
   }
 
@@ -51,6 +53,8 @@ export class FieldRow {
     this.el.classList.add('won');
     this.timeEl.textContent = seconds === null ? '' : `${seconds.toFixed(1)}s`;
     this.winsEl.textContent = `${score} win${score === 1 ? '' : 's'}`;
+    this.winsEl.classList.add('has-wins');
+    replay(this.winsEl, 'bump');
   }
 
   /**

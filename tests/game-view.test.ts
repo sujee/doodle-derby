@@ -19,7 +19,7 @@ afterEach(() => {
 
 function startGame() {
   const game = new Game(container, [{ kind: 'fake' }], () => {}, null, WORDS);
-  const row = container.querySelector<HTMLElement>('.row')!;
+  const row = container.querySelector<HTMLElement>('.field-row')!;
   return {
     game,
     badge: row.querySelector<HTMLElement>('.badge')!,
@@ -50,7 +50,7 @@ describe('a bot whose request is cancelled when the round ends', () => {
     expect(badge.classList.contains('cancelled')).toBe(true);
     // No guesses yet, and the row hides its "zzz…" while the badge shows (CSS :has).
     expect(feed.children).toHaveLength(0);
-    expect(badge.closest('.row')).toBe(feed.closest('.row'));
+    expect(badge.closest('.field-row')).toBe(feed.closest('.field-row'));
 
     game.engine.nextRound();
     expect(badge.textContent).toBe('ready');
@@ -110,12 +110,17 @@ describe('the wrong guess of the game', () => {
 });
 
 describe('the round winner', () => {
-  it('moves to the top of the field and stays there', async () => {
+  it('gets a wins badge, moves to the top of the field and stays there', async () => {
     const { FieldRow } = await import('../src/field');
     const list = document.createElement('div');
     container.append(list);
     const rows = [0, 1, 2].map((i) => new FieldRow(i, `bot ${i}`, [document.createElement('span'), document.createElement('ol')], document.createElement('span')));
     list.append(...rows.map((r) => r.el));
+    const badge = rows[2].el.querySelector('.row-wins')!;
+    expect(badge.textContent).toBe('0 wins');
+    rows[2].win(1, 2.5);
+    expect(badge.textContent).toBe('1 win');
+    expect(badge.classList.contains('has-wins')).toBe(true);
     rows[2].moveToTop(true);
     expect([...list.children]).toEqual([rows[2].el, rows[0].el, rows[1].el]);
     rows[2].reset(); // next round: the order stays
