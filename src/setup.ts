@@ -220,7 +220,7 @@ function makeSlot(
   const kind = select([['fake', doodler ? 'Fake doodler (no key)' : 'Fake guesser (no key)'], ...named, ...generic], 'fake');
   const baseUrl = el('input', { type: 'url', placeholder: 'https://…/v1' }) as HTMLInputElement;
   const apiKey = el('input', { type: 'password', autocomplete: 'off', placeholder: 'API key' }) as HTMLInputElement;
-  const modelSelect = el('select') as HTMLSelectElement;
+  const modelSelect = el('select', { 'aria-label': 'Model' }) as HTMLSelectElement;
   const customModel = el('input', { placeholder: 'Type a model name' }) as HTMLInputElement;
   const visionOnly = el('input', { type: 'checkbox' }) as HTMLInputElement;
   visionOnly.checked = !doodler; // drawing doesn't need image input
@@ -245,13 +245,11 @@ function makeSlot(
   const listeners: (() => void)[] = [];
   const notify = () => listeners.forEach((fn) => fn());
 
-  const modelRow = field(
-    'Model',
-    el('div', { class: 'stack' }, [
-      el('div', { class: 'model-row' }, [modelSelect, loadBtn]),
-      customModel,
-    ]),
-  );
+  const modelRow = el('div', { class: 'field' }, [
+    // "Model" with the reload on its right; the box then gets the full card width for long names.
+    el('div', { class: 'field-head' }, [el('span', {}, 'Model'), loadBtn]),
+    el('div', { class: 'stack' }, [modelSelect, customModel]),
+  ]);
   const visionRow = el('label', { class: 'check small' }, [visionOnly, 'Only show models that can see images']);
 
   const slotKind = (): ProviderKind => kind.value.split(':')[0] as ProviderKind;
