@@ -13,7 +13,7 @@ import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
 import { createGuesser, providerName, type GuesserConfig } from './providers';
-import { openShareDialog } from './share';
+import { openShareDialog, shortName, wildestGuess } from './share';
 import * as sfx from './sound';
 import { ROUNDS, type Tier, type Word } from './words';
 
@@ -55,6 +55,8 @@ export class Game {
   private sticker = el('div', { class: 'sticker', hidden: '', 'aria-hidden': 'true' });
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
+  /** "Wrong guess of the game": the wordiest wrong guess so far (the funny ones tend to be long). */
+  private wildEl = el('div', { class: 'wild card', hidden: '', role: 'status' });
   private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
 
   // Bot-doodler mode
@@ -201,6 +203,7 @@ export class Game {
             ),
             ...(this.engine.doodler ? [(this.updateDoodlerMeter(), doodlerRow(this.engine.doodler.label, this.doodlerMeter))] : []),
           ]),
+          this.wildEl, // under the field on desktop, under the paper on phones
         ]),
       ]),
     );
@@ -301,6 +304,8 @@ export class Game {
       for (const v of this.views) v.row.shrug();
     }
 
+    this.renderWild();
+
     // The next round starts only when you click (or press Enter on the focused button).
     const last = round === ROUNDS - 1;
     const next = el('button', { class: 'primary next-round' }, last ? 'See results 🏆' : ['Next word ', el('span', { 'aria-hidden': 'true' }, '→')]);
@@ -335,6 +340,23 @@ export class Game {
     // (measured mid-animation it is still small, and the scroll falls short).
     const reveal = () => this.resultBar.scrollIntoView?.({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     setTimeout(reveal, 400); // the pop-in takes 0.35s
+  }
+
+  /** Updated at round end only: mid-round the word may be secret (a bot is drawing). */
+  private renderWild() {
+    const wild = wildestGuess(this.engine.resultSoFar());
+    this.wildEl.hidden = !wild;
+    if (!wild) return;
+    const who = this.engine.players[wild.bot];
+    this.wildEl.replaceChildren(
+      el('p', { class: 'wild-title' }, 'Wrong guess of the game'),
+      el('p', { class: 'wild-line' }, [
+        el('span', { class: 'wild-word' }, wild.word),
+        el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),
+        el('s', { class: 'wild-guess' }, wild.guess),
+      ]),
+      el('p', { class: 'wild-who' }, ['by ', el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild.bot)}` }, who.human ? 'You' : shortName(who.label))]),
+    );
   }
 
   /** The bot's own color, read off its row, so its name matches its row. */

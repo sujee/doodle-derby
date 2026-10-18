@@ -88,3 +88,23 @@ describe('the result bar', () => {
     game.engine.stop();
   });
 });
+
+describe('the wrong guess of the game', () => {
+  it('stays hidden until a round ends with a wrong guess, then shows word → guess', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99); // the Fake guesser misses
+    const { game, draw } = startGame();
+    const wild = container.querySelector<HTMLElement>('.wild')!;
+    expect(wild.hidden).toBe(true);
+    draw();
+    await vi.advanceTimersByTimeAsync(POLL_MS + 2500); // one wrong guess in
+    expect(wild.hidden).toBe(true); // not mid-round
+    const guess = game.engine.players[0].history[0].guess;
+    game.engine.skip();
+    await flush();
+    expect(wild.hidden).toBe(false);
+    expect(wild.querySelector('.wild-word')!.textContent).toBe(game.engine.word.word);
+    expect(wild.querySelector('.wild-guess')!.textContent).toBe(guess);
+    game.engine.stop();
+    vi.restoreAllMocks();
+  });
+});
