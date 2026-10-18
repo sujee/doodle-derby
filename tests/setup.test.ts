@@ -67,4 +67,21 @@ describe('Add bot on the setup screen', () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it('the ✕ removes any bot, and the rest renumber', async () => {
+    const { container, slots } = await loaded();
+    const add = container.querySelector<HTMLButtonElement>('.add-bot')!;
+    add.click();
+    add.click(); // three bots, Bot #1..#3
+    expect(slots().map((s) => s.querySelector('h2')!.textContent)).toEqual(['Bot #1', 'Bot #2', 'Bot #3']);
+
+    slots()[0].querySelector<HTMLButtonElement>('.remove')!.click(); // remove Bot #1
+    expect(slots().map((s) => s.querySelector('h2')!.textContent)).toEqual(['Bot #1', 'Bot #2']);
+
+    slots()[1].querySelector<HTMLButtonElement>('.remove')!.click(); // remove the last one too
+    expect(slots()).toHaveLength(1);
+    expect(slots()[0].querySelector<HTMLButtonElement>('.remove')!.hidden).toBe(true); // the last bot can't go
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });

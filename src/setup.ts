@@ -71,7 +71,8 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   // A bot's leader is the first other bot (usually Bot #1), so "Same provider as…" survives a removal.
   const addSlot = () => {
     let self!: Slot;
-    const s = makeSlot(slots.length + 1, () => slots.find((x) => x !== self), false, () => takenBy(self));
+    // The leader is the current Bot #1; the first bot itself has none (it would mirror itself).
+    const s = makeSlot(slots.length + 1, () => (slots[0] === self ? undefined : slots[0]), false, () => takenBy(self));
     self = s;
     wire(s);
     slots.push(s);
