@@ -417,8 +417,8 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .row:has(.badge:not([hidden])) .feed:empty::before { content: none; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
-.badge.cancelled { color: var(--muted); border-style: dashed; }
-.badge.ready { color: var(--muted); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+.badge.cancelled { background: none; color: var(--muted); border-style: dashed; }
+.badge.ready { background: none; color: var(--muted); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
 .badge.thinking { background: color-mix(in srgb, var(--sun) 45%, var(--scrap)); }
 /* "thinking" + dots that fill in one by one */
 .badge.thinking::after { content: '…'; display: inline-block; width: 1.3ch; overflow: hidden; vertical-align: bottom; animation: dots 1s steps(4) infinite; }
@@ -625,7 +625,9 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .row-avatar { width: 34px; height: 34px; border-radius: 11px; }
   .row-avatar .bot { width: 27px; }
   .row-head h3 { font-size: 0.95rem; }
-  .row .meter { display: none; }
+  .row .meter, .row.human .meter { display: none; }
+  /* Bot-doodler mode: the doodle matters more than the doodler's meter (the star column shows it). */
+  .field .doodler-row { display: none; }
   .row-guesses { min-height: 1.7rem; margin-top: 0; }
   .feed li { font-size: 0.8rem; padding: 1px 9px; }
   .feed li:first-child { font-size: 1.2rem; }
@@ -769,6 +771,8 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 .star-col { flex: none; width: 50px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 6px; }
 .star-col .bot { width: 38px; }
 .star-col-name { font: 1rem/1 var(--hand); }
+.star-col.doodler { width: 60px; } /* room for "Doodler": .game clips anything past the page's padding */
+.star-col.doodler .star-col-name { font-size: 0.8rem; }
 .stars.vertical { flex-direction: column-reverse; gap: 3px; font-size: 1.45rem; letter-spacing: 0; line-height: 1; margin-top: 4px; }
 
 @media (max-width: 760px) {
@@ -777,6 +781,8 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
   .star-col { width: 34px; padding-top: 2px; }
   .star-col .bot { width: 28px; }
   .star-col-name { font-size: 0.8rem; }
+  .star-col.doodler { width: 44px; }
+  .star-col.doodler .star-col-name { font-size: 0.62rem; }
   .stars.vertical { font-size: 1rem; gap: 2px; }
 }
 
