@@ -149,6 +149,7 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 .corner-tools { position: fixed; top: 12px; right: 12px; z-index: 50; display: flex; gap: 14px; align-items: center; }
 .sound-toggle, .debug-toggle, .settings-toggle {
   position: relative; width: 48px; height: 48px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; /* the glyph sits dead-centre in the disc */
   font-size: 1.4rem; line-height: 1;
   border-radius: 50% 45% 52% 48% / 48% 52% 45% 50%;
 }
@@ -224,6 +225,7 @@ button.add-all { display: block; width: 100%; margin-top: 10px; background: colo
 button.quiet { background: transparent; box-shadow: none; border-color: color-mix(in srgb, var(--ink) 40%, transparent); color: var(--muted); }
 .slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; min-width: 0; }
 .slot-head .bot { width: 52px; flex: none; }
+.slot-avatar { display: flex; flex: none; }
 .slot-head h2 { margin: 0; font-size: clamp(1.3rem, 2.4vw, 1.8rem); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; }
 .check input { width: 20px; height: 20px; accent-color: var(--mint); }
@@ -248,7 +250,8 @@ button.start:hover { animation-play-state: paused; }
 .hud, .tools { -webkit-user-select: none; user-select: none; }
 .hud {
   display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
-  padding-right: 136px; margin-bottom: 18px; /* clear of the corner tools */
+  /* Clear of the corner tools: 3 × 48px buttons + 2 × 14px gaps + 12px margin + a little air. */
+  padding-right: 202px; margin-bottom: 18px;
 }
 .round { display: flex; gap: 10px; align-items: center; font: 600 1.05rem var(--round); white-space: nowrap; }
 .prompt {
@@ -441,7 +444,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .feed li.right .guess::after { content: ' ✓'; color: #05a37b; }
 .feed:empty::before { content: 'zzz…'; color: var(--muted); font-size: 0.95rem; }
 
-/* Status chip beside the bot's name: 👀 ready, thinking, waiting out a rate limit, or an error. */
+/* Status chip beside the bot's name: thinking, waiting out a rate limit, or an error. */
 .badge {
   flex: none; padding: 0 10px; border-radius: 999px; white-space: nowrap;
   background: var(--scrap); color: var(--scrap-ink); border: 2px solid var(--ink); font-size: 0.8rem; line-height: 1.4;
@@ -449,7 +452,6 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .field-row:has(.badge:not([hidden])) .feed:empty::before { content: none; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
-.badge.ready { background: none; border-color: transparent; padding: 0 2px; font-size: 1rem; line-height: 1.2; }
 .badge.thinking { background: color-mix(in srgb, var(--sun) 45%, var(--scrap)); display: inline-flex; align-items: center; }
 /* Three dots that bounce in turn (option C): the visual "thinking". */
 .dots { display: inline-flex; align-items: center; gap: 4px; height: 0.7em; }

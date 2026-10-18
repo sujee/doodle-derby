@@ -34,9 +34,9 @@ function startGame() {
 }
 
 describe('a bot whose request is cancelled when the round ends', () => {
-  it('just goes back to 👀 (no "cancelled" badge)', async () => {
+  it('just goes back to idle (no chip, no "cancelled" badge)', async () => {
     const { game, badge, feed, draw } = startGame();
-    expect(badge.textContent).toBe('👀'); // before anything is asked
+    expect(badge.hidden).toBe(true); // idle before anything is asked: no chip at all
     draw();
     await vi.advanceTimersByTimeAsync(POLL_MS); // the Fake guesser is asked and takes 0.6–2 s to answer
     expect(game.engine.players[0].inFlight).toBe(true);
@@ -46,14 +46,13 @@ describe('a bot whose request is cancelled when the round ends', () => {
 
     game.engine.skip();
     await flush();
-    expect(badge.hidden).toBe(false);
-    expect(badge.textContent).toBe('👀');
-    expect(badge.className).toBe('badge ready');
+    expect(badge.hidden).toBe(true);
+    expect(badge.textContent).toBe('');
     expect(feed.children).toHaveLength(0);
     game.engine.stop();
   });
 
-  it('a bot that answered before the round ended is just "ready"', async () => {
+  it('a bot that answered before the round ended goes back to idle', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right, ending the round
     const { game, badge, draw } = startGame();
     draw();
@@ -62,8 +61,7 @@ describe('a bot whose request is cancelled when the round ends', () => {
     expect(game.engine.players[0].inFlight).toBe(false);
     vi.restoreAllMocks();
     await flush();
-    expect(badge.textContent).toBe('👀');
-    expect(badge.className).toBe('badge ready');
+    expect(badge.hidden).toBe(true);
     game.engine.stop();
   });
 });
