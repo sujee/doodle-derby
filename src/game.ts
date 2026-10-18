@@ -3,9 +3,10 @@
  * engine, and draws whatever the engine reports (rounds, guesses, scores, pause, results).
  */
 
-import { confetti, tapes, trash, undoArrow, you } from './art';
+import { confetti, robot, tapes, trash, undoArrow, you } from './art';
 import { DrawingCanvas } from './canvas';
-import { doodlerRow, Lane, Stars, starColumn } from './climb';
+import { doodlerRow, Stars, starColumn } from './climb';
+import { FieldRow } from './field';
 import { debug, debugImage } from './debug';
 import { el } from './dom';
 import { createDoodler, Sketcher } from './doodler';
@@ -28,7 +29,7 @@ function hintSeen(): boolean {
 }
 
 /** Per-player widgets (same index as engine.players). */
-type PlayerView = { lane: Lane; meterEl: HTMLElement; scoreEl: HTMLElement; badgeEl: HTMLElement; feedEl: HTMLElement };
+type PlayerView = { row: FieldRow; meterEl: HTMLElement; scoreEl: HTMLElement; badgeEl: HTMLElement; feedEl: HTMLElement };
 
 export class Game {
   readonly engine: Engine;
@@ -52,7 +53,10 @@ export class Game {
   private youScoreEl = el('span', { class: 'sr-only' }, '0');
   private youStars = new Stars();
   private hint = el('div', { class: 'hint', 'aria-hidden': 'true' }, 'Draw here! The clock starts when the bots start guessing ✏️');
-  private overlay = el('div', { class: 'overlay', hidden: '' });
+  // Round end: a sticker on the paper's corner and a bar under it, so nothing covers the doodle.
+  private sticker = el('div', { class: 'sticker', hidden: '', 'aria-hidden': 'true' });
+  private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
+  private padWrap = el('div', { class: 'pad-wrap' });
   private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
 
   // Bot-doodler mode
@@ -109,7 +113,7 @@ export class Game {
       },
     });
     this.views = this.engine.players.map(() => ({
-      lane: null as unknown as Lane, // built in render()
+      row: null as unknown as FieldRow, // built in render()
       meterEl: el('div', { class: 'meter', title: 'Tokens in / out and cost so far' }),
       scoreEl: el('span', { class: 'score', title: 'Rounds won' }, '0'),
       badgeEl: el('span', { class: 'badge', hidden: '' }),
@@ -140,7 +144,7 @@ export class Game {
 
     // No right-click menu anywhere on the paper: the canvas and the pop-ups over it (reveal, pause, sketching).
     this.paper.addEventListener('contextmenu', (e) => e.preventDefault());
-    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.overlay);
+    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.sticker);
     if (!hintSeen() && !this.botDraws) {
       this.paper.append(this.hint);
       this.canvas.el.addEventListener('pointerdown', () => this.hideHint(), { once: true });
@@ -169,8 +173,9 @@ export class Game {
           el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, [this.timerBar, this.timerEl]), this.pauseBtn, stop]),
         ]),
         el('div', { class: 'board' }, [
-          el('div', { class: 'pad-wrap' }, [
+          (this.padWrap.replaceChildren(
             el('div', { class: 'paper-row' }, [starColumn(this.youScoreEl, this.youStars, this.botDraws), this.paper]),
+            this.resultBar,
             this.botDraws
               ? this.guessForm(skip())
               : el('div', { class: 'tools' }, [
@@ -180,17 +185,20 @@ export class Game {
                   tool('Clear', () => this.canvas.clear(), 'tool', trash()),
                   skip(),
                 ]),
-          ]),
-          el('aside', { class: 'climb' }, [
+          ),
+          this.padWrap),
+          el('aside', { class: 'field' }, [
+            el('h2', { class: 'field-title' }, 'The field'),
             el(
               'div',
-              { class: 'lanes' },
+              { class: 'rows' },
               this.engine.players.map((p, i) => {
                 const v = this.views[i];
-                v.lane = new Lane(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined);
+                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined);
                 if (p.human) v.meterEl.textContent = 'type your guesses below';
                 this.updateMeter(i);
-                return v.lane.el;
+                this.setBadge(i, '', '');
+                return v.row.el;
               }),
             ),
             ...(this.engine.doodler ? [(this.updateDoodlerMeter(), doodlerRow(this.engine.doodler.label, this.doodlerMeter))] : []),
@@ -217,7 +225,9 @@ export class Game {
   // --- Engine events -----------------------------------------------------------------------
 
   private onRoundStart(round: number, word: Word, tier: Tier) {
-    this.overlay.hidden = true;
+    this.sticker.hidden = true;
+    this.resultBar.hidden = true;
+    this.padWrap.classList.remove('round-over');
     this.canvas.clear();
     this.canvas.setEnabled(!this.botDraws);
     this.sketcher = null;
@@ -231,7 +241,7 @@ export class Game {
     this.drawLabel.textContent = this.botDraws ? 'Guess the doodle: ' : 'Your turn to draw: ';
     for (const v of this.views) {
       v.feedEl.replaceChildren();
-      v.lane.reset();
+      v.row.reset();
     }
   }
 
@@ -288,49 +298,48 @@ export class Game {
       this.youStars.fill(this.engine.playerScore);
       sfx.ding();
       confetti(this.paper);
-      this.views[winner].lane.win(players[winner].score);
+      this.views[winner].row.win(players[winner].score, seconds);
     } else {
       sfx.wahWah();
-      for (const v of this.views) v.lane.shrug();
+      for (const v of this.views) v.row.shrug();
     }
 
     // The next round starts only when you click (or press Enter on the focused button).
     const last = round === ROUNDS - 1;
-    const next = el('button', { class: 'primary big next-round' }, last ? 'See results 🏆' : `Start round ${round + 2} ✏️`);
+    const next = el('button', { class: 'primary next-round' }, last ? 'See results 🏆' : ['Next word ', el('span', { 'aria-hidden': 'true' }, '→')]);
     next.addEventListener('click', () => this.engine.nextRound());
     const who = winner === null ? null : players[winner];
-    this.overlay.replaceChildren(
-      el('div', { class: `reveal card ${who ? 'got-it' : 'missed'}` }, [
-        ...(!who
-          ? [el('p', { class: 'kicker' }, 'Time’s up! It was a…'), el('h2', { class: 'reveal-word' }, `${word}!`), el('p', {}, 'Nobody scores this round.')]
-          : [
-              el('div', { class: 'stamp', 'aria-hidden': 'true' }, 'DING! ✓'),
-              el(
-                'h2',
-                {},
-                who.human
-                  ? 'You nailed it!'
-                  : [el('span', { class: 'winner-name', style: `--who: ${this.laneColor(winner!)}` }, who.label), ' nailed it!'],
-              ),
-              el(
-                'p',
-                {},
-                this.botDraws
-                  ? `“${word}” in ${seconds!.toFixed(1)}s. A star for ${who.human ? 'you' : 'the bot'} and a star for the doodler!`
-                  : `“${word}” in ${seconds!.toFixed(1)}s. A star for the bot and a star for you!`,
-              ),
-            ]),
-        next,
-      ]),
+
+    // The sticker on the paper's corner: how fast, in the winner's color. None when nobody got it.
+    if (who) {
+      this.sticker.style.setProperty('--who', this.rowColor(winner!));
+      this.sticker.replaceChildren(el('span', { class: 'sticker-kicker' }, 'got it in'), el('strong', {}, `${seconds!.toFixed(1)}s`));
+    }
+    this.sticker.hidden = !who;
+
+    // The bar under the paper (where the tools were): who got it, then Next.
+    const name = who ? (who.human ? 'You' : who.label) : '';
+    const stars = this.botDraws ? `★ +1 for ${who?.human ? 'you' : 'the bot'} and the doodler` : '★ +1 for you and the bot';
+    this.resultBar.replaceChildren(
+      el('div', { class: 'result-avatar', 'aria-hidden': 'true' }, who ? (who.human ? you() : robot(winner!)) : '🤷'),
+      el('div', { class: 'result-text' }, who
+        ? [el('strong', {}, [el('span', { class: 'winner-name', style: `--who: ${this.rowColor(winner!)}` }, name), ' got it!']), el('span', {}, `“${word}” · ${stars}`)]
+        : [el('strong', {}, 'Nobody got it'), el('span', {}, `It was “${word}”`)]),
+      next,
     );
-    this.overlay.classList.toggle('won', !!who);
-    this.overlay.hidden = false;
+    this.resultBar.classList.toggle('missed', !who);
+    this.resultBar.hidden = false;
+    this.padWrap.classList.add('round-over');
     next.focus({ preventScroll: true });
+    // On a phone the bar can sit below the fold: bring it (and Next) into view once it has popped in
+    // (measured mid-animation it is still small, and the scroll falls short).
+    const reveal = () => this.resultBar.scrollIntoView?.({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    setTimeout(reveal, 400); // the pop-in takes 0.35s
   }
 
-  /** The bot's own color, read off its lane, so its name matches its box. */
-  private laneColor(i: number): string {
-    return getComputedStyle(this.views[i].lane.el).getPropertyValue('--lane').trim() || 'var(--grape)';
+  /** The bot's own color, read off its row, so its name matches its row. */
+  private rowColor(i: number): string {
+    return getComputedStyle(this.views[i].row.el).getPropertyValue('--lane').trim() || 'var(--grape)';
   }
 
   private onPause(paused: boolean) {
@@ -391,13 +400,15 @@ export class Game {
     resume.focus({ preventScroll: true });
   }
 
+  /** A bot's status chip. With nothing to report, a bot says "ready"; while asked, "thinking…". */
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
-    v.badgeEl.textContent = text;
-    v.badgeEl.className = `badge ${kind}`;
+    const ready = !text && !this.engine.players[i].human;
+    v.badgeEl.textContent = ready ? 'ready' : kind === 'thinking' ? 'thinking' : text;
+    v.badgeEl.className = `badge ${ready ? 'ready' : kind}`;
     v.badgeEl.title = detail;
-    v.badgeEl.hidden = !text;
-    v.lane.setThinking(kind === 'thinking');
+    v.badgeEl.hidden = !text && !ready;
+    v.row.setThinking(kind === 'thinking');
   }
 
   /**
@@ -437,7 +448,7 @@ export class Game {
 
   private updateMeter(i: number) {
     const p = this.engine.players[i];
-    if (p.human) return; // your lane keeps its "type your guesses" hint
+    if (p.human) return; // your row keeps its "type your guesses" hint
     renderMeter(this.views[i].meterEl, p.usage, p.price);
   }
 }

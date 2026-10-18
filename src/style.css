@@ -9,6 +9,7 @@
   --shadow: #2b2b2b;
   --sun: #ffd23f;
   --coral: #ff6b6b;
+  --strike: rgb(229 56 59 / 0.7); /* the red line through wrong guesses */
   --sky: #4cc9f0;
   --mint: #06d6a0;
   --grape: #9b5de5;
@@ -35,6 +36,7 @@
     --shadow: rgb(0 0 0 / 0.5);
     --sun: #ecc955;
     --coral: #ec8a84;
+    --strike: rgb(255 120 120 / 0.8);
     --sky: #7ec8de;
     --mint: #5ccaa2;
     --grape: #b896e0;
@@ -342,90 +344,91 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   border: 2px solid #2b2b2b; border-radius: 4px;
 }
 
-/* Doodle Climb: each bot in its own box, side by side, climbing one rung per round won. */
-.climb { display: grid; gap: 14px; align-content: start; min-width: 0; }
-.lanes { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; }
-.lane { --climb: 0; display: grid; gap: 10px; align-content: start; min-width: 0; padding: 12px; }
-.lane.p0 { --lane: var(--coral); background: color-mix(in srgb, var(--coral) var(--tint), var(--surface)); rotate: -0.8deg; }
-.lane.p1 { --lane: var(--sky); background: color-mix(in srgb, var(--sky) var(--tint), var(--surface)); rotate: 0.8deg; }
-.lane.p2 { --lane: var(--grape); background: color-mix(in srgb, var(--grape) var(--tint), var(--surface)); rotate: -0.5deg; }
-.ladder { justify-self: center; }
-.lane-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.lane-head h3 {
-  flex: 1; min-width: 0; font-size: 1.1rem; overflow-wrap: anywhere;
+/*
+ * The field: one row per guesser beside the canvas. Avatar | name, meter and guesses | time and wins.
+ * The latest guess is big; earlier ones are chips. Wrong guesses are crossed out with a red line.
+ */
+.field { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.field-title { margin: 0 6px; font: 1.05rem var(--body); color: var(--muted); }
+.rows { display: grid; gap: 12px; }
+/* The sticker's pop-in and the confetti can poke past the screen edge: never let them cause a sideways scroll. */
+.game { overflow-x: clip; }
+.row {
+  --lane: var(--ink);
+  position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 4px 14px;
+  padding: 12px 16px; background: var(--surface);
+  border: 2.5px solid color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 22px;
+  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.row.p0 { --lane: var(--coral); }
+.row.p1 { --lane: var(--sky); }
+.row.p2 { --lane: var(--grape); }
+.row.human { --lane: var(--mint); }
+.row-avatar {
+  width: 56px; height: 56px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--lane) 30%, var(--surface)); border-radius: 18px;
+}
+.row-avatar .bot { width: 46px; display: block; }
+.row-main { min-width: 0; }
+.row-head { display: grid; justify-items: start; gap: 3px; min-width: 0; }
+.row-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; max-width: 100%; }
+.row-head h3 {
+  margin: 0; min-width: 0; max-width: 100%; font: 1.1rem/1.2 var(--body); overflow-wrap: anywhere;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
-.lane .score {
-  flex: none; display: grid; place-items: center; min-width: 36px; height: 36px; padding: 0 4px;
-  font: 700 1.25rem var(--round); background: var(--surface);
-  border: 2.5px solid var(--ink); border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%;
+.row .meter { margin: 0; }
+.row.human .meter { display: block; font-weight: 500; color: var(--muted); }
+.row-guesses {
+  display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 2.4rem; margin-top: 4px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent);
 }
-
-.thoughts { position: relative; width: 100%; height: 150px; overflow: hidden; }
-.feed { list-style: none; margin: 0; padding: 0; }
-.feed li, .feed:empty::before, .badge {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
-  background: var(--scrap); color: var(--scrap-ink);
-  border: 2.5px solid #2b2b2b;
-  border-radius: 30px 22px 28px 20px / 20px 28px 22px 30px;
-  padding: 2px 10px; margin: 0 0 4px;
-  font-size: 0.95rem; line-height: 1.25;
+.row-side { display: grid; justify-items: end; gap: 2px; text-align: right; }
+.row-time { font: 700 1.3rem var(--round); font-variant-numeric: tabular-nums; }
+.row-time:empty { display: none; }
+.row-wins { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.crown {
+  position: absolute; top: -18px; left: 12px; font-size: 1.6rem; rotate: -14deg; pointer-events: none;
+  opacity: 0; transform: translateY(8px) scale(0.5); transition: opacity 0.25s, transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
-.feed:empty::before { content: 'zzz…'; color: #8a8070; justify-content: center; }
-.badge:not([hidden]) + .feed:empty::before { display: none; }
-.feed li { animation: pop-in 0.3s cubic-bezier(0.3, 1.6, 0.5, 1); }
-.feed li:first-child { font-size: 1.1rem; }
-.feed li:nth-child(n + 5) { display: none; } /* last 4 guesses */
-.feed li { flex-wrap: wrap; }
-.feed .guess { min-width: 0; overflow-wrap: break-word; }
-.feed .when { flex: none; margin-left: auto; color: #8a8070; font: 600 0.72rem var(--round); font-variant-numeric: tabular-nums; }
-.feed .conf { margin-right: 6px; opacity: 0.8; }
-/*
- * Wrong guesses stay readable: normal ink (just a little softer), a coral ✗ in front, and a see-through
- * red strike-through that marks the word without hiding the letters.
- */
-.feed li.nope { border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
-.feed li.nope .guess { color: color-mix(in srgb, var(--ink) 82%, transparent); text-decoration: line-through 2px color-mix(in srgb, #e5383b 45%, transparent); }
-.feed li.nope .guess::before { content: '✗'; margin-right: 5px; color: var(--coral); font-weight: 700; display: inline-block; text-decoration: none; }
-.feed li.right { background: var(--mint); color: #2b2b2b; font-weight: 700; }
-.feed li.right .guess::before { content: '✓ '; }
-.feed li.right .when { color: #2b2b2b; }
+/* The round's winner: its own color, a solid outline, a crown. */
+.row.won { background: color-mix(in srgb, var(--lane) 24%, var(--surface)); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--shadow); }
+.row.won .crown { opacity: 1; transform: none; }
+.row.won .row-avatar .bot { animation: spin-hop 0.55s ease-out 2; }
+.row.thinking .row-avatar .bot { animation: fidget 0.7s ease-in-out infinite; }
+.row.shrug .row-avatar .bot { animation: shrug 0.7s ease-in-out 2; }
+.row.shrug .bot .arms { display: inline; }
 
-.badge { font-size: 0.95rem; text-align: center; }
+/* Guesses, latest first: the first one big, the rest as small chips. */
+.feed { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.feed li {
+  flex: none; padding: 2px 12px; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in srgb, var(--ink) 7%, var(--surface)); font-size: 0.95rem; line-height: 1.4;
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.feed li:first-child { padding: 0 4px 0 0; background: none; font: 1.55rem/1.2 var(--hand); }
+.feed .when { display: none; }
+.feed li.nope .guess {
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  text-decoration: line-through 2px var(--strike); text-decoration-skip-ink: none;
+}
+.feed li:first-child.nope .guess { text-decoration-thickness: 3px; }
+.feed li.right .guess { color: var(--ink); font-weight: 700; }
+.feed li.right .guess::after { content: ' ✓'; color: #05a37b; }
+.feed:empty::before { content: 'zzz…'; color: var(--muted); font-size: 0.95rem; }
+
+/* Status chip beside the bot's name: thinking, waiting out a rate limit, an error, or cancelled. */
+.badge {
+  flex: none; padding: 0 10px; border-radius: 999px; white-space: nowrap;
+  background: var(--scrap); color: var(--scrap-ink); border: 2px solid var(--ink); font-size: 0.8rem; line-height: 1.4;
+}
+.row:has(.badge:not([hidden])) .feed:empty::before { content: none; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
-.badge.cancelled { justify-content: center; color: var(--muted); border-style: dashed; font-size: 0.85rem; }
-/* A bot whose request was cancelled wasn't asleep: drop the "zzz…" under its badge. */
-.badge.cancelled:not([hidden]) + .feed:empty::before { content: none; }
-.badge.thinking { font-size: 0; animation: float 1.4s ease-in-out infinite; }
-.badge.thinking::before { content: 'Hmm'; font-size: 1.15rem; }
-.badge.thinking::after { content: '…'; font-size: 1.15rem; display: inline-block; animation: dots 1s steps(4) infinite; overflow: hidden; width: 1.3ch; }
-
-.ladder { position: relative; width: 72px; height: 230px; margin-top: 18px; }
-.ladder::before, .ladder::after {
-  content: ''; position: absolute; top: 0; bottom: 0; width: 8px;
-  background: var(--lane); border: 2.5px solid var(--ink); border-radius: 6px;
-}
-.ladder::before { left: 4px; }
-.ladder::after { right: 4px; }
-.rungs { position: absolute; inset: 6px 10px 0; display: flex; flex-direction: column; justify-content: space-between; }
-.rung { height: 7px; background: var(--lane); border: 2px solid var(--ink); border-radius: 4px; opacity: 0.85; }
-.rung:nth-child(odd) { rotate: -2deg; }
-.bell { position: absolute; z-index: 2; top: -24px; left: 50%; translate: -50% 0; font-size: 1.4rem; transform-origin: 50% 10%; }
-.climber {
-  position: absolute; z-index: 1; left: 50%; translate: -50% 0;
-  bottom: calc(var(--climb) * (100% - 44px));
-  transition: bottom 0.4s cubic-bezier(0.3, 1.3, 0.5, 1);
-}
-.climber .bot { width: 54px; display: block; }
-.lane.down .climber { transition-duration: 0.55s; transition-timing-function: cubic-bezier(0.5, 0, 0.7, 1.2); }
-.lane.up .climber .bot { animation: scramble 0.4s ease-in-out; }
-.lane.down .climber .bot { animation: whoa 0.6s ease-out; }
-.lane.thinking .climber .bot { animation: fidget 0.7s ease-in-out infinite; }
-.lane.rang .bell { animation: ring 0.5s ease-in-out 3; }
-.lane.rang .climber .bot { animation: spin-hop 0.55s ease-out 3; }
-.lane.shrug .climber .bot { animation: shrug 0.7s ease-in-out 2; }
-.lane.shrug .bot .arms { display: inline; }
+.badge.cancelled { color: var(--muted); border-style: dashed; }
+.badge.ready { color: var(--muted); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+.badge.thinking { background: color-mix(in srgb, var(--sun) 45%, var(--scrap)); }
+/* "thinking" + dots that fill in one by one */
+.badge.thinking::after { content: '…'; display: inline-block; width: 1.3ch; overflow: hidden; vertical-align: bottom; animation: dots 1s steps(4) infinite; }
 
 .stars { display: flex; flex-wrap: nowrap; justify-content: center; gap: 0; font-size: 0.78rem; letter-spacing: -0.5px; line-height: 1.1; max-width: 100%; }
 .star { color: transparent; -webkit-text-stroke: 1.2px var(--muted); }
@@ -450,14 +453,8 @@ button.icon-btn.stop { color: var(--muted); }
   max-width: 70%; text-align: center; font: 1.4rem/1.2 var(--hand); color: #9a8f7c;
   animation: float 2s ease-in-out infinite;
 }
-.overlay.won { animation: fade-in 0.3s 0.7s backwards; }
 
-/* Round end */
-.overlay {
-  position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--paper) var(--veil, 45%), transparent);
-  overflow: hidden;
-}
+/* Pop-up cards on the paper: the doodler sketching, and the pause card */
 .reveal {
   position: relative; text-align: center; max-width: 88%; padding: 14px 20px 18px;
   transform: rotate(-1.5deg);
@@ -465,21 +462,52 @@ button.icon-btn.stop { color: var(--muted); }
 }
 .reveal h2 { margin: 0 0 4px; overflow-wrap: anywhere; }
 .reveal p { margin: 0 0 6px; }
-/* The winning bot's name, in its lane color (darkened a little so it reads on the card). */
-.reveal .winner-name { color: color-mix(in srgb, var(--who) 78%, var(--ink)); }
-.reveal.got-it { margin-top: 40px; }
 .reveal .kicker { color: var(--muted); font-size: 1.15rem; }
-.reveal-word { font-size: 2.8rem; color: var(--grape); }
-.stamp {
-  position: absolute; left: 50%; top: -52px; translate: -50% 0;
-  font: 700 2.2rem/1 var(--round); color: var(--mint); white-space: nowrap;
-  padding: 6px 16px; background: var(--surface);
-  border: 5px solid var(--mint); border-radius: 12px 8px 14px 9px;
-  rotate: -10deg; box-shadow: 3px 3px 0 var(--shadow);
+
+/*
+ * Round end, mobile first: nothing covers the doodle. A round sticker hangs on the paper's top-right
+ * corner (how fast, in the winner's color) and a dark bar takes the tools' place under the paper.
+ */
+.sticker {
+  --who: var(--mint);
+  position: absolute; z-index: 4; top: -10px; right: 2px; /* inside the screen edge on phones */
+  width: 84px; height: 84px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+  background: var(--who); color: #fff; border: 3px solid var(--surface);
+  box-shadow: 0 0 0 3px var(--who), 3px 4px 0 3px var(--shadow);
+  rotate: 8deg; pointer-events: none;
   animation: stamp 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
 }
-.reveal .next-round { margin-top: 8px; animation: wiggle 2.4s ease-in-out infinite; }
-.reveal .next-round:hover { animation-play-state: paused; }
+.sticker-kicker { font: 0.68rem/1 var(--body); opacity: 0.95; }
+.sticker strong { font: 700 1.45rem/1.05 var(--round); text-shadow: 0 1px 0 rgb(0 0 0 / 0.2); }
+.result-bar {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px;
+  margin-top: 12px; padding: 10px 10px 10px 12px;
+  background: #1f1b16; color: #fff8e7; border-radius: 20px; box-shadow: 3px 3px 0 var(--shadow);
+  animation: pop-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.result-avatar {
+  width: 42px; height: 42px; display: grid; place-items: center; font-size: 1.5rem;
+  background: rgb(255 255 255 / 0.1); border-radius: 13px;
+}
+.result-avatar .bot { width: 34px; }
+.result-text { display: grid; gap: 1px; min-width: 0; }
+.result-text strong { font: 1.05rem/1.2 var(--body); overflow-wrap: anywhere; }
+.result-text span { font-size: 0.8rem; color: rgb(255 248 231 / 0.7); overflow-wrap: anywhere; }
+/* The winner's name in its row color, lifted so it reads on the dark bar. */
+.result-bar .winner-name { color: color-mix(in srgb, var(--who) 70%, #fff); }
+.result-bar .next-round { grid-column: 1 / -1; padding: 10px 14px; font-size: 1.05rem; white-space: nowrap; border-color: #fff8e7; }
+.pad-wrap.round-over .tools, .pad-wrap.round-over .guess-form { display: none; }
+@media (min-width: 761px) {
+  .sticker { width: 118px; height: 118px; top: -22px; right: -18px; }
+  .sticker-kicker { font-size: 0.85rem; }
+  .sticker strong { font-size: 2rem; }
+  .result-bar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; margin-top: 18px; padding: 12px 12px 12px 16px; border-radius: 24px; }
+  .result-avatar { width: 52px; height: 52px; border-radius: 16px; }
+  .result-avatar .bot { width: 42px; }
+  .result-text strong { font-size: 1.25rem; }
+  .result-text span { font-size: 0.9rem; }
+  .result-bar .next-round { grid-column: auto; padding: 12px 22px; font-size: 1.15rem; }
+}
 .confetti {
   position: absolute; left: 50%; top: 45%; z-index: 5; width: 10px; height: 14px; pointer-events: none;
   animation: confetti 1.4s cubic-bezier(0.15, 0.7, 0.4, 1) forwards;
@@ -570,7 +598,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .clock { grid-area: clock; }
   .hud-right .stop { grid-area: stop; justify-self: end; }
   .prompt { grid-area: prompt; justify-self: start; padding: 6px 16px 8px; }
-  .reveal .next-round { padding: 10px 18px; font-size: 1.15rem; max-width: 100%; }
   .draw-label { font-size: 0.85rem; white-space: normal; }
   .word { font-size: 1.7rem; }
   .pencil { width: 104px; }
@@ -582,22 +609,22 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .board { grid-template-columns: 1fr; }
   .pad-wrap { width: auto; min-width: 0; }
   .paper { max-width: min(620px, calc(100dvh - 260px)); }
-  /* Bot boxes stay side by side, with short ladders, above the canvas. */
-  .climb { order: -1; gap: 10px; }
-  .lanes { gap: 8px; }
-  .lane { gap: 4px; padding: 8px 6px; }
-  .thoughts { height: 62px; }
-  .feed li:nth-child(n + 3) { display: none; }
-  .feed li, .feed:empty::before, .badge { margin: 0 0 3px; font-size: 0.85rem; padding: 1px 6px; }
-  .feed li:first-child { font-size: 0.95rem; }
-  .feed .conf { display: none; }
-  .ladder { height: 110px; width: 56px; margin-top: 20px; }
-  .rungs { inset: 6px 9px 0; }
-  .rung { height: 5px; }
-  .climber .bot { width: 40px; }
-  .climber { bottom: calc(var(--climb) * (100% - 34px)); }
-  .lane .score { min-width: 28px; height: 28px; font-size: 1rem; }
-  .lane-head h3 { font-size: 0.9rem; }
+  /* The field sits above the canvas, with compact rows. */
+  .field { order: -1; gap: 6px; }
+  .rows { gap: 8px; }
+  .field-title { font-size: 0.9rem; }
+  .row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 10px; border-radius: 16px; }
+  .row-avatar { width: 34px; height: 34px; border-radius: 11px; }
+  .row-avatar .bot { width: 27px; }
+  .row-head h3 { font-size: 0.95rem; }
+  .row .meter { display: none; }
+  .row-guesses { min-height: 1.7rem; margin-top: 0; }
+  .feed li { font-size: 0.8rem; padding: 1px 9px; }
+  .feed li:first-child { font-size: 1.2rem; }
+  .badge { font-size: 0.72rem; padding: 0 8px; }
+  .row-time { font-size: 1.05rem; }
+  .row-wins { font-size: 0.75rem; }
+  .crown { top: -14px; left: 6px; font-size: 1.2rem; }
   .you-row .stars { font-size: 0.8rem; }
   .you-row { padding-top: 6px; }
   .tools { gap: 2px; }
@@ -612,8 +639,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .podium-spot.pos2 .step { height: 62px; }
   .place { font-size: 2.2rem; }
   .report-card th, .report-card td { padding: 6px; }
-  .stamp { font-size: 1.7rem; top: -44px; }
-  .reveal-word { font-size: 2.2rem; }
 }
 
 /* Share card dialog */
@@ -637,7 +662,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .share-tab[aria-selected='true'] { background: var(--sun); color: var(--on-bright); }
 .share-preview img { max-height: calc(100dvh - 300px); width: auto; max-width: 100%; margin: 0 auto; }
 
-/* Token meter on each lane, and the results receipt */
+/* Token meter on each row, and the results receipt */
 .meter { display: flex; flex-wrap: wrap; gap: 3px; font: 600 11.5px/1.2 var(--plain); color: var(--ink); margin: 0 0 6px; }
 .meter .chip {
   padding: 2px 6px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums;
@@ -645,7 +670,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 }
 .meter .chip.cost { background: color-mix(in srgb, var(--sun) 45%, var(--field)); }
 .meter .chip.quiet { border-style: dashed; color: var(--muted); font-weight: 500; }
-.lane.human .meter { display: block; font-weight: 500; color: var(--muted); }
 .receipt {
   width: min(520px, 100%); margin: 18px auto 0; padding: 12px 18px;
   background: var(--scrap); color: var(--scrap-ink);
@@ -683,7 +707,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .bot-pick h2 { margin: 4px 0 0; font-size: 2rem; }
 .bot-pick p { margin: 0; color: var(--muted); font-size: 1rem; }
 .slot.doodler-slot { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); transform: rotate(-1deg); }
-.lane.human { --lane: var(--mint); background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); rotate: 0.5deg; }
 .podium-spot.human .step { background: var(--mint); }
 .doodler-row { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); }
 .doodler-row .bot { width: 30px; }
@@ -699,7 +722,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .guess-form .guess-input { flex: 1 1 220px; max-width: 360px; font: 1.2rem/1.3 var(--body); padding: 10px 14px; }
 @media (prefers-reduced-motion: reduce) { .sketching .kicker { animation: none; } }
 @media (max-width: 760px) {
-  /* Keep the guess box in reach while the doodle and lanes scroll. */
+  /* Keep the guess box in reach while the doodle and the field scroll. */
   .guess-form {
     position: sticky; bottom: 0; z-index: 20; margin: 12px -16px 0; padding: 10px 16px;
     background: color-mix(in srgb, var(--paper) 92%, transparent); border-top: 2.5px dashed var(--ink);
@@ -740,13 +763,6 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 .star-col-name { font: 1rem/1 var(--hand); }
 .stars.vertical { flex-direction: column-reverse; gap: 3px; font-size: 1.45rem; letter-spacing: 0; line-height: 1; margin-top: 4px; }
 
-/* Each bot's stars stacked beside its ladder, filling from the bottom. The robot stands on (and hides) the
-   bottom rung, so the stack sits one rung higher: the first star is level with the first rung you can see. */
-.ladder-wrap { justify-self: center; display: flex; align-items: flex-start; gap: 6px; }
-.ladder-wrap .ladder { justify-self: auto; }
-.stars.vertical.ladder-stars { height: 224px; margin-top: 0; justify-content: space-between; font-size: 1.05rem; gap: 0; }
-/* Each star's box is exactly a rung tall, laid out like the rungs, so star and rung centers line up. */
-.ladder-stars .star { height: 7px; display: flex; align-items: center; justify-content: center; overflow: visible; }
 @media (max-width: 760px) {
   .pad-wrap { width: auto; }
   .paper-row { gap: 8px; }
@@ -754,8 +770,6 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
   .star-col .bot { width: 28px; }
   .star-col-name { font-size: 0.8rem; }
   .stars.vertical { font-size: 1rem; gap: 2px; }
-  .stars.vertical.ladder-stars { height: 104px; margin-top: 15px; font-size: 0.6rem; line-height: 1; }
-  .ladder-stars .star { height: 5px; }
 }
 
 @media (max-width: 760px) {
