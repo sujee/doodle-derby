@@ -14,6 +14,8 @@ import { createDoodler } from './doodler';
 import { el } from './dom';
 
 const CUSTOM = '__custom__';
+/** Bot-doodler mode is hidden from setup for now (the user draws); the engine and game still support it. */
+const SHOW_DOODLER_PICK = false;
 
 type Slot = {
   root: HTMLElement;
@@ -68,7 +70,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const doodlerSlot = makeSlot(0, first, true);
 
   // Pick the doodler: click the You card or the Bot card. The picked card is highlighted; a picked
-  // Bot expands into its model settings, and You become one of the guessers.
+  // Bot shows its model settings below, and You become one of the guessers.
   let botDraws = false;
   const youRole = el('p', { class: 'you-role' });
   const youCard = pickCard(el('div', { class: 'you-card card' }, [you(), el('h2', {}, 'You'), youRole]), () => setMode(false));
@@ -86,7 +88,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
   const guesserRow = el('div', { class: 'guesser-row' });
   const guessersSide = el('div', { class: 'guessers-side', role: 'group', 'aria-label': 'Pick the guessers' }, [
-    el('p', { class: 'pick-label' }, [el('span', { class: 'step-num' }, '2'), 'Pick the guessers']),
+    el('p', { class: 'pick-label' }, 'Pick the guessers'),
     guesserRow,
   ]);
   const addLabel = el('span');
@@ -102,12 +104,13 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     lede.textContent = bot ? 'A bot doodles. You and the bots race to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
     youRole.textContent = bot ? 'guessing 🔍' : 'the doodler ✏️';
     setPicked(youCard, !bot);
-    setPicked(botCard, false);
-    doodlerSlot.root.classList.toggle('picked', bot);
-    // A picked Bot shows its settings in place of the compact card.
-    doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, bot ? doodlerSlot.root : botCard);
+    setPicked(botCard, bot);
+    // A picked Bot keeps its card (highlighted) and shows its settings below both cards.
+    doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, botCard, ...(bot ? [doodlerSlot.root] : []));
     guesserRow.replaceChildren(...slots.map((s) => s.root), add);
-    slotsEl.replaceChildren(doodlerSide, vs, guessersSide);
+    // You always draw for now: the doodler picker (You | Bot) and VS are hidden. To bring bot-doodler
+    // mode back, render doodlerSide and vs before guessersSide again.
+    slotsEl.replaceChildren(...(SHOW_DOODLER_PICK ? [doodlerSide, vs] : []), guessersSide);
     syncNote();
   };
   doodlerSlot.onChange(syncNote);
