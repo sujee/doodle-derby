@@ -40,15 +40,15 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - First guesser to answer correctly: **+1** for that guesser, and the round ends.
 - You: **+1** whenever any guesser gets your drawing.
 - Time runs out: nobody scores.
-- The end screen shows a podium (winner in the middle with a crown, ties share a place), then a folded round-by-round table.
+- The end screen shows a **winning tally**: one row per guesser — standing, model, right guesses, guesses made, API calls, tokens in/out and cost — best standing first (ties share a place), then a folded round-by-round table.
 
 ## Matching
 - A guess is cleaned up (lowercase, punctuation and articles removed, plural made singular) and must equal the word or one of its listed alternatives.
 - Answers that arrive after the round ended are discarded. Requests still running when a round ends are cancelled.
 
 ## Tokens and cost
-- Each bot's lane shows tokens in / out and cost so far, from the usage the provider reports.
-- Results show a folded "Bot bill" receipt per bot (calls, tokens, cost) with a total. Requests cancelled when a round ends aren't counted.
+- Each bot's row shows tokens in / out and cost so far, from the usage the provider reports.
+- The winning tally lists each guesser's API calls, tokens in / out and cost (fake and local bots show "free"). Requests cancelled when a round ends aren't counted.
 - Prices (USD per 1M tokens) come from models.dev: a trimmed snapshot in `src/data/models-dev.json`, refreshed with `npm run pricing` and on every deploy. Fake and local Ollama bots are free; unknown models show "price unknown".
 - models.dev's image-support data also fills in "accepts images" when a provider's model list doesn't say.
 

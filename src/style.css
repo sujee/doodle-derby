@@ -526,27 +526,18 @@ button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; tran
 /* ---------- Results ---------- */
 .results { text-align: center; }
 .results h1 { font-size: 3.4rem; margin-top: 16px; }
-/* Final standings podium: 2nd – 1st – 3rd */
-.podium { display: flex; justify-content: center; align-items: flex-end; gap: 0; margin: 48px auto 20px; max-width: 640px; position: relative; }
-.podium-spot { flex: 1 1 0; min-width: 0; max-width: 200px; display: grid; justify-items: center; gap: 4px; position: relative; }
-.podium-spot .bot { width: 84px; margin-bottom: 4px; }
-.podium-name { font: 1.3rem/1.1 var(--hand); padding: 0 6px; overflow-wrap: anywhere; text-align: center; }
-.podium-score { font: 600 0.95rem var(--round); color: var(--muted); margin-bottom: 6px; }
-.step {
-  width: 100%; display: grid; place-items: start center; padding-top: 10px;
-  border: 3px solid var(--ink); border-bottom-width: 4px; border-radius: 10px 10px 0 0;
-  box-shadow: 4px 0 0 var(--shadow); margin-right: -3px;
-  animation: rise 0.5s cubic-bezier(0.3, 1.3, 0.5, 1) backwards;
-}
-.podium-spot.p0 .step { background: var(--coral); }
-.podium-spot.p1 .step { background: var(--sky); }
-.podium-spot.p2 .step { background: var(--grape); }
-.podium-spot.pos0 .step { height: 170px; }
-.podium-spot.pos1 .step { height: 120px; animation-delay: 0.15s; }
-.podium-spot.pos2 .step { height: 80px; animation-delay: 0.3s; }
-.place { font: 700 3rem/1 var(--round); color: #fff; text-shadow: 2px 2px 0 #2b2b2b; -webkit-text-stroke: 1.5px #2b2b2b; }
-.podium-spot.winner::before { content: '👑'; position: absolute; top: -34px; font-size: 2.2rem; rotate: -12deg; z-index: 1; }
-.podium-spot.winner .bot { animation: spin-hop 0.8s ease-out 3; }
+/* Final tally: one line per guesser, best standing first. */
+.tally-wrap { overflow-x: auto; margin: 34px auto 8px; max-width: 820px; }
+.tally { width: 100%; border-collapse: collapse; }
+.tally caption { font: 2rem var(--hand); padding: 0 0 12px; }
+.tally th, .tally td { padding: 8px 12px; border-bottom: 2px solid #a8d8f0; white-space: nowrap; }
+.tally th { font: 600 0.8rem var(--round); text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); text-align: right; }
+.tally th:first-child, .tally th:nth-child(2) { text-align: left; }
+.tally td { font: 1rem var(--plain); text-align: right; font-variant-numeric: tabular-nums; }
+.tally td.rank { text-align: center; font: 700 1.1rem var(--round); color: var(--muted); }
+.tally td.model { text-align: left; font: 1.15rem var(--hand); max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.tally tbody tr:first-child td.rank { color: var(--ink); }
+.tally tr.human td { background: color-mix(in srgb, var(--mint) 24%, transparent); }
 .you-badge {
   display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px; margin-top: 8px;
   background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); font-size: 1.15rem;
@@ -589,7 +580,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 @media (prefers-reduced-motion: reduce) { .field-row.thinking .row-avatar .bot { animation-duration: 2.2s; } }
 @keyframes ring { 25% { rotate: 20deg; } 75% { rotate: -20deg; } }
 @keyframes wave-hi { 0%, 100% { translate: 0 0; } 25% { translate: 0 -4px; rotate: -16deg; } 50% { translate: 0 0; } }
-@keyframes rise { from { transform: scaleY(0); transform-origin: bottom; } }
 @keyframes fade-in { from { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -660,13 +650,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   button.tool { width: 58px; }
   button.start { font-size: 2rem; padding: 10px 40px; }
   .results h1 { font-size: 2.6rem; margin-top: 0; }
-  .podium-spot .bot { width: 56px; }
-  .podium-name { font-size: 1.05rem; }
-  .podium-score { font-size: 0.8rem; }
-  .podium-spot.pos0 .step { height: 130px; }
-  .podium-spot.pos1 .step { height: 92px; }
-  .podium-spot.pos2 .step { height: 62px; }
-  .place { font-size: 2.2rem; }
   .report-card th, .report-card td { padding: 6px; }
 }
 
@@ -736,12 +719,10 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .bot-pick h2 { margin: 4px 0 0; font-size: 2rem; }
 .bot-pick p { margin: 0; color: var(--muted); font-size: 1rem; }
 .slot.doodler-slot { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); transform: rotate(-1deg); }
-.podium-spot.human .step { background: var(--mint); }
 .doodler-row { background: color-mix(in srgb, var(--sun) var(--tint), var(--surface)); }
 .doodler-row .bot { width: 30px; }
 .doodler-name { min-width: 0; }
 .doodler-name h3 { margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.doodler-name .meter { margin: 0; }
 .sketching {
   position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
   background: color-mix(in srgb, var(--paper) 35%, transparent);
