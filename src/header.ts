@@ -12,6 +12,8 @@ const REPO = 'https://github.com/sujee/doodle-derby';
 const SITE = 'https://sujee.dev';
 const TWITTER = 'https://x.com/sujee_dev';
 const EMAIL = 'sujee@sujee.dev';
+/** Hidden for now: the card and its button are written and tested, just not shown. */
+const SHOW_CONTACT = false;
 
 /** An outside link: a new tab, and no referrer. */
 function textLink(href: string, label: string): HTMLAnchorElement {
@@ -19,7 +21,7 @@ function textLink(href: string, label: string): HTMLAnchorElement {
 }
 
 /** The "?" in the header and the little card it opens with the ways to get in touch. */
-function contact(): HTMLElement {
+export function contactCard(): HTMLElement {
   const button = el(
     'button',
     { type: 'button', class: 'contact-toggle', 'aria-expanded': 'false', title: 'Contact', 'aria-label': 'Contact' },
@@ -71,7 +73,12 @@ export function installHeader(): void {
   document.body.prepend(
     el('header', { class: 'site-head' }, [
       wordmark(),
-      el('div', { class: 'meta' }, [el('span', {}, `v${version}`), source, textLink(SITE, 'by sujee.dev'), contact()]),
+      el('div', { class: 'meta' }, [
+        el('span', {}, `v${version}`),
+        source,
+        textLink(SITE, 'by sujee.dev'),
+        ...(SHOW_CONTACT ? [contactCard()] : []),
+      ]),
     ]),
   );
 }

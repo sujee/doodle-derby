@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { version } from '../package.json';
-import { installHeader } from '../src/header';
+import { contactCard, installHeader } from '../src/header';
 
 // The header on every screen: the name, the version, the source link and the contact card.
 
-afterEach(() => document.querySelector('.site-head')?.remove());
+afterEach(() => {
+  document.querySelector('.site-head')?.remove();
+  document.querySelector('.contact-wrap')?.remove();
+});
 
 const install = () => {
   installHeader();
@@ -28,10 +31,14 @@ describe('the site header', () => {
     expect(gh.getAttribute('aria-label')).toBe('Source code on GitHub');
   });
 
+  it('leaves the "?" out for now, with the card ready to drop back in', () => {
+    expect(install().querySelector('.contact-toggle')).toBeNull();
+  });
+
   it('keeps the contact details behind the "?" button', () => {
-    const head = install();
-    const button = head.querySelector<HTMLButtonElement>('.contact-toggle')!;
-    const panel = head.querySelector<HTMLElement>('.contact-panel')!;
+    document.body.append(contactCard());
+    const button = document.querySelector<HTMLButtonElement>('.contact-toggle')!;
+    const panel = document.querySelector<HTMLElement>('.contact-panel')!;
 
     expect(hrefs(panel)).toEqual(['https://x.com/sujee_dev', 'mailto:sujee@sujee.dev']);
     expect(panel.hidden).toBe(true);
