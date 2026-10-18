@@ -129,3 +129,21 @@ describe('the round winner', () => {
     expect([...list.children]).toEqual([rows[1].el, rows[2].el, rows[0].el]);
   });
 });
+
+describe('Share in the game controls', () => {
+  it('is off until a round ends, then shares the game so far, pausing a round in play', async () => {
+    const { game } = startGame();
+    const share = container.querySelector<HTMLButtonElement>('.share-btn')!;
+    expect(share.disabled).toBe(true);
+    game.engine.skip();
+    await flush();
+    expect(share.disabled).toBe(false);
+    game.engine.nextRound();
+    share.click();
+    expect(game.engine.paused).toBe(true);
+    expect(document.querySelector('.share-dialog')).not.toBeNull();
+    document.querySelector<HTMLButtonElement>('.share-close')!.click();
+    expect(game.engine.paused).toBe(false);
+    game.engine.stop();
+  });
+});

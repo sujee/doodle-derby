@@ -1,5 +1,6 @@
 import { el } from './dom';
 import type { GameResult } from './game';
+import { ROUNDS } from './words';
 
 /**
  * Share cards, drawn on a canvas (no DOM screenshot library) so they look the same everywhere:
@@ -22,8 +23,11 @@ export function headlineFor(r: GameResult): string {
   const winners = r.labels.filter((_, i) => r.scores[i] === best);
   if (r.rounds.length === 0) return 'Game stopped';
   if (best === 0) return r.doodler ? 'Nobody cracked the doodles!' : 'The bots were stumped!';
-  if (winners.length > 1) return "It's a tie!";
-  return winners[0] === 'You' ? 'You win!' : `${shortName(winners[0])} wins!`;
+  // Shared mid-game (Share in the game's controls): it's a lead, not a win yet.
+  const midGame = !r.stopped && r.rounds.length < ROUNDS;
+  if (winners.length > 1) return midGame ? 'Neck and neck!' : "It's a tie!";
+  if (winners[0] === 'You') return midGame ? 'You lead!' : 'You win!';
+  return `${shortName(winners[0])} ${midGame ? 'leads' : 'wins'}!`;
 }
 
 /** "meta-llama/Llama-4-Maverick-17B" → "Llama-4-Maverick-17B", trimmed to fit a chip. */
@@ -452,7 +456,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 type Card = { name: string; file: string; blob: Blob; url: string };
 
 /** Modal with both cards (tabs), and share / download / copy actions for the one shown. */
-export async function openShareDialog(r: GameResult) {
+export async function openShareDialog(r: GameResult, onClose?: () => void) {
   const status = el('p', { class: 'share-status', role: 'status' });
   const tabs = el('div', { class: 'share-tabs', role: 'tablist' });
   const preview = el('div', { class: 'share-preview' }, el('p', { class: 'note' }, 'Drawing your cards…'));
@@ -472,6 +476,7 @@ export async function openShareDialog(r: GameResult) {
     backdrop.remove();
     cards.forEach((c) => URL.revokeObjectURL(c.url));
     document.removeEventListener('keydown', onKey);
+    onClose?.();
   };
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dismiss();
   close.addEventListener('click', dismiss);

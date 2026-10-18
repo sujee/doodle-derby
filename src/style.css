@@ -445,6 +445,8 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 button.icon-btn { width: 40px; height: 40px; padding: 0; font: 700 1.1rem/1 var(--round); border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%; box-shadow: 2px 2px 0 var(--shadow); }
 button.icon-btn.stop { color: var(--muted); }
+button.icon-btn.share-btn { font-size: 1.15rem; }
+button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; transform: none; }
 .pause-layer {
   position: absolute; inset: 0; z-index: 6; display: grid; place-items: center;
   background: color-mix(in srgb, var(--paper) 85%, transparent);
@@ -595,14 +597,15 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   main { padding-top: 64px; } /* room for the sound toggle */
   .logo { font-size: 2.7rem; gap: 6px; }
   .logo .bot { width: 46px; }
-  .hud { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: 'round clock clock' 'prompt pause stop'; padding-right: 0; gap: 12px 8px; }
+  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'round clock clock clock' 'prompt pause share stop'; padding-right: 0; gap: 12px 6px; }
+  .hud-right .share-btn { grid-area: share; }
   .hud-right .pause-btn { grid-area: pause; }
   .round { grid-area: round; }
   .hud-right { display: contents; }
   .clock { grid-area: clock; justify-self: end; }
   .hud-right .stop { grid-area: stop; justify-self: end; }
-  .prompt { grid-area: prompt; justify-self: start; padding: 6px 16px 8px; }
-  .draw-label { font-size: 0.85rem; white-space: normal; }
+  .prompt { grid-area: prompt; justify-self: start; padding: 6px 12px 8px; }
+  .draw-label { font-size: 0.78rem; white-space: normal; }
   .word { font-size: 1.7rem; }
   .ring { width: 46px; height: 46px; }
   .tape { width: 56px; }

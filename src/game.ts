@@ -13,7 +13,7 @@ import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
 import { createGuesser, providerName, type GuesserConfig } from './providers';
-import { shortName, wildestGuess } from './share';
+import { openShareDialog, shortName, wildestGuess } from './share';
 import * as sfx from './sound';
 import { ROUNDS, type Tier, type Word } from './words';
 
@@ -40,6 +40,8 @@ export class Game {
 
   private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)' }, '⏸ Pause');
   private pauseEl = el('div', { class: 'pause-layer', hidden: '' });
+  // Share the game so far, any time after the first round (the round in play pauses meanwhile).
+  private shareBtn = el('button', { type: 'button', class: 'icon-btn share-btn', title: 'Share after the first round', 'aria-label': 'Share the game so far', disabled: '' }, '📸');
   private roundEl = el('span');
   private tierEl = el('span', { class: 'tier' });
   private wordEl = el('span', { class: 'word' });
@@ -152,6 +154,11 @@ export class Game {
     stop.addEventListener('click', () => {
       if (confirm('Stop the game and see the results so far?')) this.engine.stop();
     });
+    this.shareBtn.addEventListener('click', () => {
+      const pauseHere = !this.engine.roundOver && !this.engine.paused;
+      if (pauseHere) this.engine.pause();
+      openShareDialog(this.engine.resultSoFar(), () => pauseHere && this.engine.paused && this.engine.resume());
+    });
     const togglePause = () => (this.engine.paused ? this.engine.resume() : this.engine.pause());
     this.pauseBtn.addEventListener('click', togglePause);
     // P pauses / resumes (unless you're typing a guess).
@@ -169,7 +176,7 @@ export class Game {
         el('header', { class: 'hud' }, [
           el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
           el('div', { class: 'prompt' }, [this.drawLabel, this.wordEl]),
-          el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, this.timerBar), this.pauseBtn, stop]),
+          el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, this.timerBar), this.pauseBtn, this.shareBtn, stop]),
         ]),
         el('div', { class: 'board' }, [
           (this.padWrap.replaceChildren(
@@ -304,6 +311,8 @@ export class Game {
     }
 
     this.renderWild();
+    this.shareBtn.removeAttribute('disabled');
+    this.shareBtn.title = 'Share the game so far';
 
     // The next round starts only when you click (or press Enter on the focused button).
     const last = round === ROUNDS - 1;

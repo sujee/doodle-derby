@@ -36,6 +36,7 @@ describe('Add bot on the setup screen', () => {
     [...slots[0].querySelectorAll('button')].find((b) => b.textContent === 'Load models')!.click();
     await vi.waitFor(() => expect(slots[0].querySelectorAll('select')[1].value).toBeTruthy());
 
+    HTMLElement.prototype.scrollIntoView ??= () => {}; // jsdom has none; Add bot scrolls to the new card
     const add = container.querySelector<HTMLButtonElement>('.add-bot')!;
     add.click();
     add.click();
