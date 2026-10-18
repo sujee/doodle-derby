@@ -224,6 +224,7 @@ button.add-all { display: block; width: 100%; margin-top: 10px; background: colo
 button.quiet { background: transparent; box-shadow: none; border-color: color-mix(in srgb, var(--ink) 40%, transparent); color: var(--muted); }
 .slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; min-width: 0; }
 .slot-head .bot { width: 52px; flex: none; }
+.slot-avatar { display: flex; flex: none; }
 .slot-head h2 { margin: 0; font-size: clamp(1.3rem, 2.4vw, 1.8rem); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; }
 .check input { width: 20px; height: 20px; accent-color: var(--mint); }

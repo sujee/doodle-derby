@@ -34,6 +34,10 @@ type Slot = {
   reroll(): void;
   /** Use Bot #1's provider with this model (Add all image models). */
   useModel(id: string): void;
+  /** Re-label after the list changed (number, robot, color). */
+  setNumber(n: number): void;
+  /** Follow the leader: show/hide "Same provider as Bot #1" and mirror its provider. */
+  syncLeader(): void;
 };
 
 
@@ -48,29 +52,33 @@ export function pickModel(list: ModelInfo[], avoid: string[], random = Math.rand
 /** Render the setup screen. Calls onStart with the guesser configs (one or more), plus the doodler bot's config when a bot draws. */
 export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[], doodler: GuesserConfig | null) => void) {
   container.replaceChildren();
-  let count = 1;
-  // The models the other shown bots already use, so a new bot picks a different one.
-  // (By index: a slot asks while it is still being built.)
-  const takenBy = (i: number) => slots.slice(0, count).filter((_, j) => j !== i).map((s) => s.model());
+  // The visible bots, in order. Adding appends; the ✕ removes one and the rest renumber (Bot #1, #2…).
+  const slots: Slot[] = [];
+  /** True while re-syncing, so a refresh can't trigger another one (refresh → notify → sync). */
+  let syncing = false;
+  /** The models the other bots already use, so a new bot picks a different one. */
+  const takenBy = (self: Slot) => slots.filter((s) => s !== self).map((s) => s.model());
   // Bot #1's "Add all N image models": one bot per image model of its provider, no limit.
   const addAll = (ids: string[]) => {
-    const rest = ids.filter((id) => id !== first.model());
-    setCount(1 + rest.length);
-    rest.forEach((id, j) => slots[j + 1].useModel(id));
-    slots[count - 1].root.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    const rest = ids.filter((id) => id !== slots[0].model());
+    while (slots.length > 1) removeSlot(slots[slots.length - 1]);
+    rest.forEach((id) => addSlot().useModel(id));
+    renumber();
+    slots[slots.length - 1].root.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
   };
-  const first = makeSlot(1, undefined, false, () => [], addAll);
-  // Bots are made as they're added (no upper limit); removing one only hides it.
-  const slots: Slot[] = [first];
+  const first = makeSlot(1, () => undefined, false, () => [], addAll);
+  slots.push(first);
+  // A bot's leader is the first other bot (usually Bot #1), so "Same provider as…" survives a removal.
   const addSlot = () => {
-    const i = slots.length;
-    const s = makeSlot(i + 1, first, false, () => takenBy(i));
-    s.removeBtn.addEventListener('click', () => setCount(count - 1));
-    s.onChange(syncNote);
+    let self!: Slot;
+    const s = makeSlot(slots.length + 1, () => slots.find((x) => x !== self), false, () => takenBy(self));
+    self = s;
+    wire(s);
     slots.push(s);
     guesserRow.insertBefore(s.root, add);
+    return s;
   };
-  const doodlerSlot = makeSlot(0, first, true);
+  const doodlerSlot = makeSlot(0, () => slots[0], true);
 
   // Pick the doodler: click the You card or the Bot card. The picked card is highlighted; a picked
   // Bot shows its model settings below, and You become one of the guessers.
@@ -99,9 +107,44 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     el('span', { class: 'plus', 'aria-hidden': 'true' }, '+'),
     addLabel,
   ]);
+  const error = el('p', { class: 'error', role: 'alert' });
   const note = el('p', { class: 'note' }, 'Your API keys stay in this tab. They’re never saved and only go to the endpoint you pick.');
-  const syncNote = () =>
-    (note.hidden = ![...slots.slice(0, count), ...(botDraws ? [doodlerSlot] : [])].some((s) => s.kind() !== 'fake'));
+  const syncNote = () => (note.hidden = ![...slots, ...(botDraws ? [doodlerSlot] : [])].some((s) => s.kind() !== 'fake'));
+  const syncSlots = () => {
+    if (syncing) return;
+    syncing = true;
+    try {
+      slots.forEach((s) => s.syncLeader());
+    } finally {
+      syncing = false;
+    }
+  };
+  const wire = (s: Slot) => {
+    s.removeBtn.addEventListener('click', () => removeSlot(s));
+    s.onChange(() => {
+      syncNote();
+      syncSlots();
+    });
+  };
+  /** Drop a bot; the others keep their state and take the numbers 1..N again. */
+  const removeSlot = (s: Slot) => {
+    const i = slots.indexOf(s);
+    if (i < 0 || slots.length <= 1) return; // always keep one guesser
+    slots.splice(i, 1);
+    s.root.remove();
+    renumber();
+  };
+  const renumber = () => {
+    slots.forEach((s, i) => {
+      s.setNumber(i + 1);
+      s.removeBtn.hidden = slots.length <= 1; // the last bot can't be removed
+    });
+    addLabel.textContent = `Bot #${slots.length + 1}`;
+    add.setAttribute('aria-label', `Add Bot #${slots.length + 1}`);
+    error.textContent = '';
+    syncNote();
+    syncSlots();
+  };
   const setMode = (bot: boolean) => {
     botDraws = bot;
     lede.textContent = bot ? 'A bot doodles. The other bots race to guess it. You watch.' : 'You doodle. The bots guess. Fastest bot wins.';
@@ -115,34 +158,19 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     syncNote();
   };
   doodlerSlot.onChange(syncNote);
-  const setCount = (n: number) => {
-    while (slots.length < n) addSlot();
-    count = n;
-    slots.forEach((s, i) => {
-      s.root.hidden = i >= n;
-      s.removeBtn.hidden = i === 0 || i !== n - 1;
-    });
-    addLabel.textContent = `Bot #${n + 1}`;
-    add.setAttribute('aria-label', `Add Bot #${n + 1}`);
-    error.textContent = '';
-    syncNote();
-  };
   add.addEventListener('click', () => {
-    setCount(count + 1);
-    slots[count - 1].reroll();
-    slots[count - 1].root.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const s = addSlot();
+    s.reroll();
+    s.root.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    renumber();
   });
-  for (const s of slots) {
-    s.removeBtn.addEventListener('click', () => setCount(count - 1));
-    s.onChange(syncNote);
-  }
-  const error = el('p', { class: 'error', role: 'alert' });
-  setCount(1);
+  wire(first);
   setMode(false);
+  renumber();
   const start = el('button', { class: 'primary big start' }, 'Play!');
   start.addEventListener('click', () => {
     const configs: GuesserConfig[] = [];
-    for (const s of slots.slice(0, count)) {
+    for (const s of slots) {
       const c = s.read();
       if (c.kind !== 'fake' && !c.model) return void (error.textContent = 'Pick a model for each Doodlebot first.');
       if (c.kind === 'openai' && !c.baseUrl) return void (error.textContent = 'Enter the API URL.');
@@ -175,7 +203,8 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
  */
 function makeSlot(
   n: number,
-  leader?: Slot,
+  /** The bot to mirror ("Same provider as Bot #1"), or undefined for Bot #1 itself. */
+  leader: () => Slot | undefined = () => undefined,
   doodler = false,
   taken: () => string[] = () => [],
   /** Bot #1 only: offered once the model list loads, when the provider has 2+ image models. */
@@ -207,10 +236,10 @@ function makeSlot(
   const keyRow = field('API key', apiKey);
   const providerRow = field('Provider', kind);
   const sameBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
-  sameBox.checked = !!leader;
+  sameBox.checked = !!leader();
   const sameRow = el('label', { class: 'check' }, [sameBox, 'Same provider as Bot #1']);
-  sameRow.hidden = !leader;
-  const isSame = () => !!leader && sameBox.checked;
+  sameRow.hidden = !leader();
+  const isSame = () => !!leader() && sameBox.checked;
   let ids: ModelInfo[] = [];
   const listeners: (() => void)[] = [];
   const notify = () => listeners.forEach((fn) => fn());
@@ -265,6 +294,7 @@ function makeSlot(
 
   const refresh = () => {
     if (isSame()) return refreshSame();
+    sameRow.hidden = !leader();
     providerRow.hidden = false;
     const k = slotKind();
     const remote = k === 'openai' || k === 'anthropic';
@@ -285,11 +315,13 @@ function makeSlot(
 
   // Mirror the leader's provider; default to a model no other bot uses (random when fresh).
   const refreshSame = (fresh = false) => {
+    const lead = leader();
+    if (!lead) return;
     providerRow.hidden = urlRow.hidden = keyRow.hidden = help.hidden = true;
     status.textContent = '';
-    modelRow.hidden = leader!.kind() === 'fake';
+    modelRow.hidden = lead.kind() === 'fake';
     visionRow.hidden = modelRow.hidden || doodler;
-    const list = leader!.models();
+    const list = lead.models();
     const keep = modelValue();
     const avoid = taken();
     setModels(list, !fresh && list.some((m) => m.id === keep) && !avoid.includes(keep) ? keep : pickModel(list, avoid));
@@ -297,7 +329,7 @@ function makeSlot(
 
   const read = (): GuesserConfig => {
     if (isSame()) {
-      const c = leader!.read();
+      const c = leader()!.read();
       return c.kind === 'fake' ? c : { ...c, model: modelValue() };
     }
     switch (slotKind()) {
@@ -312,7 +344,6 @@ function makeSlot(
 
   kind.addEventListener('change', refresh);
   sameBox.addEventListener('change', refresh);
-  leader?.onChange(() => isSame() && refreshSame());
 
   loadBtn.addEventListener('click', async () => {
     const c = read();
@@ -364,9 +395,11 @@ function makeSlot(
 
   const removeBtn = el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove this bot', 'aria-label': `Remove Bot #${n}` }, '✕');
   if (doodler) removeBtn.hidden = true;
-  // Colors and robots repeat every three bots.
+  // Colours and robots repeat every three bots; the head is rebuilt when the list is renumbered.
+  const avatar = el('span', { class: 'slot-avatar', 'aria-hidden': 'true' }, doodler ? doodlerBot() : robot(n - 1));
+  const title = el('h2', {}, doodler ? 'Doodler bot ✏️' : `Bot #${n}`);
   const root = el('div', { class: doodler ? 'slot card doodler-slot' : `slot card p${(n - 1) % 3}` }, [
-    el('div', { class: 'slot-head' }, doodler ? [doodlerBot(), el('h2', {}, 'Doodler bot ✏️'), removeBtn] : [robot(n - 1), el('h2', {}, `Bot #${n}`), removeBtn]),
+    el('div', { class: 'slot-head' }, [avatar, title, removeBtn]),
     sameRow,
     providerRow,
     urlRow,
@@ -383,7 +416,7 @@ function makeSlot(
     root,
     removeBtn,
     read,
-    kind: () => (isSame() ? leader!.kind() : slotKind()),
+    kind: () => (isSame() ? leader()!.kind() : slotKind()),
     models: () => ids,
     model: modelValue,
     onChange: (fn) => listeners.push(fn),
@@ -398,6 +431,25 @@ function makeSlot(
       if (isSame()) refreshSame(true);
       else if (ids.length) setModels(ids, pickModel(ids, taken()));
       notify();
+    },
+    setNumber: (num) => {
+      if (doodler) return;
+      root.className = `slot card p${(num - 1) % 3}`;
+      avatar.replaceChildren(robot(num - 1));
+      title.textContent = `Bot #${num}`;
+      removeBtn.setAttribute('aria-label', `Remove Bot #${num}`);
+    },
+    syncLeader: () => {
+      const lead = leader();
+      sameRow.hidden = !lead;
+      if (!lead) {
+        if (sameBox.checked) {
+          sameBox.checked = false; // its leader is gone: back to picking a provider
+          refresh();
+        }
+        return;
+      }
+      if (sameBox.checked) refreshSame();
     },
   };
 }
