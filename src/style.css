@@ -494,7 +494,9 @@ button.icon-btn.stop { color: var(--muted); }
 .wild { justify-self: start; max-width: 100%; padding: 10px 18px 12px; background: var(--scrap); color: var(--scrap-ink); rotate: -1deg; }
 .wild p { margin: 0; }
 .wild-title { font-size: 0.85rem; color: #6d6252; }
-.wild-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font: 1.35rem/1.25 var(--hand); }
+.wild-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.wild-round { font: 600 0.75rem var(--round); color: #6d6252; align-self: center; }
+.wild-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font: 1.2rem/1.25 var(--hand); }
 .wild-word { font-weight: 700; }
 .wild-arrow { color: #6d6252; }
 .wild-guess { text-decoration: line-through 3px var(--strike); text-decoration-skip-ink: none; overflow-wrap: anywhere; }
