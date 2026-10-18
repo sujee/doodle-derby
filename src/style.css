@@ -484,7 +484,6 @@ button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; tran
 .result-text strong { font: 1.05rem/1.2 var(--body); overflow-wrap: anywhere; }
 .result-text > span { font-size: 0.8rem; color: rgb(255 248 231 / 0.7); overflow-wrap: anywhere; }
 /* The winner's name in its row color, lifted so it reads on the dark bar. */
-.result-text .result-wins { color: rgb(255 248 231 / 0.7); }
 .result-bar .winner-name { color: color-mix(in srgb, var(--who) 70%, #fff); }
 .result-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 .result-actions button { padding: 10px 14px; font-size: 1.05rem; white-space: nowrap; border-color: #fff8e7; }
