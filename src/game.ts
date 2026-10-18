@@ -452,20 +452,18 @@ export class Game {
   }
 
   /**
-   * A bot's status chip: 👀 when ready, three bouncing dots while it is being asked, else the given
-   * word (a rate-limit warning, an error). The dots are visual only; screen readers hear "thinking".
+   * A bot's status chip: three bouncing dots while it is being asked, else the given word (a
+   * rate-limit warning, an error). An idle bot shows no chip at all.
    */
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
-    const ready = !text && !this.engine.players[i].human;
     const thinking = kind === 'thinking';
-    v.badgeEl.className = `badge ${ready ? 'ready' : kind}`;
-    v.badgeEl.title = ready ? 'Ready: watching the paper' : thinking ? 'Thinking of a guess…' : detail;
-    v.badgeEl.replaceChildren(thinking ? thinkingDots() : document.createTextNode(ready ? '👀' : text));
-    if (ready) v.badgeEl.setAttribute('aria-label', 'ready');
-    else if (thinking) v.badgeEl.setAttribute('aria-label', 'thinking');
+    v.badgeEl.className = `badge ${kind}`;
+    v.badgeEl.title = thinking ? 'Thinking of a guess…' : detail;
+    v.badgeEl.replaceChildren(thinking ? thinkingDots() : document.createTextNode(text));
+    if (thinking) v.badgeEl.setAttribute('aria-label', 'thinking');
     else v.badgeEl.removeAttribute('aria-label');
-    v.badgeEl.hidden = !text && !ready;
+    v.badgeEl.hidden = !text; // idle: nothing to show
     v.row.setThinking(thinking);
   }
 
