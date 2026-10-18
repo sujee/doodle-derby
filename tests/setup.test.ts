@@ -33,8 +33,11 @@ describe('Add bot on the setup screen', () => {
     const provider = slots[0].querySelector('select')!;
     provider.value = `openai:${OPENAI_PRESETS.findIndex((p) => p.name === 'OpenAI')}`;
     provider.dispatchEvent(new Event('change'));
+    const hint = slots[0].querySelector<HTMLElement>('.load-hint')!;
+    expect(hint.hidden).toBe(false); // the arrow points at Load models until the list is in
     [...slots[0].querySelectorAll('button')].find((b) => b.textContent === 'Load models')!.click();
     await vi.waitFor(() => expect(slots[0].querySelectorAll('select')[1].value).toBeTruthy());
+    expect(hint.hidden).toBe(true);
 
     HTMLElement.prototype.scrollIntoView ??= () => {}; // jsdom has none; Add bot scrolls to the new card
     const add = container.querySelector<HTMLButtonElement>('.add-bot')!;

@@ -168,6 +168,9 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
   const visionOnly = el('input', { type: 'checkbox' }) as HTMLInputElement;
   visionOnly.checked = !doodler; // drawing doesn't need image input
   const loadBtn = el('button', { type: 'button' }, 'Load models');
+  // Until the list is loaded, an arrow nudges you to click it (the model box is empty till then).
+  const loadHint = el('span', { class: 'load-hint', 'aria-hidden': 'true' }, '⬅ start here');
+  const loadRow = el('div', { class: 'load-row' }, [loadBtn, loadHint]);
   const testBtn = el('button', { type: 'button' }, 'Test');
   const status = el('p', { class: 'status' });
   const help = el('p', { class: 'note' });
@@ -187,7 +190,8 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
   const modelRow = field(
     'Model',
     el('div', { class: 'stack' }, [
-      el('div', { class: 'row' }, [modelSelect, loadBtn]),
+      loadRow,
+      modelSelect,
       customModel,
     ]),
   );
@@ -199,6 +203,7 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
   // Grouped so image-capable models come first; text-only ones are still pickable but flagged.
   const setModels = (all: ModelInfo[], prefer = modelValue()) => {
     ids = all;
+    loadHint.hidden = all.length > 0;
     const list = visionOnly.checked ? all.filter((m) => m.vision === 'yes' || m.vision === 'likely') : all;
     const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (likely)` : m.id);
     const groups: [string, ModelInfo[]][] = [
@@ -233,7 +238,7 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
 
   const refresh = () => {
     if (isSame()) return refreshSame();
-    providerRow.hidden = loadBtn.hidden = false;
+    providerRow.hidden = loadRow.hidden = false;
     const k = slotKind();
     const remote = k === 'openai' || k === 'anthropic';
     urlRow.hidden = k !== 'openai';
@@ -256,7 +261,7 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
 
   // Mirror the leader's provider; default to a model no other bot uses (random when fresh).
   const refreshSame = (fresh = false) => {
-    providerRow.hidden = urlRow.hidden = keyRow.hidden = loadBtn.hidden = help.hidden = true;
+    providerRow.hidden = urlRow.hidden = keyRow.hidden = loadRow.hidden = help.hidden = true;
     status.textContent = '';
     modelRow.hidden = leader!.kind() === 'fake';
     visionRow.hidden = modelRow.hidden || doodler;
