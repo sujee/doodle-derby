@@ -14,8 +14,11 @@ import { createDoodler } from './doodler';
 import { el } from './dom';
 
 const CUSTOM = '__custom__';
-/** Show the doodler picker (You | Bot). When a bot draws, you watch and the bots race to guess. */
-const SHOW_DOODLER_PICK = true;
+/**
+ * The doodler picker (You | Bot) is off: the bot-doodler mode is being rethought. Its code stays
+ * (doodler.ts, Engine's doodler option, the game's watch mode); set true to bring the picker back.
+ */
+const SHOW_DOODLER_PICK = false;
 
 type Slot = {
   root: HTMLElement;
@@ -88,7 +91,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const vs = el('div', { class: 'vs', 'aria-label': 'versus' }, 'VS');
   const guesserRow = el('div', { class: 'guesser-row' });
   const guessersSide = el('div', { class: 'guessers-side', role: 'group', 'aria-label': 'Pick the guessers' }, [
-    el('p', { class: 'pick-label' }, [el('span', { class: 'step-num' }, '2'), 'Pick the guessers']),
+    el('p', { class: 'pick-label' }, SHOW_DOODLER_PICK ? [el('span', { class: 'step-num' }, '2'), 'Pick the guessers'] : 'Pick the guessers'),
     guesserRow,
   ]);
   const addLabel = el('span');
