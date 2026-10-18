@@ -148,3 +148,19 @@ describe('Share in the game controls', () => {
     game.engine.stop();
   });
 });
+
+describe('the "N correct" badge on the paper', () => {
+  it('counts your drawings that got guessed', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right
+    const { game, draw } = startGame();
+    const badge = container.querySelector<HTMLElement>('.paper .paper-badge')!;
+    expect(badge.textContent).toBe('0 correct');
+    draw();
+    await vi.advanceTimersByTimeAsync(POLL_MS + 2500);
+    expect(game.engine.roundOver).toBe(true);
+    expect(badge.textContent).toBe('1 correct');
+    expect(badge.classList.contains('scored')).toBe(true);
+    game.engine.stop();
+    vi.restoreAllMocks();
+  });
+});

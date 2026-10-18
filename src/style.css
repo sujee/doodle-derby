@@ -278,7 +278,7 @@ button.start:hover { animation-play-state: paused; }
 
 .board { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 28px; align-items: start; }
 .board > .pad-wrap { grid-row: span 2; } /* the field, then the wrong-guess card, stack beside the paper */
-.pad-wrap { width: calc(min(620px, 100dvh - 230px) + 62px); min-width: 300px; }
+.pad-wrap { width: min(620px, 100dvh - 230px); min-width: 300px; }
 .paper {
   position: relative; margin: 0 auto;
   max-width: min(620px, calc(100dvh - 230px)); min-width: 260px;
@@ -433,14 +433,9 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 /* "thinking" + dots that fill in one by one */
 .badge.thinking::after { content: '…'; display: inline-block; width: 1.3ch; overflow: hidden; vertical-align: bottom; animation: dots 1s steps(4) infinite; }
 
-.stars { display: flex; flex-wrap: nowrap; justify-content: center; gap: 0; font-size: 0.78rem; letter-spacing: -0.5px; line-height: 1.1; max-width: 100%; }
-.star { color: transparent; -webkit-text-stroke: 1.2px var(--muted); }
-.star.on { color: var(--sun); -webkit-text-stroke: 1.2px var(--ink); }
-.star.pop { animation: star-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1); }
 .you-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); }
 .you-row .bot { width: 30px; }
 .you-row h3 { font-size: 1.1rem; }
-.you-row .stars { margin-left: auto; justify-content: flex-end; font-size: 1rem; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 button.icon-btn { width: 40px; height: 40px; padding: 0; font: 700 1.1rem/1 var(--round); border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%; box-shadow: 2px 2px 0 var(--shadow); }
@@ -580,7 +575,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 @keyframes spin { to { rotate: 360deg; } }
 @keyframes fidget { 50% { rotate: 4deg; translate: 1px -1px; } }
 @keyframes ring { 25% { rotate: 20deg; } 75% { rotate: -20deg; } }
-@keyframes star-pop { from { scale: 2.4; rotate: -30deg; } }
 @keyframes wave-hi { 0%, 100% { translate: 0 0; } 25% { translate: 0 -4px; rotate: -16deg; } 50% { translate: 0 0; } }
 @keyframes rise { from { transform: scaleY(0); transform-origin: bottom; } }
 @keyframes fade-in { from { opacity: 0; } }
@@ -632,7 +626,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .row-time { font-size: 1.05rem; }
   .row-wins { top: -10px; right: 10px; font-size: 0.7rem; padding: 0 7px; }
   .win-star { top: -14px; left: 6px; width: 26px; height: 26px; }
-  .you-row .stars { font-size: 0.8rem; }
   .you-row { padding-top: 6px; }
   .tools { gap: 2px; }
   button.tool { width: 58px; }
@@ -762,26 +755,15 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
   button.pause-btn { padding: 6px 10px; font-size: 0.9rem; }
 }
 
-/* Your stars beside the canvas: a face over a column of 10 stars filling from the bottom */
-.paper-row { display: flex; gap: 12px; align-items: stretch; }
-.paper-row .paper { flex: 1 1 auto; min-width: 0; margin: 0; }
-.star-col { flex: none; width: 50px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 6px; }
-.star-col .bot { width: 38px; }
-.star-col-name { font: 1rem/1 var(--hand); }
-.star-col.doodler { width: 60px; } /* room for "Doodler": .game clips anything past the page's padding */
-.star-col.doodler .star-col-name { font-size: 0.8rem; }
-.stars.vertical { flex-direction: column-reverse; gap: 3px; font-size: 1.45rem; letter-spacing: 0; line-height: 1; margin-top: 4px; }
-
-@media (max-width: 760px) {
-  .pad-wrap { width: auto; }
-  .paper-row { gap: 8px; }
-  .star-col { width: 34px; padding-top: 2px; }
-  .star-col .bot { width: 28px; }
-  .star-col-name { font-size: 0.8rem; }
-  .star-col.doodler { width: 44px; }
-  .star-col.doodler .star-col-name { font-size: 0.62rem; }
-  .stars.vertical { font-size: 1rem; gap: 2px; }
+/* "5 correct": drawings guessed, a badge on the paper's top edge (clear of the corner tapes). */
+.paper-badge {
+  position: absolute; top: -13px; left: 50%; translate: -50% 0; z-index: 3; white-space: nowrap;
+  padding: 0 10px; border-radius: 999px; font: 600 0.85rem/1.5 var(--round); color: var(--muted);
+  background: var(--surface); border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent);
 }
+.paper-badge.scored { color: var(--on-bright); background: var(--mint); border-color: var(--ink); box-shadow: 2px 2px 0 var(--shadow); }
+.game.bot-draws .paper-badge.scored { background: var(--sun); }
+.paper-badge.bump { animation: pop-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
 
 @media (max-width: 760px) {
   .slots { flex-direction: column; align-items: center; }

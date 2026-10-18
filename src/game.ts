@@ -3,9 +3,9 @@
  * engine, and draws whatever the engine reports (rounds, guesses, scores, pause, results).
  */
 
-import { confetti, robot, tapes, trash, undoArrow, you } from './art';
+import { confetti, replay, robot, tapes, trash, undoArrow, you } from './art';
 import { DrawingCanvas } from './canvas';
-import { doodlerRow, Stars, starColumn } from './climb';
+import { doodlerRow } from './climb';
 import { FieldRow } from './field';
 import { debug, debugImage } from './debug';
 import { el } from './dom';
@@ -50,8 +50,8 @@ export class Game {
   private timerBar = el('div', { class: 'ring', title: 'Seconds left' }, [ringSvg(), this.timerEl]);
   private paper = el('div', { class: 'paper' });
   private lastBeat = '';
-  private youScoreEl = el('span', { class: 'sr-only' }, '0');
-  private youStars = new Stars();
+  /** Drawings guessed, as a badge on the paper's top edge (like the bots' wins badges). */
+  private correctEl = el('span', { class: 'paper-badge' });
   private hint = el('div', { class: 'hint', 'aria-hidden': 'true' }, 'Draw here! The clock starts when the bots start guessing ✏️');
   // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
@@ -145,7 +145,8 @@ export class Game {
 
     // No right-click menu anywhere on the paper: the canvas and the pop-ups over it (reveal, pause, sketching).
     this.paper.addEventListener('contextmenu', (e) => e.preventDefault());
-    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl);
+    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.correctEl);
+    this.showCorrect();
     if (!hintSeen() && !this.botDraws) {
       this.paper.append(this.hint);
       this.canvas.el.addEventListener('pointerdown', () => this.hideHint(), { once: true });
@@ -172,7 +173,7 @@ export class Game {
     document.addEventListener('keydown', onKey);
     this.paper.append(this.pauseEl);
     this.container.replaceChildren(
-      el('section', { class: 'game' }, [
+      el('section', { class: this.botDraws ? 'game bot-draws' : 'game' }, [
         el('header', { class: 'hud' }, [
           el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
           el('div', { class: 'prompt' }, [this.drawLabel, this.wordEl]),
@@ -180,7 +181,7 @@ export class Game {
         ]),
         el('div', { class: 'board' }, [
           (this.padWrap.replaceChildren(
-            el('div', { class: 'paper-row' }, [starColumn(this.youScoreEl, this.youStars, this.botDraws), this.paper]),
+            this.paper,
             this.resultBar,
             this.botDraws
               ? this.guessForm(skip())
@@ -299,8 +300,8 @@ export class Game {
     const players = this.engine.players;
     if (winner !== null) {
       this.views[winner].scoreEl.textContent = String(players[winner].score);
-      this.youScoreEl.textContent = String(this.engine.playerScore);
-      this.youStars.fill(this.engine.playerScore);
+      this.showCorrect();
+      replay(this.correctEl, 'bump');
       sfx.ding();
       confetti(this.paper);
       this.views[winner].row.win(players[winner].score, seconds);
@@ -357,6 +358,14 @@ export class Game {
       ]),
       el('p', { class: 'wild-who' }, ['by ', el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild.bot)}` }, who.human ? 'You' : shortName(who.label))]),
     );
+  }
+
+  /** "5 correct": drawings guessed so far (the doodler bot's, when a bot draws). */
+  private showCorrect() {
+    const n = this.engine.playerScore;
+    this.correctEl.textContent = `${this.botDraws ? 'Doodler: ' : ''}${n} correct`;
+    this.correctEl.title = this.botDraws ? 'The doodler bot’s drawings that got guessed' : 'Your drawings that got guessed';
+    this.correctEl.classList.toggle('scored', n > 0);
   }
 
   /** The bot's own color, read off its row, so its name matches its row. */
