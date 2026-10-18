@@ -250,7 +250,8 @@ button.start:hover { animation-play-state: paused; }
 .hud, .tools { -webkit-user-select: none; user-select: none; }
 .hud {
   display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
-  padding-right: 136px; margin-bottom: 18px; /* clear of the corner tools */
+  /* Clear of the corner tools: 3 × 48px buttons + 2 × 14px gaps + 12px margin + a little air. */
+  padding-right: 202px; margin-bottom: 18px;
 }
 .round { display: flex; gap: 10px; align-items: center; font: 600 1.05rem var(--round); white-space: nowrap; }
 .prompt {
