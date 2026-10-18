@@ -25,15 +25,30 @@ type Slot = {
   model(): string;
   /** Called when the provider, model list, or chosen model changes. */
   onChange(fn: () => void): void;
+  /** Pick a random model that no other bot has (when added with Add bot). */
+  reroll(): void;
 };
 
 const MAX_BOTS = 3;
 
+/** A random model that can see images and isn't in avoid; any image model if all are taken. */
+export function pickModel(list: ModelInfo[], avoid: string[], random = Math.random): string | undefined {
+  const usable = list.filter((m) => m.vision !== 'no');
+  const fresh = usable.filter((m) => !avoid.includes(m.id));
+  const pool = fresh.length ? fresh : usable.length ? usable : list;
+  return pool[Math.floor(random() * pool.length)]?.id;
+}
+
 /** Render the setup screen. Calls onStart with 1–3 guesser configs, plus the doodler bot's config when a bot draws. */
 export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[], doodler: GuesserConfig | null) => void) {
   container.replaceChildren();
+  let count = 1;
+  // The models the other shown bots already use, so a new bot picks a different one.
+  // (By index: a slot asks while it is still being built.)
+  const takenBy = (i: number) => slots.slice(0, count).filter((_, j) => j !== i).map((s) => s.model());
   const first = makeSlot(1);
-  const slots = [first, ...Array.from({ length: MAX_BOTS - 1 }, (_, i) => makeSlot(i + 2, first))];
+  const slots: Slot[] = [first];
+  for (let i = 1; i < MAX_BOTS; i++) slots.push(makeSlot(i + 1, first, false, () => takenBy(i)));
   const doodlerSlot = makeSlot(0, first, true);
 
   // Pick the doodler: click the You card or the Bot card. The picked card is highlighted; a picked
@@ -58,7 +73,6 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     el('p', { class: 'pick-label' }, [el('span', { class: 'step-num' }, '2'), 'Pick the guessers']),
     guesserRow,
   ]);
-  let count = 1;
   const addLabel = el('span');
   const add = el('button', { type: 'button', class: 'add-bot' }, [
     el('span', { class: 'plus', 'aria-hidden': 'true' }, '+'),
@@ -95,6 +109,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   };
   add.addEventListener('click', () => {
     setCount(count + 1);
+    slots[count - 1].reroll();
     slots[count - 1].root.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
   for (const s of slots) {
@@ -138,7 +153,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
  * With a leader, the slot offers "Same provider as Guesser 1" and then only asks for a model.
  * The doodler slot (doodler = true) draws instead of guessing: no vision filter, and Test asks for a drawing.
  */
-function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
+function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string[] = () => []): Slot {
   // One flat provider list: OpenAI-compatible presets are "openai:<index>".
   // Fake guesser first (the no-key default), real providers A–Z, generic "OpenAI compatible" last.
   const presets = OPENAI_PRESETS.map((p, i) => [`openai:${i}`, p.name]);
@@ -239,16 +254,16 @@ function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
     notify();
   };
 
-  // Mirror the leader's provider; default to a different model than the leader's.
-  const refreshSame = () => {
+  // Mirror the leader's provider; default to a model no other bot uses (random when fresh).
+  const refreshSame = (fresh = false) => {
     providerRow.hidden = urlRow.hidden = keyRow.hidden = loadBtn.hidden = help.hidden = true;
     status.textContent = '';
     modelRow.hidden = leader!.kind() === 'fake';
     visionRow.hidden = modelRow.hidden || doodler;
     const list = leader!.models();
     const keep = modelValue();
-    const other = list.find((m) => m.id !== leader!.model() && m.vision !== 'no') ?? list[0];
-    setModels(list, list.some((m) => m.id === keep) ? keep : other?.id);
+    const avoid = taken();
+    setModels(list, !fresh && list.some((m) => m.id === keep) && !avoid.includes(keep) ? keep : pickModel(list, avoid));
   };
 
   const read = (): GuesserConfig => {
@@ -338,6 +353,11 @@ function makeSlot(n: number, leader?: Slot, doodler = false): Slot {
     models: () => ids,
     model: modelValue,
     onChange: (fn) => listeners.push(fn),
+    reroll: () => {
+      if (isSame()) refreshSame(true);
+      else if (ids.length) setModels(ids, pickModel(ids, taken()));
+      notify();
+    },
   };
 }
 
