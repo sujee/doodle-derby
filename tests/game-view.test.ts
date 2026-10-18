@@ -59,11 +59,13 @@ describe('a bot whose request is cancelled when the round ends', () => {
   });
 
   it('a bot that answered before the round ended is just "ready"', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right, ending the round
     const { game, badge, draw } = startGame();
     draw();
     await vi.advanceTimersByTimeAsync(POLL_MS + 2500); // asked, and answered (at most 2 s)
+    expect(game.engine.roundOver).toBe(true);
     expect(game.engine.players[0].inFlight).toBe(false);
-    if (!game.engine.roundOver) game.engine.skip();
+    vi.restoreAllMocks();
     await flush();
     expect(badge.textContent).toBe('ready');
     expect(badge.className).toBe('badge ready');

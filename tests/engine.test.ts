@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Doodle, Doodler } from '../src/doodler';
-import { DOODLE_FAIL_MS, Engine, POLL_MS, ROUND_MS, type GameResult } from '../src/engine';
+import { DOODLE_FAIL_MS, Engine, POLL_MS, REASK_MS, ROUND_MS, type GameResult } from '../src/engine';
 import { GuessError } from '../src/providers/types';
 import { FakeBoard, FakeClock, ScriptedBot, WORDS, flush, recordEvents } from './helpers';
 
@@ -68,25 +68,30 @@ describe('polling the bots', () => {
     engine.start();
     await clock.advance(1000);
     await drawAndPoll(clock, board);
-    expect(a.calls).toBe(1);
-    expect(b.calls).toBe(1);
+    expect(a.calls).toBeGreaterThanOrEqual(1);
+    expect(b.calls).toBe(a.calls);
     expect(a.requests[0].image).toBe(b.requests[0].image);
-    expect(board.snapshots).toBe(1);
+    expect(board.snapshots).toBe(a.calls); // one snapshot per ask, shared by both
     expect(engine.clockRunning).toBe(true);
     // The clock started with the first snapshot (at 2.5 s), not when the round opened.
     expect(engine.timeLeft()).toBe(ROUND_MS - (clock.now() - POLL_MS));
   });
 
-  it('does not resend an unchanged drawing, but does once it changes', async () => {
+  it('keeps asking until time runs out, even with an unchanged drawing: soon after each wrong answer', async () => {
     const bot = new ScriptedBot('A');
     const { engine, clock, board } = setup([bot]);
     engine.start();
     await drawAndPoll(clock, board);
-    await clock.advance(POLL_MS * 3);
     expect(bot.calls).toBe(1);
-    board.draw();
-    await clock.advance(POLL_MS);
+    await clock.advance(REASK_MS);
     expect(bot.calls).toBe(2);
+    await clock.advance(REASK_MS);
+    expect(bot.calls).toBe(3);
+    await clock.advance(ROUND_MS);
+    expect(engine.roundOver).toBe(true);
+    const calls = bot.calls;
+    await clock.advance(POLL_MS * 2);
+    expect(bot.calls).toBe(calls); // not after the round
   });
 
   it('keeps at most one request in flight per bot', async () => {
@@ -107,7 +112,8 @@ describe('polling the bots', () => {
     const bot = new ScriptedBot('A', [{ guess: 'dog', confidence: 5 }, { guess: 'dog', confidence: 5 }, { guess: 'cow', confidence: 5 }, { guess: 'x', confidence: 1 }]);
     const { engine, clock, board } = setup([bot]);
     engine.start();
-    for (let i = 0; i < 4; i++) await drawAndPoll(clock, board);
+    await drawAndPoll(clock, board);
+    await clock.advance(REASK_MS * 3);
     expect(bot.requests.map((r) => r.wrongGuesses)).toEqual([[], ['dog'], ['dog'], ['dog', 'cow']]);
     expect(engine.players[0].history.map((h) => h.guess)).toEqual(['dog', 'dog', 'cow', 'x']);
   });
@@ -125,7 +131,7 @@ describe('guessing and scoring (you draw)', () => {
     expect(engine.playerScore).toBe(1);
     const round = engine.results[0];
     expect(round).toMatchObject({ word: 'cat', winner: 0, guesses: [['dog']], confidences: [[20]] });
-    expect(round.seconds).toBeCloseTo(POLL_MS / 1000, 5);
+    expect(round.seconds).toBeCloseTo(REASK_MS / 1000, 5); // asked again right after 'dog'
     expect(round.image).toMatch(/^data:image\/jpeg/);
     expect(rec.names()).toContain('roundEnding');
     expect(rec.names().indexOf('roundEnding')).toBeLessThan(rec.names().indexOf('roundEnd'));

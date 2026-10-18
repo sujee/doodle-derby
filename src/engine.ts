@@ -18,6 +18,8 @@ import { pickWords, ROUNDS, tierForRound, type Tier, type Word } from './words';
 
 export const ROUND_MS = 30_000;
 export const POLL_MS = 2_500;
+/** After a wrong answer, a bot is asked again this soon, so it keeps working until time runs out. */
+export const REASK_MS = 300;
 export const TICK_MS = 100;
 /** How long the "the doodler got stuck" message shows before the round is skipped. */
 export const DOODLE_FAIL_MS = 2_500;
@@ -57,8 +59,6 @@ export type PlayerState = {
   /** Every guess this round, oldest first. */
   history: GuessEntry[];
   inFlight: boolean;
-  /** Board version this bot last saw, so an unchanged drawing isn't sent twice. */
-  lastVersion: number;
   backoffUntil: number;
   /** Set after a bad key: the bot sits out the rest of the game. */
   disabled: boolean;
@@ -240,7 +240,6 @@ export class Engine {
     for (const [i, p] of this.players.entries()) {
       p.wrong = [];
       p.history = [];
-      p.lastVersion = -1;
       if (!p.disabled) this.events.badge?.(i, '', ''); // clear last round's "cancelled"
     }
     const tier = tierForRound(this.round);
@@ -269,14 +268,16 @@ export class Engine {
     if (left === 0) this.endRound(null);
   }
 
-  /** Send one shared snapshot to every idle bot whose last view is out of date. */
+  /**
+   * Send one shared snapshot to every idle bot. Even an unchanged drawing goes again: each bot gets
+   * its wrong guesses back, so it tries something new, and keeps guessing until time runs out.
+   */
   poll() {
     if (this.roundOver || this.paused || this.board.isEmpty) return;
-    const version = this.board.changeVersion;
     const now = this.clock.now();
     const ready = this.players
       .map((p, i) => ({ p, i }))
-      .filter(({ p }) => !p.human && !p.disabled && !p.inFlight && now >= p.backoffUntil && p.lastVersion !== version);
+      .filter(({ p }) => !p.human && !p.disabled && !p.inFlight && now >= p.backoffUntil);
     if (ready.length === 0) return;
     const image = this.board.snapshot();
     this.events.snapshot?.(image, ready.map((r) => r.i));
@@ -285,8 +286,7 @@ export class Engine {
       this.clockRunning = true;
       this.roundStart = this.clock.now();
     }
-    for (const { p, i } of ready) {
-      p.lastVersion = version;
+    for (const { i } of ready) {
       void this.ask(i, image);
     }
   }
@@ -312,6 +312,7 @@ export class Engine {
       p.inFlight = false; // answered (before guess(), which may end the round)
       this.events.badge?.(i, '', '');
       this.guess(i, guess, confidence);
+      if (!this.roundOver) this.clock.setTimeout(() => this.roundId === roundId && this.poll(), REASK_MS);
     } catch (e) {
       if (roundId !== this.roundId || (e as Error)?.name === 'AbortError') return;
       this.handleError(i, e);
@@ -412,8 +413,7 @@ export class Engine {
       this.abort.abort();
       for (const [i, p] of this.players.entries()) {
         p.inFlight = false;
-        p.lastVersion = -1;
-        if (!p.disabled) this.events.badge?.(i, '', '');
+          if (!p.disabled) this.events.badge?.(i, '', '');
       }
     }
     this.events.pause?.(true);
@@ -547,7 +547,6 @@ function newPlayer(label: string, price: Price): PlayerState {
     wrong: [],
     history: [],
     inFlight: false,
-    lastVersion: -1,
     backoffUntil: 0,
     disabled: false,
     usage: { input: 0, output: 0, calls: 0 },

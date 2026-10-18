@@ -29,7 +29,7 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
   - Rounds 8–10: hard (lighthouse, octopus, helicopter…)
 - No word repeats within a game.
 - Each round: the word is shown, and you have **30 seconds** to draw.
-- About every 2.5 s, if the drawing changed and isn't empty, the same snapshot (white background, 512px JPEG) goes to every guesser.
+- About every 2.5 s, if the drawing isn't empty, the same snapshot (white background, 512px JPEG) goes to every idle guesser, changed or not, and a guesser that answers wrong is asked again 0.3 s later, so the bots keep guessing until time runs out.
 - Each guesser has at most one request in flight. Its previous wrong guesses this round are included in the prompt.
 - Each guess comes with the model's confidence (`<object> | <0-100>`). **Doodle Climb:** each bot sits on a 10-rung ladder at its latest confidence, leaps to the bell when it's right, and slides down when time runs out. Confidence is display-only.
 - Each bot's last 3 guesses show with their times.
