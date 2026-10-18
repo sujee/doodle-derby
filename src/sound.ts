@@ -3,7 +3,7 @@
  * The AudioContext is only created after the first user gesture, as browsers require.
  */
 
-const KEY = 'doodle-duel-muted';
+const KEY = 'doodle-derby-muted';
 const VOLUME = 0.22;
 
 let ctx: AudioContext | null = null;

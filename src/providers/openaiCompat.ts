@@ -1,4 +1,5 @@
 import { debugFetch } from '../debug';
+import { thinkingMode, type Thinking } from '../settings';
 import { sortModels, visionFromMetadata, type ModelInfo } from './vision';
 import { errorFromStatus, GuessError, promptFor, parseGuess, type Guesser, type GuessRequest, type GuessResult } from './types';
 
@@ -7,6 +8,8 @@ export class OpenAICompatGuesser implements Guesser {
   readonly label: string;
   /** Which of thinkingOff()'s settings this endpoint accepts; moves on after a 400. */
   private attempt = 0;
+  /** The thinking mode this attempt was chosen under; a change starts the ladder again. */
+  private mode: Thinking = thinkingMode();
 
   constructor(
     private baseUrl: string,
@@ -29,7 +32,13 @@ export class OpenAICompatGuesser implements Guesser {
         },
       ],
     };
-    const tries = thinkingOff(this.baseUrl);
+    const mode = thinkingMode();
+    if (mode !== this.mode) {
+      this.mode = mode; // the setting changed: re-negotiate the dialect
+      this.attempt = 0;
+    }
+    // "default" sends nothing at all; "off" tries each dialect in turn (none as the last resort).
+    const tries = mode === 'default' ? [{}] : thinkingOff(this.baseUrl);
     let res: Response;
     for (;;) {
       try {

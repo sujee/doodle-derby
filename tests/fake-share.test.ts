@@ -70,7 +70,7 @@ describe('share text', () => {
 
   it('share text tells the story, with no link when playing locally', () => {
     const text = shareText(game());
-    expect(text).toMatch(/Doodle Duel/);
+    expect(text).toMatch(/Doodle Derby/);
     expect(text).toMatch(/4 of my 2 doodles|guessed 4 of my 2/);
     expect(text).not.toMatch(/Wildest/);
     expect(text).not.toMatch(/localhost/);

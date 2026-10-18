@@ -4,6 +4,7 @@ import { AnthropicGuesser, listAnthropicModels } from '../src/providers/anthropi
 import { listOpenAIModels, OpenAICompatGuesser } from '../src/providers/openaiCompat';
 import { providerName } from '../src/providers';
 import { GuessError } from '../src/providers/types';
+import { setThinking } from '../src/settings';
 
 const IMAGE = 'data:image/jpeg;base64,QUJDREVGRw==';
 
@@ -65,6 +66,19 @@ describe('OpenAI-compatible guesser', () => {
       const calls = mockFetch(() => reply('cat | 72'));
       await ask(new OpenAICompatGuesser('http://localhost:11434/v1', '', 'qwen3-vl'));
       expect(calls[0].body).toMatchObject({ think: false, reasoning_effort: 'none' });
+    });
+
+    it('thinking "default" sends no hints at all, leaving it to the provider', async () => {
+      const calls = mockFetch(() => reply('cat | 72'));
+      setThinking('default');
+      try {
+        await ask(new OpenAICompatGuesser('https://api.tokenfactory.nebius.com/v1', 'k', 'Qwen/Qwen3-VL'));
+        expect(calls[0].body).not.toHaveProperty('chat_template_kwargs');
+        expect(calls[0].body).not.toHaveProperty('reasoning_effort');
+        expect(calls[0].body).not.toHaveProperty('think');
+      } finally {
+        setThinking('off');
+      }
     });
 
     it('OpenAI: a 400 moves on to the next setting, and the one that worked is kept', async () => {
@@ -197,6 +211,18 @@ describe('Anthropic guesser', () => {
     expect(calls[0].body.output_config).toBeUndefined();
     expect(calls[0].body.fallbacks).toBeUndefined();
     expect(calls[0].headers['anthropic-beta']).toBeUndefined();
+  });
+
+  it('thinking "default" drops the low-effort setting even on models that take it', async () => {
+    const calls = mockFetch(() => message('cat | 50'));
+    setThinking('default');
+    try {
+      await new AnthropicGuesser('k', 'claude-sonnet-5-5').guess({ image: IMAGE, wrongGuesses: [], signal: signal() });
+      expect(calls[0].body.output_config).toBeUndefined();
+      expect(calls[0].body.fallbacks).toBe('default'); // only the thinking setting is affected
+    } finally {
+      setThinking('off');
+    }
   });
 
   it('a refusal or an empty reply is an error', async () => {

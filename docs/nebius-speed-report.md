@@ -1,6 +1,6 @@
 # Why is MiniCPM-V-4.5 so fast on Nebius Token Factory?
 
-*Measured 2026-10-18 from the developer's machine, with Doodle Duel's own prompt and the "thinking off" settings from `src/providers/openaiCompat.ts` (commit 4540c0c).*
+*Measured 2026-10-18 from the developer's machine, with Doodle Derby's own prompt and the "thinking off" settings from `src/providers/openaiCompat.ts` (commit 4540c0c).*
 
 ## Short answer
 
@@ -52,7 +52,7 @@ Sizes, quantization and regions come from Nebius's `/v1/models?verbose=true` lis
 
 The other five models (DeepSeek, Kimi K2.6 / K3, Nemotron, MiniCPM) answer in 5–11 tokens with both settings. MiniCPM rejects `reasoning_effort: "none"` with a 400, so the game sends "low".
 
-## Takeaways for Doodle Duel
+## Takeaways for Doodle Derby
 
 - **For a fast, cheap bot**, MiniCPM-V-4.5 and Qwen3.8-27B are equally quick. On Nebius's list prices, MiniCPM's output is cheaper and Qwen's input is cheaper.
 - **Speed says nothing about guessing skill.** Every model got the simple house right; comparing them needs harder drawings, ideally real ones from play.

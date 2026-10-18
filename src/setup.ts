@@ -159,7 +159,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
 
   container.append(
     el('section', { class: 'setup' }, [
-      el('h1', { class: 'logo' }, [robot(0), el('span', {}, [el('span', { class: 'w1' }, 'Doodle'), ' ', el('span', { class: 'w2' }, 'Duel')]), robot(1)]),
+      el('h1', { class: 'logo' }, [robot(0), el('span', {}, [el('span', { class: 'w1' }, 'Doodle'), ' ', el('span', { class: 'w2' }, 'Derby')]), robot(1)]),
       lede,
       slotsEl,
       note,
@@ -178,7 +178,7 @@ function makeSlot(
   leader?: Slot,
   doodler = false,
   taken: () => string[] = () => [],
-  /** Bot #1 only: offered after Load models when the provider has 2+ image models. */
+  /** Bot #1 only: offered once the model list loads, when the provider has 2+ image models. */
   addAll?: (ids: string[]) => void,
 ): Slot {
   // One flat provider list: OpenAI-compatible presets are "openai:<index>".
@@ -194,10 +194,8 @@ function makeSlot(
   const customModel = el('input', { placeholder: 'Type a model name' }) as HTMLInputElement;
   const visionOnly = el('input', { type: 'checkbox' }) as HTMLInputElement;
   visionOnly.checked = !doodler; // drawing doesn't need image input
-  const loadBtn = el('button', { type: 'button' }, 'Load models');
-  // Until the list is loaded, an arrow nudges you to click it (the model box is empty till then).
-  const loadHint = el('span', { class: 'load-hint', 'aria-hidden': 'true' }, '⬅ start here');
-  const loadRow = el('div', { class: 'load-row' }, [loadBtn, loadHint]);
+  // Load / refresh the model list; a small icon sits beside the box (empty until it is loaded).
+  const loadBtn = el('button', { type: 'button', class: 'icon-btn refresh', title: 'Load the model list', 'aria-label': 'Load the model list' }, '⟳');
   const testBtn = el('button', { type: 'button' }, 'Test');
   const status = el('p', { class: 'status' });
   const addAllBtn = el('button', { type: 'button', class: 'add-all', hidden: '' });
@@ -220,8 +218,7 @@ function makeSlot(
   const modelRow = field(
     'Model',
     el('div', { class: 'stack' }, [
-      loadRow,
-      modelSelect,
+      el('div', { class: 'model-row' }, [modelSelect, loadBtn]),
       customModel,
     ]),
   );
@@ -233,7 +230,6 @@ function makeSlot(
   // Grouped so image-capable models come first; text-only ones are still pickable but flagged.
   const setModels = (all: ModelInfo[], prefer = modelValue()) => {
     ids = all;
-    loadHint.hidden = all.length > 0;
     if (!all.length) addAllBtn.hidden = true; // provider changed: its list is gone
     const list = visionOnly.checked ? all.filter((m) => m.vision === 'yes' || m.vision === 'likely') : all;
     const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (likely)` : m.id);
@@ -242,7 +238,7 @@ function makeSlot(
       ['Unknown (use Test to check)', list.filter((m) => m.vision === 'unknown')],
       ['Text only (won’t work)', list.filter((m) => m.vision === 'no')],
     ];
-    const empty = all.length === 0 ? 'Click “Load models” first' : 'No vision models found (untick the filter)';
+    const empty = all.length === 0 ? 'Click ⟳ to load the models' : 'No vision models found (untick the filter)';
     modelSelect.replaceChildren(
       ...(list.length ? [] : [el('option', { value: '', disabled: '' }, empty)]),
       ...groups.filter(([, g]) => g.length).map(([label, g]) => el('optgroup', { label }, g.map(option))),
@@ -269,7 +265,7 @@ function makeSlot(
 
   const refresh = () => {
     if (isSame()) return refreshSame();
-    providerRow.hidden = loadRow.hidden = false;
+    providerRow.hidden = false;
     const k = slotKind();
     const remote = k === 'openai' || k === 'anthropic';
     urlRow.hidden = k !== 'openai';
@@ -280,11 +276,8 @@ function makeSlot(
     if (k === 'openai') {
       const p = OPENAI_PRESETS[Number(kind.value.split(':')[1])];
       baseUrl.value = p.baseUrl;
-      help.textContent = p.keyless
-        ? 'No key needed; click “Load models”. Ollama must allow this site: set OLLAMA_ORIGINS. Safari may block http://localhost from an https page.'
-        : 'Enter your key, then click “Load models”.';
+      if (p.keyless) help.textContent = 'No key needed; click ⟳ to load models. Ollama must allow this site: set OLLAMA_ORIGINS. Safari may block http://localhost from an https page.';
     }
-    if (k === 'anthropic') help.textContent = 'Enter your key, then click “Load models”.';
     if (remote) setModels([], '');
     help.hidden = !help.textContent;
     notify();
@@ -292,7 +285,7 @@ function makeSlot(
 
   // Mirror the leader's provider; default to a model no other bot uses (random when fresh).
   const refreshSame = (fresh = false) => {
-    providerRow.hidden = urlRow.hidden = keyRow.hidden = loadRow.hidden = help.hidden = true;
+    providerRow.hidden = urlRow.hidden = keyRow.hidden = help.hidden = true;
     status.textContent = '';
     modelRow.hidden = leader!.kind() === 'fake';
     visionRow.hidden = modelRow.hidden || doodler;

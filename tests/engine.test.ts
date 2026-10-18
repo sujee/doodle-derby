@@ -94,6 +94,22 @@ describe('polling the bots', () => {
     expect(bot.calls).toBe(calls); // not after the round
   });
 
+  it('counts calls per round, and resets them when the next round starts', async () => {
+    const bot = new ScriptedBot('A');
+    const { engine, clock, board } = setup([bot]);
+    engine.start();
+    await drawAndPoll(clock, board);
+    expect(engine.players[0].roundCalls).toBe(1);
+    await clock.advance(REASK_MS);
+    expect(engine.players[0].roundCalls).toBe(2);
+    await clock.advance(ROUND_MS);
+    const total = engine.players[0].usage.calls;
+    expect(engine.players[0].roundCalls).toBeGreaterThan(2); // kept guessing all round
+    engine.nextRound();
+    expect(engine.players[0].roundCalls).toBe(0); // this round is fresh
+    expect(engine.players[0].usage.calls).toBe(total); // the game total keeps counting
+  });
+
   it('keeps at most one request in flight per bot', async () => {
     const bot = new ScriptedBot('A', [{ guess: 'dog', confidence: 5 }], { hold: true });
     const { engine, clock, board } = setup([bot]);

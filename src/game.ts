@@ -19,7 +19,7 @@ import { ROUNDS, type Tier, type Word } from './words';
 
 export type { GameResult, RoundResult } from './engine';
 
-const HINT_KEY = 'doodle-duel-hint-seen';
+const HINT_KEY = 'doodle-derby-hint-seen';
 
 function hintSeen(): boolean {
   try {
@@ -451,18 +451,22 @@ export class Game {
     resume.focus({ preventScroll: true });
   }
 
-  /** A bot's status chip. With nothing to report, a bot shows 👀 (ready); while asked, "thinking…". */
+  /**
+   * A bot's status chip: 👀 when ready, three bouncing dots while it is being asked, else the given
+   * word (a rate-limit warning, an error). The dots are visual only; screen readers hear "thinking".
+   */
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
     const ready = !text && !this.engine.players[i].human;
-    // Ready is just 👀 (watching the paper); the other states keep their words.
-    v.badgeEl.textContent = ready ? '👀' : kind === 'thinking' ? 'thinking' : text;
+    const thinking = kind === 'thinking';
     v.badgeEl.className = `badge ${ready ? 'ready' : kind}`;
-    v.badgeEl.title = ready ? 'Ready: watching the paper' : detail;
+    v.badgeEl.title = ready ? 'Ready: watching the paper' : thinking ? 'Thinking of a guess…' : detail;
+    v.badgeEl.replaceChildren(thinking ? thinkingDots() : document.createTextNode(ready ? '👀' : text));
     if (ready) v.badgeEl.setAttribute('aria-label', 'ready');
+    else if (thinking) v.badgeEl.setAttribute('aria-label', 'thinking');
     else v.badgeEl.removeAttribute('aria-label');
     v.badgeEl.hidden = !text && !ready;
-    v.row.setThinking(kind === 'thinking');
+    v.row.setThinking(thinking);
   }
 
   /**
@@ -497,13 +501,13 @@ export class Game {
   }
 
   private updateDoodlerMeter() {
-    renderMeter(this.doodlerMeter, this.engine.doodlerUsage, this.engine.doodlerPrice);
+    renderMeter(this.doodlerMeter, this.engine.doodlerUsage, this.engine.doodlerPrice, this.engine.doodlerRoundCalls);
   }
 
   private updateMeter(i: number) {
     const p = this.engine.players[i];
     if (p.human) return; // your row keeps its "type your guesses" hint
-    renderMeter(this.views[i].meterEl, p.usage, p.price);
+    renderMeter(this.views[i].meterEl, p.usage, p.price, p.roundCalls);
   }
 }
 
@@ -533,8 +537,8 @@ function ringSvg(): SVGSVGElement {
   return svg;
 }
 
-/** Live token meter: ↑ tokens in, ↓ tokens out, cost and calls, updated as requests go out and come back. */
-export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
+/** Live token meter: ↑ tokens in, ↓ tokens out, cost, and calls as "this round / all game". */
+export function renderMeter(meter: HTMLElement, usage: Usage, price: Price, roundCalls: number) {
   if (price.kind === 'free' && price.why === 'fake bot') {
     meter.replaceChildren(el('span', { class: 'chip quiet' }, 'fake bot · no tokens'));
     meter.title = 'The fake bot makes no API calls';
@@ -546,7 +550,12 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
     el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
     el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
     el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
+    el('span', { class: 'chip quiet', title: 'Requests sent this round / over the whole game (tokens count only answered ones)' }, `calls: ${roundCalls} / ${usage.calls} tot`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
+}
+
+/** Three dots that bounce in turn: the bot's "thinking" chip (visual only; the badge says "thinking" to screen readers). */
+function thinkingDots(): HTMLElement {
+  return el('span', { class: 'dots', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')]);
 }

@@ -63,6 +63,8 @@ export type PlayerState = {
   /** Set after a bad key: the bot sits out the rest of the game. */
   disabled: boolean;
   usage: Usage;
+  /** Calls made this round (reset each round), for the meter's "this round / total". */
+  roundCalls: number;
   price: Price;
 };
 
@@ -162,6 +164,8 @@ export class Engine {
   readonly doodler: Doodler | null;
   readonly doodlerPrice: Price;
   readonly doodlerUsage: Usage = { input: 0, output: 0, calls: 0 };
+  /** Doodler calls made this round (reset each round), for its meter's "this round / total". */
+  doodlerRoundCalls = 0;
   private doodles = new Map<number, Promise<Doodle>>();
   private doodleAbort = new AbortController();
   /** True once this round's drawing has started (you may guess). */
@@ -241,8 +245,10 @@ export class Engine {
     for (const [i, p] of this.players.entries()) {
       p.wrong = [];
       p.history = [];
+      p.roundCalls = 0;
       if (!p.disabled) this.events.badge?.(i, '', '');
     }
+    this.doodlerRoundCalls = 0;
     const tier = tierForRound(this.round);
     this.log('game', `Round ${this.round + 1}: "${this.word.word}" (${tier})`);
     this.events.roundStart?.(this.round, this.word, tier);
@@ -299,6 +305,7 @@ export class Engine {
     p.inFlight = true;
     // Counted when sent, so the meter shows every bot is being asked even while its reply is slow.
     p.usage.calls++;
+    p.roundCalls++;
     this.events.usage?.(i);
     this.events.badge?.(i, 'thinking…', 'thinking');
     try {
@@ -458,6 +465,7 @@ export class Engine {
       const signal = this.doodleAbort.signal;
       const attempt = () => {
         this.doodlerUsage.calls++;
+        this.doodlerRoundCalls++;
         this.events.doodlerUsage?.();
         return this.doodler!.draw(word, signal).then((d) => {
           if (d.usage) {
@@ -550,6 +558,7 @@ function newPlayer(label: string, price: Price): PlayerState {
     backoffUntil: 0,
     disabled: false,
     usage: { input: 0, output: 0, calls: 0 },
+    roundCalls: 0,
     price,
   };
 }
