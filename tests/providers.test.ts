@@ -51,6 +51,43 @@ describe('OpenAI-compatible guesser', () => {
     expect(image).toEqual({ type: 'image_url', image_url: { url: IMAGE } });
   });
 
+  describe('asks for no thinking', () => {
+    const ask = (g: OpenAICompatGuesser) => g.guess({ image: IMAGE, wrongGuesses: [], signal: signal() });
+
+    it('other hosts get the chat template flags', async () => {
+      const calls = mockFetch(() => reply('cat | 72'));
+      await ask(new OpenAICompatGuesser('https://api.tokenfactory.nebius.com/v1', 'k', 'Qwen/Qwen3-VL'));
+      expect(calls[0].body.chat_template_kwargs).toEqual({ enable_thinking: false, thinking: false });
+    });
+
+    it('Ollama gets think: false', async () => {
+      const calls = mockFetch(() => reply('cat | 72'));
+      await ask(new OpenAICompatGuesser('http://localhost:11434/v1', '', 'qwen3-vl'));
+      expect(calls[0].body).toMatchObject({ think: false, reasoning_effort: 'none' });
+    });
+
+    it('OpenAI: a 400 moves on to the next setting, and the one that worked is kept', async () => {
+      const calls = mockFetch((c) =>
+        c.body.reasoning_effort === 'none' ? json({ error: { message: "Unsupported value: 'none'" } }, 400) : reply('cat | 72'),
+      );
+      const g = new OpenAICompatGuesser('https://api.openai.com/v1', 'k', 'gpt-5');
+      await expect(ask(g)).resolves.toMatchObject({ guess: 'cat' });
+      await ask(g);
+      expect(calls.map((c) => c.body.reasoning_effort)).toEqual(['none', 'minimal', 'minimal']);
+    });
+
+    it('a model that takes no setting gets a plain request; a real 400 still surfaces', async () => {
+      const plain = mockFetch((c) => ('reasoning_effort' in c.body ? json({ error: { message: 'Unsupported parameter' } }, 400) : reply('cat | 72')));
+      await ask(new OpenAICompatGuesser('https://api.openai.com/v1', 'k', 'gpt-4o'));
+      expect(plain).toHaveLength(3);
+      expect(plain[2].body).not.toHaveProperty('reasoning_effort');
+
+      const failing = mockFetch(() => json({ error: { message: 'model does not support images' } }, 400));
+      await expect(ask(new OpenAICompatGuesser('https://x.test/v1', 'k', 'm'))).rejects.toThrow('model does not support images');
+      expect(failing).toHaveLength(3); // each setting, then none
+    });
+  });
+
   it('sends no Authorization header when there is no key (local Ollama)', async () => {
     const calls = mockFetch(() => reply('sun | 50'));
     await new OpenAICompatGuesser('http://localhost:11434/v1', '', 'gemma3').guess({ image: IMAGE, wrongGuesses: [], signal: signal() });
