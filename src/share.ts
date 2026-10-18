@@ -88,32 +88,51 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
   // Score chips: each bot, then You.
   const chips = [
-    ...r.labels.map((l, i) => ({ text: `${shortName(l, 18)}: ${r.scores[i]}`, color: colorOf(r, i) })),
+    ...r.labels.map((l, i) => ({ text: `${shortName(l, 30)}: ${r.scores[i]}`, color: colorOf(r, i) })),
     r.doodler
-      ? { text: `✏ ${shortName(r.doodler.label, 14)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
+      ? { text: `✏ ${shortName(r.doodler.label, 30)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
       : { text: `You: ${r.playerScore}/${r.rounds.length}`, color: MINT },
   ];
-  // The whole row shrinks until it fits the card (long model names, three bots).
+  // One row of chips if it fits (shrinking a little first), else they wrap onto a second row, so model
+  // names are shown whole instead of cut.
   const pad = 20;
   const gap = 14;
+  const maxRow = SIZE - 80;
+  const total = (ws: number[]) => ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1);
   let widths: number[] = [];
-  for (let size = 30; size >= 18; size -= 2) {
+  for (let size = 28; size >= 22; size -= 2) {
     ctx.font = `${size}px ${BODY}`;
-    widths = chips.map((ch) => ctx.measureText(ch.text).width + pad * 2);
-    if (widths.reduce((a, b) => a + b, 0) + gap * (chips.length - 1) <= SIZE - 60) break;
+    widths = chips.map((ch) => Math.min(maxRow, ctx.measureText(fit(ctx, ch.text, maxRow - pad * 2)).width + pad * 2));
+    if (total(widths) <= maxRow) break;
   }
-  let x = (SIZE - widths.reduce((a, b) => a + b, 0) - gap * (chips.length - 1)) / 2;
-  chips.forEach((ch, i) => {
-    roundRect(ctx, x, 222, widths[i], 50, 25);
-    ctx.fillStyle = ch.color;
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.fillText(ch.text, x + widths[i] / 2, 258);
-    x += widths[i] + gap;
+  const all = chips.map((_, i) => i);
+  let chipRows = [all];
+  if (total(widths) > maxRow) {
+    // Two rows, split where they come out most even (2 + 2 rather than 3 + 1).
+    const w = (row: number[]) => total(row.map((j) => widths[j]));
+    let best = 1;
+    for (let k = 1; k < all.length; k++) {
+      if (Math.max(w(all.slice(0, k)), w(all.slice(k))) < Math.max(w(all.slice(0, best)), w(all.slice(best)))) best = k;
+    }
+    chipRows = [all.slice(0, best), all.slice(best)];
+  }
+  chipRows.forEach((row, k) => {
+    let x = (SIZE - total(row.map((j) => widths[j]))) / 2;
+    const y = 222 + k * 60;
+    for (const i of row) {
+      roundRect(ctx, x, y, widths[i], 50, 25);
+      ctx.fillStyle = chips[i].color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.fillText(fit(ctx, chips[i].text, maxRow - pad * 2), x + widths[i] / 2, y + 36);
+      x += widths[i] + gap;
+    }
   });
+  // A second chip row pushes the doodles down; the two rows of doodles sit a little closer to make room.
+  const extra = (chipRows.length - 1) * 60;
 
   // Doodle grid: 5 × 2.
   const cols = 5;
@@ -125,7 +144,7 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
     const inRow = Math.min(cols, shown.length - Math.floor(i / cols) * cols);
     const rowStart = (SIZE - inRow * tile - (inRow - 1) * tileGap) / 2;
     const cx = rowStart + (i % cols) * (tile + tileGap);
-    const cy = 320 + Math.floor(i / cols) * 330;
+    const cy = 320 + extra + Math.floor(i / cols) * (extra ? 314 : 330);
     drawTile(ctx, cx, cy, tile, images[i], i);
 
     ctx.textAlign = 'center';
@@ -137,17 +156,19 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
     if (round.winner !== null) {
       ctx.fillStyle = darker(colorOf(r, round.winner));
-      const t = round.seconds !== null ? ` ${round.seconds.toFixed(1)}s` : '';
-      ctx.fillText(fitFont(ctx, `✓ ${shortName(r.labels[round.winner], 10)}${t}`, tile + 16, 23, 16, BODY), cx + tile / 2, below + 74);
+      // The bot's whole name on this line; its time moves to the next line, before the funny guess.
+      ctx.fillText(fitFont(ctx, `✓ ${shortName(r.labels[round.winner], 30)}`, tile + 22, 22, 14, BODY), cx + tile / 2, below + 74);
     } else {
       ctx.fillStyle = MUTED;
       ctx.font = `23px ${BODY}`;
       ctx.fillText('✗ stumped', cx + tile / 2, below + 74);
     }
     const funny = round.guesses.flat()[0];
-    if (funny) {
+    const time = round.winner !== null && round.seconds !== null ? `${round.seconds.toFixed(1)}s` : '';
+    const note = [time, funny ? `“${funny}?”` : ''].filter(Boolean).join(' · ');
+    if (note) {
       ctx.fillStyle = MUTED;
-      ctx.fillText(fitFont(ctx, `“${funny}?”`, tile + 16, 20, 16, BODY), cx + tile / 2, below + 102);
+      ctx.fillText(fitFont(ctx, note, tile + 22, 20, 15, BODY), cx + tile / 2, below + 102);
     }
   });
 
