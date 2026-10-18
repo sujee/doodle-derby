@@ -1,6 +1,5 @@
 import { el } from './dom';
 import type { GameResult } from './game';
-import { ROUNDS } from './words';
 
 /**
  * Share cards, drawn on a canvas (no DOM screenshot library) so they look the same everywhere:
@@ -23,11 +22,8 @@ export function headlineFor(r: GameResult): string {
   const winners = r.labels.filter((_, i) => r.scores[i] === best);
   if (r.rounds.length === 0) return 'Game stopped';
   if (best === 0) return r.doodler ? 'Nobody cracked the doodles!' : 'The bots were stumped!';
-  // Shared mid-game (from a round's result bar): it's a lead, not a win yet.
-  const midGame = !r.stopped && r.rounds.length < ROUNDS;
-  if (winners.length > 1) return midGame ? 'Neck and neck!' : "It's a tie!";
-  if (winners[0] === 'You') return midGame ? 'You lead!' : 'You win!';
-  return `${shortName(winners[0])} ${midGame ? 'leads' : 'wins'}!`;
+  if (winners.length > 1) return "It's a tie!";
+  return winners[0] === 'You' ? 'You win!' : `${shortName(winners[0])} wins!`;
 }
 
 /** "meta-llama/Llama-4-Maverick-17B" → "Llama-4-Maverick-17B", trimmed to fit a chip. */

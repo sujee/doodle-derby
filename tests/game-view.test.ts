@@ -72,19 +72,13 @@ describe('a bot whose request is cancelled when the round ends', () => {
 });
 
 describe('the result bar', () => {
-  it('offers Share (the game so far) next to Next word', async () => {
+  it('has just Next word (sharing is on the results screen)', async () => {
     const { game } = startGame();
     game.engine.skip();
     await flush();
     const bar = container.querySelector<HTMLElement>('.result-bar')!;
     expect(bar.hidden).toBe(false);
-    expect([...bar.querySelectorAll('.result-actions button')].map((b) => b.textContent)).toEqual(['Share 📸', 'Next word →']);
-    expect(game.engine.resultSoFar()).toMatchObject({ rounds: [{ winner: null }], stopped: false });
-
-    bar.querySelector<HTMLButtonElement>('.share-round')!.click();
-    expect(document.querySelector('.share-dialog')).not.toBeNull();
-    document.querySelector<HTMLButtonElement>('.share-close')!.click();
-    expect(document.querySelector('.share-dialog')).toBeNull();
+    expect([...bar.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Next word →']);
     game.engine.stop();
   });
 });

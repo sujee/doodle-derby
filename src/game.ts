@@ -13,7 +13,7 @@ import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
 import { createGuesser, providerName, type GuesserConfig } from './providers';
-import { openShareDialog, shortName, wildestGuess } from './share';
+import { shortName, wildestGuess } from './share';
 import * as sfx from './sound';
 import { ROUNDS, type Tier, type Word } from './words';
 
@@ -309,9 +309,6 @@ export class Game {
     const last = round === ROUNDS - 1;
     const next = el('button', { class: 'primary next-round' }, last ? 'See results 🏆' : ['Next word ', el('span', { 'aria-hidden': 'true' }, '→')]);
     next.addEventListener('click', () => this.engine.nextRound());
-    // Share the game so far (the same cards as the results screen), without leaving the round.
-    const share = el('button', { type: 'button', class: 'share-round', title: 'Share your doodles so far' }, ['Share ', el('span', { 'aria-hidden': 'true' }, '📸')]);
-    share.addEventListener('click', () => openShareDialog(this.engine.resultSoFar()));
     const who = winner === null ? null : players[winner];
 
     // The bar under the paper (where the tools were): who got it, then Next.
@@ -322,7 +319,7 @@ export class Game {
       el('div', { class: 'result-text' }, who
         ? [el('strong', {}, [el('span', { class: 'winner-name', style: `--who: ${this.rowColor(winner!)}` }, name), ' got it!']), el('span', {}, `“${word}” · ${stars}`)]
         : [el('strong', {}, 'Nobody got it'), el('span', {}, `It was “${word}”`)]),
-      el('div', { class: 'result-actions' }, [share, next]),
+      el('div', { class: 'result-actions' }, next),
     );
     this.resultBar.classList.toggle('missed', !who);
     this.resultBar.hidden = false;
