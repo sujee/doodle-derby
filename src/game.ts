@@ -450,13 +450,16 @@ export class Game {
     resume.focus({ preventScroll: true });
   }
 
-  /** A bot's status chip. With nothing to report, a bot says "ready"; while asked, "thinking…". */
+  /** A bot's status chip. With nothing to report, a bot shows 👀 (ready); while asked, "thinking…". */
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
     const ready = !text && !this.engine.players[i].human;
-    v.badgeEl.textContent = ready ? 'ready' : kind === 'thinking' ? 'thinking' : text;
+    // Ready is just 👀 (watching the paper); the other states keep their words.
+    v.badgeEl.textContent = ready ? '👀' : kind === 'thinking' ? 'thinking' : text;
     v.badgeEl.className = `badge ${ready ? 'ready' : kind}`;
-    v.badgeEl.title = detail;
+    v.badgeEl.title = ready ? 'Ready: watching the paper' : detail;
+    if (ready) v.badgeEl.setAttribute('aria-label', 'ready');
+    else v.badgeEl.removeAttribute('aria-label');
     v.badgeEl.hidden = !text && !ready;
     v.row.setThinking(kind === 'thinking');
   }
