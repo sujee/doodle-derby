@@ -104,8 +104,9 @@ describe('cost and formatting', () => {
 
   it.each([
     [null, 'price unknown'],
-    [0, '$0.00'],
-    [0.0042, '$0.0042'],
-    [1.234, '$1.23'],
+    [0, '$0.000'],
+    [0.0042, '$0.004'],
+    [0.5, '$0.500'],
+    [1.234, '$1.234'],
   ])('formatUsd(%s) = %s', (x, s) => expect(formatUsd(x)).toBe(s));
 });
