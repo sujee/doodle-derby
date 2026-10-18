@@ -3,6 +3,7 @@ import { installDebugPanel } from './debugPanel';
 import { confetti, doodlerBot, you } from './art';
 import { el } from './dom';
 import { Game, type GameResult } from './game';
+import { installHeader } from './header';
 import type { GuesserConfig } from './providers';
 import { renderSetup } from './setup';
 import { tallyTable } from './tally';
@@ -12,6 +13,8 @@ import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
 const app = document.getElementById('app')!;
+// The name and links at the top of every screen, then the corner tools (debug, sound, settings).
+installHeader();
 // Corner tools on every screen: the debug log, the sound toggle and the settings menu.
 const debugLog = installDebugPanel();
 const settings = installSettings();

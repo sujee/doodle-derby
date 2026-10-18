@@ -178,6 +178,41 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 .settings-opt strong { font-family: var(--round); }
 .settings-note { margin: 12px 0 0; font-size: 0.85rem; }
 
+/* ---------- Site header (every screen) ---------- */
+.site-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px;
+  max-width: 1400px; margin: 0 auto; padding: 12px 220px 4px 16px; /* right: clear of the corner tools */
+}
+.site-head .brand { font: 1.3rem var(--hand); }
+.site-head .w1 { color: var(--coral); }
+.site-head .w2 { color: var(--sky); }
+.site-head .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; font: 0.78rem var(--round); color: var(--muted); }
+.site-head .meta a { color: inherit; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 3px; }
+.site-head .meta a:hover { color: var(--ink); text-decoration-color: currentColor; }
+.site-head .meta a.gh { display: inline-flex; color: var(--ink); }
+.site-head .meta .gh-mark { width: 17px; height: 17px; fill: currentColor; }
+
+/* The "?" and its card: contact details, so they don't clutter the header. */
+.contact-wrap { position: relative; display: inline-flex; }
+button.contact-toggle {
+  width: 20px; height: 20px; padding: 0; font: 700 0.8rem/1 var(--round);
+  border-width: 2px; border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%; box-shadow: 1px 1px 0 var(--shadow);
+}
+.contact-panel {
+  position: fixed; z-index: 55; width: min(280px, calc(100vw - 24px)); /* top/left placed by header.ts */
+  padding: 12px 14px 14px; text-align: left;
+  background: var(--surface); color: var(--ink); border: 3px solid var(--ink); border-radius: 12px;
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+.contact-panel h2 { margin: 0 0 4px; font: 600 1.05rem/1 var(--round); }
+.contact-panel p { margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
+.contact-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.contact-links a {
+  padding: 3px 10px; font: 0.85rem var(--plain); color: var(--ink); text-decoration: none;
+  background: var(--field); border: 2px solid var(--ink); border-radius: 999px;
+}
+.contact-links a:hover { background: var(--sun); }
+
 /* ---------- Setup ---------- */
 .setup { max-width: 1180px; margin: 0 auto; text-align: center; }
 .logo { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 4rem; margin: 8px 0 4px; }
@@ -596,7 +631,11 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 /* ---------- Phone ---------- */
 @media (max-width: 760px) {
   body { font-size: 17px; }
-  main { padding-top: 64px; } /* room for the sound toggle */
+  /* The header sits under the fixed corner tools, so it needs no clearance of its own. */
+  .site-head { padding: 50px 16px 2px; }
+  .site-head .brand { font-size: 1.15rem; }
+  .site-head .meta { font-size: 0.68rem; gap: 2px 8px; }
+  main { padding-top: 2px; }
   .logo { font-size: 2.7rem; gap: 6px; }
   .logo .bot { width: 46px; }
   .hud { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'clock pause share stop'; padding-right: 0; gap: 6px; }
