@@ -13,7 +13,7 @@ import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
 import { createGuesser, providerName, type GuesserConfig } from './providers';
-import { openShareDialog, shortName, wildestGuess } from './share';
+import { openShareDialog, shortName } from './share';
 import * as sfx from './sound';
 import { ROUNDS, type Tier, type Word } from './words';
 
@@ -57,8 +57,6 @@ export class Game {
   // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
-  /** "Hall of shame": the round's wrong guess its bot was surest of (see wildestGuess), circled. */
-  private wildEl = el('div', { class: 'wild card', hidden: '', role: 'status' });
 
   // Bot-doodler mode
   private doodlerMeter = el('div', { class: 'meter' });
@@ -224,7 +222,6 @@ export class Game {
             ),
             ...(this.engine.doodler ? [(this.updateDoodlerMeter(), doodlerRow(this.engine.doodler.label, this.doodlerMeter))] : []),
           ]),
-          this.wildEl, // under the field on desktop, under the paper on phones
         ]),
       ]),
     );
@@ -324,7 +321,6 @@ export class Game {
       for (const v of this.views) v.row.shrug();
     }
 
-    this.renderWild();
     this.shareBtn.removeAttribute('disabled');
     this.shareBtn.title = 'Share the game so far';
 
@@ -352,32 +348,6 @@ export class Game {
     // (measured mid-animation it is still small, and the scroll falls short).
     const reveal = () => this.resultBar.scrollIntoView?.({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     setTimeout(reveal, 400); // the pop-in takes 0.35s
-  }
-
-  /** Updated at round end only: mid-round the word may be secret (a bot is drawing). */
-  private renderWild() {
-    const so = this.engine.resultSoFar();
-    const round = so.rounds[so.rounds.length - 1];
-    const wild = round ? wildestGuess({ ...so, rounds: [round] }) : null;
-    this.wildEl.hidden = !wild;
-    if (!wild) return;
-    const who = this.engine.players[wild.bot];
-    // Circle the same guess in its bot's row, so you can spot it there too.
-    const chip = [...this.views[wild.bot].feedEl.querySelectorAll('.guess')].find((g) => g.textContent === wild.guess);
-    chip?.classList.add('circled');
-    this.wildEl.replaceChildren(
-      el('p', { class: 'wild-title' }, 'Hall of shame'), // the 🙈 sits on the circled guess
-      el('p', { class: 'wild-line' }, [
-        el('span', { class: 'wild-word' }, wild.word),
-        el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),
-        el('span', { class: 'wild-guess circled' }, wild.guess),
-      ]),
-      el('p', { class: 'wild-who' }, [
-        'by ',
-        el('span', { class: 'winner-name', style: `--who: ${this.rowColor(wild.bot)}` }, who.human ? 'You' : shortName(who.label)),
-        wild.confidence === null ? '' : `, ${wild.confidence}% sure`,
-      ]),
-    );
   }
 
   /** "5 correct": drawings guessed so far (the doodler bot's, when a bot draws). */

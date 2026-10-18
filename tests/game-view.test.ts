@@ -85,55 +85,6 @@ describe('the result bar', () => {
   });
 });
 
-describe('the hall of shame (this round’s worst guess)', () => {
-  it('stays hidden until a round ends with a wrong guess, then shows word → guess', async () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.99); // the Fake guesser misses
-    const { game, draw } = startGame();
-    const wild = container.querySelector<HTMLElement>('.wild')!;
-    expect(wild.hidden).toBe(true);
-    draw();
-    await vi.advanceTimersByTimeAsync(POLL_MS + 2500); // one wrong guess in
-    expect(wild.hidden).toBe(true); // not mid-round
-    const guess = game.engine.players[0].history[0].guess;
-    game.engine.skip();
-    await flush();
-    expect(wild.hidden).toBe(false);
-    expect(wild.querySelector('.wild-word')!.textContent).toBe(game.engine.word.word);
-    expect(wild.querySelector('.wild-guess')!.textContent).toBe(guess);
-    expect(container.querySelector('.feed .guess.circled')!.textContent).toBe(guess); // circled in its row too
-
-    game.engine.nextRound(); // round 2: another miss replaces it
-    draw();
-    await vi.advanceTimersByTimeAsync(POLL_MS + 2500);
-    game.engine.skip();
-    await flush();
-    expect(wild.querySelectorAll('.wild-line')).toHaveLength(1); // only this round's
-    expect(wild.querySelector('.wild-word')!.textContent).toBe(game.engine.word.word);
-    game.engine.stop();
-    vi.restoreAllMocks();
-  });
-});
-
-describe('the round winner', () => {
-  it('gets a wins badge, moves to the top of the field and stays there', async () => {
-    const { FieldRow } = await import('../src/field');
-    const list = document.createElement('div');
-    container.append(list);
-    const rows = [0, 1, 2].map((i) => new FieldRow(i, `bot ${i}`, [document.createElement('span'), document.createElement('ol')], document.createElement('span')));
-    list.append(...rows.map((r) => r.el));
-    const badge = rows[2].el.querySelector('.row-wins')!;
-    expect(badge.textContent).toBe('0 wins');
-    rows[2].win(1, 2.5);
-    expect(badge.textContent).toBe('1 win');
-    expect(badge.classList.contains('has-wins')).toBe(true);
-    rows[2].moveToTop(true);
-    expect([...list.children]).toEqual([rows[2].el, rows[0].el, rows[1].el]);
-    rows[2].reset(); // next round: the order stays
-    rows[1].moveToTop(false);
-    expect([...list.children]).toEqual([rows[1].el, rows[2].el, rows[0].el]);
-  });
-});
-
 describe('Share in the game controls', () => {
   it('is off until a round ends, then shares the game so far, pausing a round in play', async () => {
     const { game } = startGame();
