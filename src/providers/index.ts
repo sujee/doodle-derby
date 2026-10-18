@@ -35,6 +35,23 @@ export const OPENAI_PRESETS: OpenAIPreset[] = [
   { name: 'Ollama local', baseUrl: 'http://localhost:11434/v1', keyless: true },
 ];
 
+/**
+ * Who serves the model, for the field rows ("qwen2.5-vl · Fireworks"): the preset's name, else the
+ * API's host. Null for the Fake guesser, whose label already says it all.
+ */
+export function providerName(config: GuesserConfig): string | null {
+  if (config.kind === 'fake') return null;
+  if (config.kind === 'anthropic') return 'Anthropic';
+  const url = config.baseUrl.trim().replace(/\/+$/, '');
+  const preset = OPENAI_PRESETS.find((p) => p.baseUrl && p.baseUrl === url);
+  if (preset) return preset.name;
+  try {
+    return new URL(url).hostname.replace(/^(api|www)\./, '');
+  } catch {
+    return null;
+  }
+}
+
 export type { FakeContext };
 export * from './types';
 export * from './vision';

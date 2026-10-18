@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDoodler } from '../src/doodler';
 import { AnthropicGuesser, listAnthropicModels } from '../src/providers/anthropic';
 import { listOpenAIModels, OpenAICompatGuesser } from '../src/providers/openaiCompat';
+import { providerName } from '../src/providers';
 import { GuessError } from '../src/providers/types';
 
 const IMAGE = 'data:image/jpeg;base64,QUJDREVGRw==';
@@ -225,5 +226,15 @@ describe('doodlers that call models', () => {
     const d = await createDoodler({ kind: 'openai', baseUrl: 'https://x.test/v1', apiKey: 'k', model: 'm' }).draw('sun', signal());
     expect(d.strokes).toHaveLength(2);
     expect(d.usage).toEqual({ input: 80, output: 600 });
+  });
+});
+
+describe('providerName (shown after the model in the field)', () => {
+  it('names the preset, else the API host', () => {
+    expect(providerName({ kind: 'fake' })).toBeNull();
+    expect(providerName({ kind: 'anthropic', apiKey: 'k', model: 'm' })).toBe('Anthropic');
+    expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'https://api.fireworks.ai/inference/v1/' })).toBe('Fireworks');
+    expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'https://api.example.com/v1' })).toBe('example.com');
+    expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'not a url' })).toBeNull();
   });
 });

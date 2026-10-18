@@ -376,6 +376,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   margin: 0; min-width: 0; max-width: 100%; font: 1.1rem/1.2 var(--body); overflow-wrap: anywhere;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
+.row-provider { font-size: 0.82em; color: var(--muted); }
 .row .meter { margin: 0; }
 .row.human .meter { display: block; font-weight: 500; color: var(--muted); }
 .row-guesses {

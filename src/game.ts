@@ -12,7 +12,7 @@ import { el } from './dom';
 import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
 import { costOf, formatTokens, formatUsd, priceFor, type Price, type Usage } from './pricing';
-import { createGuesser, type GuesserConfig } from './providers';
+import { createGuesser, providerName, type GuesserConfig } from './providers';
 import { openShareDialog } from './share';
 import * as sfx from './sound';
 import { ROUNDS, type Tier, type Word } from './words';
@@ -75,7 +75,7 @@ export class Game {
 
   constructor(
     private container: HTMLElement,
-    configs: GuesserConfig[],
+    private configs: GuesserConfig[],
     onDone: (r: GameResult) => void,
     doodlerConfig: GuesserConfig | null = null,
     /** Tests can pass a fixed word list. */
@@ -195,7 +195,7 @@ export class Game {
               { class: 'rows' },
               this.engine.players.map((p, i) => {
                 const v = this.views[i];
-                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined);
+                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined, p.human ? null : providerName(this.configs[i]));
                 if (p.human) v.meterEl.textContent = 'type your guesses below';
                 this.updateMeter(i);
                 this.setBadge(i, '', '');

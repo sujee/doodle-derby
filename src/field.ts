@@ -18,15 +18,22 @@ export class FieldRow {
    * (latest guess first) gets the line below to itself.
    * score: the engine's score element, kept for screen readers; the row shows "N wins" itself.
    * art: the avatar (defaults to robot i); you() when You are guessing in bot-doodler mode.
+   * provider: who serves the model ("Fireworks"), shown muted after its name.
    */
-  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element) {
+  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element, provider?: string | null) {
     score.classList.add('sr-only');
     this.el = el('div', { class: art ? 'row human' : `row p${index}` }, [
       el('span', { class: 'crown', 'aria-hidden': 'true' }, '👑'),
       el('div', { class: 'row-avatar', 'aria-hidden': 'true' }, art ?? robot(index)),
       el('div', { class: 'row-main' }, [
         el('div', { class: 'row-head' }, [
-          el('div', { class: 'row-name' }, [el('h3', { title: label }, shortLabel(label)), bubbles[0]]),
+          el('div', { class: 'row-name' }, [
+            el('h3', { title: provider ? `${label} · ${provider}` : label }, [
+              shortLabel(label),
+              ...(provider ? [el('span', { class: 'row-provider' }, ` · ${provider}`)] : []),
+            ]),
+            bubbles[0],
+          ]),
           ...(meter ? [meter] : []),
         ]),
         el('div', { class: 'row-guesses' }, bubbles.slice(1)),
