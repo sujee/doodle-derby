@@ -479,8 +479,9 @@ button.icon-btn.stop { color: var(--muted); }
 .result-avatar .bot { width: 34px; }
 .result-text { display: grid; gap: 1px; min-width: 0; }
 .result-text strong { font: 1.05rem/1.2 var(--body); overflow-wrap: anywhere; }
-.result-text span { font-size: 0.8rem; color: rgb(255 248 231 / 0.7); overflow-wrap: anywhere; }
+.result-text > span { font-size: 0.8rem; color: rgb(255 248 231 / 0.7); overflow-wrap: anywhere; }
 /* The winner's name in its row color, lifted so it reads on the dark bar. */
+.result-text .result-wins { color: rgb(255 248 231 / 0.7); }
 .result-bar .winner-name { color: color-mix(in srgb, var(--who) 70%, #fff); }
 .result-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 .result-actions button { padding: 10px 14px; font-size: 1.05rem; white-space: nowrap; border-color: #fff8e7; }
@@ -502,7 +503,7 @@ button.icon-btn.stop { color: var(--muted); }
   .result-avatar { width: 52px; height: 52px; border-radius: 16px; }
   .result-avatar .bot { width: 42px; }
   .result-text strong { font-size: 1.25rem; }
-  .result-text span { font-size: 0.9rem; }
+  .result-text > span { font-size: 0.9rem; }
   .result-actions { grid-column: auto; }
   .result-actions button { padding: 12px 18px; font-size: 1.15rem; }
   .result-bar .next-round { padding-inline: 22px; }

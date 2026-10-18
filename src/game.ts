@@ -312,12 +312,12 @@ export class Game {
     const who = winner === null ? null : players[winner];
 
     // The bar under the paper (where the tools were): who got it, then Next.
-    const name = who ? (who.human ? 'You' : who.label) : '';
-    const stars = this.botDraws ? `★ +1 for ${who?.human ? 'you' : 'the bot'} and the doodler` : '★ +1 for you and the bot';
+    const name = who ? (who.human ? 'You' : shortName(who.label, 40)) : '';
+    const wins = who ? `(${who.score} win${who.score === 1 ? '' : 's'})` : '';
     this.resultBar.replaceChildren(
       el('div', { class: 'result-avatar', 'aria-hidden': 'true' }, who ? (who.human ? you() : robot(winner!)) : '🤷'),
       el('div', { class: 'result-text' }, who
-        ? [el('strong', {}, [el('span', { class: 'winner-name', style: `--who: ${this.rowColor(winner!)}` }, name), ' got it!']), el('span', {}, `“${word}” · ${stars}`)]
+        ? [el('strong', {}, [el('span', { class: 'winner-name', style: `--who: ${this.rowColor(winner!)}` }, name), ` got it in ${seconds!.toFixed(1)} secs `, el('span', { class: 'result-wins' }, wins)])]
         : [el('strong', {}, 'Nobody got it'), el('span', {}, `It was “${word}”`)]),
       el('div', { class: 'result-actions' }, next),
     );
