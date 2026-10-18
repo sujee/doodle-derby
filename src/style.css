@@ -387,13 +387,15 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 }
 .row-wins.has-wins { color: var(--on-bright); background: var(--lane); border-color: var(--ink); box-shadow: 2px 2px 0 var(--shadow); }
 .row-wins.bump { animation: pop-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
-.crown {
-  position: absolute; top: -18px; left: 12px; font-size: 1.6rem; rotate: -14deg; pointer-events: none;
+.win-star {
+  position: absolute; top: -18px; left: 10px; width: 34px; height: 34px; pointer-events: none;
   opacity: 0; transform: translateY(8px) scale(0.5); transition: opacity 0.25s, transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
-/* The round's winner: its own color, a solid outline, a crown. */
+.win-star svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.win-star path { fill: var(--sun); stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+/* The round's winner: its own color, a solid outline, a spinning star. */
 .field-row.won { background: color-mix(in srgb, var(--lane) 24%, var(--surface)); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--shadow); }
-.field-row.won .crown { opacity: 1; transform: none; }
+.field-row.won .win-star { opacity: 1; transform: none; animation: spin 2.4s linear infinite; }
 .field-row.won .row-avatar .bot { animation: spin-hop 0.55s ease-out 2; }
 .field-row.thinking .row-avatar .bot { animation: fidget 0.7s ease-in-out infinite; }
 .field-row.shrug .row-avatar .bot { animation: shrug 0.7s ease-in-out 2; }
@@ -573,6 +575,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 @keyframes shrug { 25% { rotate: -12deg; } 75% { rotate: 12deg; } }
 @keyframes scramble { 25% { rotate: -10deg; translate: 0 -3px; } 75% { rotate: 10deg; translate: 0 -3px; } }
 @keyframes whoa { 20% { rotate: 14deg; } 45% { rotate: -12deg; } 70% { rotate: 6deg; } }
+@keyframes spin { to { rotate: 360deg; } }
 @keyframes fidget { 50% { rotate: 4deg; translate: 1px -1px; } }
 @keyframes ring { 25% { rotate: 20deg; } 75% { rotate: -20deg; } }
 @keyframes star-pop { from { scale: 2.4; rotate: -30deg; } }
@@ -625,7 +628,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .badge { font-size: 0.72rem; padding: 0 8px; }
   .row-time { font-size: 1.05rem; }
   .row-wins { top: -10px; right: 10px; font-size: 0.7rem; padding: 0 7px; }
-  .crown { top: -14px; left: 6px; font-size: 1.2rem; }
+  .win-star { top: -14px; left: 6px; width: 26px; height: 26px; }
   .you-row .stars { font-size: 0.8rem; }
   .you-row { padding-top: 6px; }
   .tools { gap: 2px; }

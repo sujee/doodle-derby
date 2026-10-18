@@ -1,7 +1,7 @@
 /**
  * "The field": one row per guesser, stacked beside the canvas. A row shows the bot, its latest guess
  * big (crossed out in red if wrong, ✓ if right), its earlier guesses as crossed-out chips, and on the
- * right its winning time, with its rounds won as a badge on the corner. The round's winner gets a crown and its own color.
+ * right its winning time, with its rounds won as a badge on the corner. The round's winner gets a spinning star and its own color.
  * Display only; no game logic here.
  */
 
@@ -24,7 +24,7 @@ export class FieldRow {
   constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element, provider?: string | null) {
     score.classList.add('sr-only');
     this.el = el('div', { class: art ? 'field-row human' : `field-row p${index}` }, [
-      el('span', { class: 'crown', 'aria-hidden': 'true' }, '👑'),
+      el('span', { class: 'win-star', 'aria-hidden': 'true' }, starSvg()),
       this.winsEl,
       el('div', { class: 'row-avatar', 'aria-hidden': 'true' }, art ?? robot(index)),
       el('div', { class: 'row-main' }, [
@@ -48,7 +48,7 @@ export class FieldRow {
     this.el.classList.toggle('thinking', on);
   }
 
-  /** Won this round: crown, its color, the time it took, and the new win count. */
+  /** Won this round: the star, its color, the time it took, and the new win count. */
   win(score: number, seconds: number | null) {
     this.el.classList.add('won');
     this.timeEl.textContent = seconds === null ? '' : `${seconds.toFixed(1)}s`;
@@ -91,4 +91,15 @@ export class FieldRow {
 /** "accounts/fireworks/models/qwen2p5-vl-32b" → "qwen2p5-vl-32b": the model name, without its path. */
 function shortLabel(label: string): string {
   return label.split('/').pop() || label;
+}
+
+/** A sunny five-point star with an ink outline: spins on the round winner's corner. */
+function starSvg(): SVGSVGElement {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 40 40');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', 'M20 3 L24.9 14.1 L37 15.2 L27.9 23.2 L30.6 35 L20 28.8 L9.4 35 L12.1 23.2 L3 15.2 L15.1 14.1 Z');
+  svg.append(path);
+  return svg;
 }
