@@ -162,13 +162,20 @@ export class Game {
     });
     const togglePause = () => (this.engine.paused ? this.engine.resume() : this.engine.pause());
     this.pauseBtn.addEventListener('click', togglePause);
-    // P pauses / resumes (unless you're typing a guess).
+    // P pauses / resumes; Enter starts the next round once this one is over (unless you're typing,
+    // a button has focus and handles Enter itself, or the share dialog is open).
     const onKey = (e: KeyboardEvent) => {
       if (!this.paper.isConnected) return document.removeEventListener('keydown', onKey);
-      if (e.key.toLowerCase() !== 'p' || e.metaKey || e.ctrlKey || e.altKey) return;
-      if ((e.target as HTMLElement)?.closest('input, textarea, select')) return;
-      e.preventDefault();
-      togglePause();
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select')) return;
+      if (e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        togglePause();
+      } else if (e.key === 'Enter' && this.engine.roundOver && !this.engine.paused && !target?.closest('button') && !document.querySelector('.share-backdrop')) {
+        e.preventDefault();
+        this.engine.nextRound();
+      }
     };
     document.addEventListener('keydown', onKey);
     this.paper.append(this.pauseEl);
@@ -353,7 +360,7 @@ export class Game {
     const chip = [...this.views[wild.bot].feedEl.querySelectorAll('.guess')].find((g) => g.textContent === wild.guess);
     chip?.classList.add('circled');
     this.wildEl.replaceChildren(
-      el('p', { class: 'wild-title' }, 'Hall of shame 🙈'),
+      el('p', { class: 'wild-title' }, 'Hall of shame'), // the 🙈 sits on the circled guess
       el('p', { class: 'wild-line' }, [
         el('span', { class: 'wild-word' }, wild.word),
         el('span', { class: 'wild-arrow', 'aria-hidden': 'true' }, '→'),

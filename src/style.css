@@ -376,7 +376,8 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .field-row .meter { margin: 0; }
 .field-row.human .meter { display: block; font-weight: 500; color: var(--muted); }
 .row-guesses {
-  display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 2.4rem; margin-top: 4px; overflow: hidden;
+  display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 2.4rem; overflow: hidden;
+  padding-top: 8px; margin-top: -4px; /* headroom inside the clip for the 🙈 on a circled guess */
   -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent);
 }
 .row-side { display: grid; justify-items: end; gap: 2px; text-align: right; }
@@ -506,6 +507,12 @@ button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; tran
   border: 2.5px solid var(--strike); border-radius: 50% 46% 52% 44% / 56% 48% 52% 46%; rotate: -3deg;
   animation: circle-in 0.4s ease-out backwards;
 }
+/* …with a see-no-evil monkey perched on its top-right. */
+.circled::after {
+  content: '🙈'; position: absolute; top: -0.6em; right: -1.2em; pointer-events: none;
+  font-size: 0.8em; line-height: 1; rotate: 12deg; color: #000; /* opaque, even on a faded guess */
+  animation: circle-in 0.4s 0.15s ease-out backwards;
+}
 @keyframes circle-in { from { opacity: 0; scale: 1.4; } }
 .wild-who { font-size: 0.85rem; color: #6d6252; }
 .wild .winner-name { color: color-mix(in srgb, var(--who) 75%, #2b2b2b); font-weight: 700; }
@@ -631,7 +638,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .field-row .meter, .field-row.human .meter { display: none; }
   /* Bot-doodler mode: the doodle matters more than the doodler's meter (the star column shows it). */
   .field .doodler-row { display: none; }
-  .row-guesses { min-height: 1.7rem; margin-top: 0; }
+  .row-guesses { min-height: 1.7rem; margin-top: -8px; }
   .feed li { font-size: 0.8rem; padding: 1px 9px; }
   .feed li:first-child { font-size: 1.2rem; }
   .badge { font-size: 0.72rem; padding: 0 8px; }

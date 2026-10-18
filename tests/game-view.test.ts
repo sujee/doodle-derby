@@ -165,3 +165,18 @@ describe('the "N correct" badge on the paper', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('Enter after a round', () => {
+  it('starts the next round, but not mid-round', async () => {
+    const { game } = startGame();
+    const enter = () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    enter();
+    expect(game.engine.round).toBe(0); // still drawing: nothing happens
+    game.engine.skip();
+    await flush();
+    enter();
+    expect(game.engine.round).toBe(1);
+    expect(game.engine.roundOver).toBe(false);
+    game.engine.stop();
+  });
+});
