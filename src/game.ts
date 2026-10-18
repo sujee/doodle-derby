@@ -451,18 +451,22 @@ export class Game {
     resume.focus({ preventScroll: true });
   }
 
-  /** A bot's status chip. With nothing to report, a bot shows 👀 (ready); while asked, "thinking…". */
+  /**
+   * A bot's status chip: 👀 when ready, three bouncing dots while it is being asked, else the given
+   * word (a rate-limit warning, an error). The dots are visual only; screen readers hear "thinking".
+   */
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
     const ready = !text && !this.engine.players[i].human;
-    // Ready is just 👀 (watching the paper); the other states keep their words.
-    v.badgeEl.textContent = ready ? '👀' : kind === 'thinking' ? 'thinking' : text;
+    const thinking = kind === 'thinking';
     v.badgeEl.className = `badge ${ready ? 'ready' : kind}`;
-    v.badgeEl.title = ready ? 'Ready: watching the paper' : detail;
+    v.badgeEl.title = ready ? 'Ready: watching the paper' : thinking ? 'Thinking of a guess…' : detail;
+    v.badgeEl.replaceChildren(thinking ? thinkingDots() : document.createTextNode(ready ? '👀' : text));
     if (ready) v.badgeEl.setAttribute('aria-label', 'ready');
+    else if (thinking) v.badgeEl.setAttribute('aria-label', 'thinking');
     else v.badgeEl.removeAttribute('aria-label');
     v.badgeEl.hidden = !text && !ready;
-    v.row.setThinking(kind === 'thinking');
+    v.row.setThinking(thinking);
   }
 
   /**
@@ -549,4 +553,9 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price, roun
     el('span', { class: 'chip quiet', title: 'Requests sent this round / over the whole game (tokens count only answered ones)' }, `calls: ${roundCalls} / ${usage.calls} tot`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
+}
+
+/** Three dots that bounce in turn: the bot's "thinking" chip (visual only; the badge says "thinking" to screen readers). */
+function thinkingDots(): HTMLElement {
+  return el('span', { class: 'dots', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')]);
 }

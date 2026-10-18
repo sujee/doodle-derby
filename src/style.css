@@ -433,9 +433,14 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
 .badge.ready { background: none; border-color: transparent; padding: 0 2px; font-size: 1rem; line-height: 1.2; }
-.badge.thinking { background: color-mix(in srgb, var(--sun) 45%, var(--scrap)); }
-/* "thinking" + dots that fill in one by one */
-.badge.thinking::after { content: '…'; display: inline-block; width: 1.3ch; overflow: hidden; vertical-align: bottom; animation: dots 1s steps(4) infinite; }
+.badge.thinking { background: color-mix(in srgb, var(--sun) 45%, var(--scrap)); display: inline-flex; align-items: center; }
+/* Three dots that bounce in turn (option C): the visual "thinking". */
+.dots { display: inline-flex; align-items: center; gap: 4px; height: 0.7em; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--grape); animation: bounce-dot 0.9s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: 0.15s; background: var(--sky); }
+.dots i:nth-child(3) { animation-delay: 0.3s; background: var(--mint); }
+@keyframes bounce-dot { 30% { translate: 0 -4px; } 60%, 100% { translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .dots i { animation-duration: 2.4s; } }
 
 .you-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); }
 .you-row .bot { width: 30px; }
@@ -557,7 +562,6 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 @keyframes shake { 0%, 100% { translate: 0 0; } 25% { translate: -2px 1px; } 75% { translate: 2px -1px; } }
 @keyframes pop-in { from { opacity: 0; scale: 0.6; } }
 @keyframes scribble { from { clip-path: inset(0 100% 0 0); } }
-@keyframes dots { from { width: 0; } to { width: 1.3ch; } }
 @keyframes float { 50% { translate: 0 -3px; } }
 @keyframes bounce { 30% { translate: 0 -14px; } 55% { translate: 0 0; } 75% { translate: 0 -5px; } }
 @keyframes spin-hop { 40% { translate: 0 -10px; rotate: -12deg; } 70% { rotate: 8deg; } }
@@ -629,7 +633,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .rows.many .row-side { display: none; }
   .rows.many .badge { font-size: 0.62rem; padding: 0 5px; }
   .rows.many .badge.thinking { font-size: 0; padding: 0; border: none; background: none; } /* just the moving dots */
-  .rows.many .badge.thinking::after { font-size: 0.9rem; font-weight: 700; }
+  .rows.many .dots i { width: 5px; height: 5px; }
   .rows.many .row-guesses { min-height: 1.3rem; }
   .rows.many .feed li:first-child { font-size: 0.95rem; }
   .rows.many .feed li:not(:first-child) { display: none; }
