@@ -178,6 +178,41 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 .settings-opt strong { font-family: var(--round); }
 .settings-note { margin: 12px 0 0; font-size: 0.85rem; }
 
+/* ---------- Site header (every screen) ---------- */
+.site-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px;
+  max-width: 1400px; margin: 0 auto; padding: 12px 220px 4px 16px; /* right: clear of the corner tools */
+}
+.site-head .brand { font: 1.3rem var(--hand); }
+.site-head .w1 { color: var(--coral); }
+.site-head .w2 { color: var(--sky); }
+.site-head .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; font: 0.78rem var(--round); color: var(--muted); }
+.site-head .meta a { color: inherit; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 3px; }
+.site-head .meta a:hover { color: var(--ink); text-decoration-color: currentColor; }
+.site-head .meta a.gh { display: inline-flex; color: var(--ink); }
+.site-head .meta .gh-mark { width: 17px; height: 17px; fill: currentColor; }
+
+/* The "?" and its card: contact details, so they don't clutter the header. */
+.contact-wrap { position: relative; display: inline-flex; }
+button.contact-toggle {
+  width: 20px; height: 20px; padding: 0; font: 700 0.8rem/1 var(--round);
+  border-width: 2px; border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%; box-shadow: 1px 1px 0 var(--shadow);
+}
+.contact-panel {
+  position: fixed; z-index: 55; width: min(280px, calc(100vw - 24px)); /* top/left placed by header.ts */
+  padding: 12px 14px 14px; text-align: left;
+  background: var(--surface); color: var(--ink); border: 3px solid var(--ink); border-radius: 12px;
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+.contact-panel h2 { margin: 0 0 4px; font: 600 1.05rem/1 var(--round); }
+.contact-panel p { margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
+.contact-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.contact-links a {
+  padding: 3px 10px; font: 0.85rem var(--plain); color: var(--ink); text-decoration: none;
+  background: var(--field); border: 2px solid var(--ink); border-radius: 999px;
+}
+.contact-links a:hover { background: var(--sun); }
+
 /* ---------- Setup ---------- */
 .setup { max-width: 1180px; margin: 0 auto; text-align: center; }
 .logo { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 4rem; margin: 8px 0 4px; }
@@ -527,18 +562,24 @@ button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; tran
 /* ---------- Results ---------- */
 .results { text-align: center; }
 .results h1 { font-size: 3.4rem; margin-top: 16px; }
-/* Final tally: one line per guesser, best standing first. */
-.tally-wrap { overflow-x: auto; margin: 34px auto 8px; max-width: 820px; }
-.tally { width: 100%; border-collapse: collapse; }
-.tally caption { font: 2rem var(--hand); padding: 0 0 12px; }
-.tally th, .tally td { padding: 8px 12px; border-bottom: 2px solid #a8d8f0; white-space: nowrap; }
-.tally th { font: 600 0.8rem var(--round); text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); text-align: right; }
+/* Final tally: one line per guesser, best standing first, then a totals row. Fixed columns, so it
+   always fits (no sideways scroll) and the model names wrap instead of being cut off. */
+.tally-wrap { margin: 34px auto 8px; max-width: 820px; }
+.tally { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tally col.col-rank { width: 9%; }
+.tally col.col-model { width: 31%; }
+.tally col.col-num { width: 10%; }
+.tally th, .tally td { padding: 8px 10px; border-bottom: 2px solid #a8d8f0; }
+.tally th { font: 600 0.7rem var(--round); text-transform: uppercase; letter-spacing: 0.01em; color: var(--muted); text-align: right; }
 .tally th:first-child, .tally th:nth-child(2) { text-align: left; }
-.tally td { font: 1rem var(--plain); text-align: right; font-variant-numeric: tabular-nums; }
+.tally th .narrow { display: none; } /* the short header, shown on a phone */
+.tally td { font: 0.95rem var(--plain); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tally td.rank { text-align: center; font: 700 1.1rem var(--round); color: var(--muted); }
-.tally td.model { text-align: left; font: 1.15rem var(--hand); max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.tally td.model { text-align: left; font: 1.05rem var(--hand); white-space: normal; overflow-wrap: break-word; }
 .tally tbody tr:first-child td.rank { color: var(--ink); }
 .tally tr.human td { background: color-mix(in srgb, var(--mint) 24%, transparent); }
+.tally tfoot td { border-top: 3px solid var(--ink); border-bottom: none; font-weight: 700; }
+.tally tfoot td.model { font: 600 0.82rem var(--round); text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); }
 .you-badge {
   display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px; margin-top: 8px;
   background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); font-size: 1.15rem;
@@ -590,17 +631,21 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 /* ---------- Phone ---------- */
 @media (max-width: 760px) {
   body { font-size: 17px; }
-  main { padding-top: 64px; } /* room for the sound toggle */
+  /* The header sits under the fixed corner tools, so it needs no clearance of its own. */
+  .site-head { padding: 50px 16px 2px; }
+  .site-head .brand { font-size: 1.15rem; }
+  .site-head .meta { font-size: 0.68rem; gap: 2px 8px; }
+  main { padding-top: 2px; }
   .logo { font-size: 2.7rem; gap: 6px; }
   .logo .bot { width: 46px; }
-  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto auto; grid-template-areas: 'round clock pause share stop'; padding-right: 0; gap: 6px; }
+  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'clock pause share stop'; padding-right: 0; gap: 6px; }
   .hud-right .share-btn { grid-area: share; }
   .hud-right .pause-btn { grid-area: pause; }
-  .round { grid-area: round; gap: 6px; font-size: 0.92rem; }
+  .round { gap: 6px; font-size: 0.92rem; }
   .round .tier { padding: 2px 7px; font-size: 0.68rem; }
   .round-word { display: none; }
   .hud-right { display: contents; }
-  .clock { grid-area: clock; justify-self: end; margin-right: 2px; }
+  .clock { grid-area: clock; justify-self: start; margin-right: 2px; } /* the round moved down, so the clock takes the left */
   .hud-right .stop { grid-area: stop; justify-self: end; }
   .prompt { padding: 5px 16px 7px; }
   .word { font-size: 1.7rem; }
@@ -649,6 +694,18 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   button.tool { width: 58px; }
   button.start { font-size: 2rem; padding: 10px 40px; }
   .results h1 { font-size: 2.6rem; margin-top: 0; }
+  /* Keep all eight columns on screen: tighter cells, smaller figures and short headers, model names
+     still wrap in full. */
+  .tally col.col-rank { width: 8%; }
+  .tally col.col-model { width: 29%; }
+  .tally col.col-num { width: 10.5%; }
+  .tally th, .tally td { padding: 6px 2px; }
+  .tally th { font-size: 0.55rem; letter-spacing: 0; }
+  .tally th .wide { display: none; }
+  .tally th .narrow { display: inline; }
+  .tally td { font-size: 0.72rem; }
+  .tally td.rank { font-size: 0.95rem; }
+  .tally td.model { font-size: 0.82rem; }
   .report-card th, .report-card td { padding: 6px; }
 }
 
@@ -742,7 +799,8 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 }
 
 /* Above the paper: the word on its scrap of paper, and "5 correct" on the right. */
-.paper-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 4px 14px; min-width: 0; }
+.paper-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 4px 14px; min-width: 0; }
+.paper-head .round { flex: none; }
 .paper-head .prompt { min-width: 0; overflow-wrap: anywhere; }
 .paper-badge {
   flex: none; white-space: nowrap;

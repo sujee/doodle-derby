@@ -28,7 +28,7 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
   - Rounds 4–7: medium (bicycle, umbrella, guitar…)
   - Rounds 8–10: hard (lighthouse, octopus, helicopter…)
 - No word repeats within a game.
-- Each round: the word is shown, and you have **30 seconds** to draw.
+- Each round: the round number, the level and the word sit right on top of the canvas, and you have **30 seconds** to draw.
 - About every 2.5 s, if the drawing isn't empty, the same snapshot (white background, 512px JPEG) goes to every idle guesser, changed or not, and a guesser that answers wrong is asked again 0.3 s later, so the bots keep guessing until time runs out.
 - Each guesser has at most one request in flight. Its previous wrong guesses this round are included in the prompt.
 - Each guess comes with the model's confidence (`<object> | <0-100>`). **Doodle Climb:** each bot sits on a 10-rung ladder at its latest confidence, leaps to the bell when it's right, and slides down when time runs out. Confidence is display-only.
@@ -40,15 +40,15 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - First guesser to answer correctly: **+1** for that guesser, and the round ends.
 - You: **+1** whenever any guesser gets your drawing.
 - Time runs out: nobody scores.
-- The end screen shows a **winning tally**: one row per guesser — standing, model, right guesses, guesses made, API calls, tokens in/out and cost — best standing first (ties share a place), then a folded round-by-round table.
+- The end screen shows a **winning tally**: one row per guesser — standing, model, right guesses, guesses made, API calls, tokens in/out and cost — best standing first (ties share a place), with a **Totals** row summing every column, then a folded round-by-round table.
 
 ## Matching
 - A guess is cleaned up (lowercase, punctuation and articles removed, plural made singular) and must equal the word or one of its listed alternatives.
 - Answers that arrive after the round ended are discarded. Requests still running when a round ends are cancelled.
 
 ## Tokens and cost
-- Each bot's row shows tokens in / out and cost so far, from the usage the provider reports.
-- The winning tally lists each guesser's API calls, tokens in / out and cost (fake and local bots show "free"). Requests cancelled when a round ends aren't counted.
+- The field rows show only how many guesses a bot has made this round.
+- The winning tally lists each guesser's API calls, tokens in / out and cost, from the usage the provider reports (fake and local bots show "free"), plus a row of totals. Requests cancelled when a round ends aren't counted.
 - Prices (USD per 1M tokens) come from models.dev: a trimmed snapshot in `src/data/models-dev.json`, refreshed with `npm run pricing` and on every deploy. Fake and local Ollama bots are free; unknown models show "price unknown".
 - models.dev's image-support data also fills in "accepts images" when a provider's model list doesn't say.
 
@@ -57,6 +57,7 @@ A browser game: you draw, AI vision models (the Doodlebots) race to guess what i
 - Share (Web Share with both images, where supported), Download, Copy image, Copy text.
 
 ## Look and sound
+- Every screen carries a header: the game's name, the version, a GitHub mark linking to the source and a link to sujee.dev. (The "?" contact card — X and email — is written and tested but hidden for now.)
 - Whimsical sketchbook style: hand-drawn fonts (Short Stack, Fredoka), bright colors, robot Doodlebots, taped-paper canvas (the drawing surface stays pure white), pencil timer, confetti. Chalkboard theme in dark mode. Animations are off under reduced motion.
 - Synthesized sound effects (Web Audio, no files). 🔊/🔇 toggle on every screen and the M key; the choice is remembered.
 

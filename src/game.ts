@@ -177,14 +177,15 @@ export class Game {
     this.paper.append(this.pauseEl);
     this.container.replaceChildren(
       el('section', { class: this.botDraws ? 'game bot-draws' : 'game' }, [
+        // The clock and the buttons; the round and the word sit down on the canvas.
         el('header', { class: 'hud' }, [
-          el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
           el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, this.timerBar), this.pauseBtn, this.shareBtn, stop]),
         ]),
         el('div', { class: 'board' }, [
           (this.padWrap.replaceChildren(
-            // Just the word, right on top of the canvas, with your "N correct" beside it.
+            // Right on top of the canvas: the round and level, the word, then your "N correct".
             el('div', { class: 'paper-head' }, [
+              el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
               el('div', { class: 'prompt', title: this.botDraws ? (this.youGuess ? 'The word to guess' : 'The word the bot is drawing') : 'The word to draw' }, [
                 el('span', { class: 'prompt-verb' }, this.botDraws ? (this.youGuess ? 'guess ' : 'drawing ') : 'draw '),
                 this.wordEl,
