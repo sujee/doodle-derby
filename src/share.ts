@@ -13,8 +13,9 @@ const MUTED = '#6d6252';
 const PAPER = '#fff8e7';
 const BOT_COLORS = ['#ff6b6b', '#4cc9f0', '#9b5de5'];
 const MINT = '#06d6a0';
-const HAND = '"Gochi Hand", "Comic Sans MS", cursive';
-const BODY = '"Patrick Hand", "Comic Sans MS", cursive';
+const STRIKE = 'rgb(229 56 59 / 0.45)'; // see-through red through wrong guesses
+const HAND = '"Short Stack", "Comic Sans MS", cursive';
+const BODY = '"Short Stack", "Comic Sans MS", cursive';
 
 export function headlineFor(r: GameResult): string {
   const best = Math.max(0, ...r.scores);
@@ -83,32 +84,55 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
   ctx.textAlign = 'center';
   ctx.fillStyle = INK;
-  ctx.font = `50px ${BODY}`;
-  ctx.fillText(headlineFor(r), SIZE / 2, 190);
+  ctx.fillText(fitFont(ctx, headlineFor(r), SIZE - 80, 50, 32, BODY), SIZE / 2, 190);
 
   // Score chips: each bot, then You.
   const chips = [
-    ...r.labels.map((l, i) => ({ text: `${shortName(l, 18)}: ${r.scores[i]}`, color: colorOf(r, i) })),
+    ...r.labels.map((l, i) => ({ text: `${shortName(l, 30)}: ${r.scores[i]}`, color: colorOf(r, i) })),
     r.doodler
-      ? { text: `✏ ${shortName(r.doodler.label, 14)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
+      ? { text: `✏ ${shortName(r.doodler.label, 30)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
       : { text: `You: ${r.playerScore}/${r.rounds.length}`, color: MINT },
   ];
-  ctx.font = `30px ${BODY}`;
-  const pad = 22;
-  const gap = 16;
-  const widths = chips.map((ch) => ctx.measureText(ch.text).width + pad * 2);
-  let x = (SIZE - widths.reduce((a, b) => a + b, 0) - gap * (chips.length - 1)) / 2;
-  chips.forEach((ch, i) => {
-    roundRect(ctx, x, 222, widths[i], 50, 25);
-    ctx.fillStyle = ch.color;
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.fillText(ch.text, x + widths[i] / 2, 258);
-    x += widths[i] + gap;
+  // One row of chips if it fits (shrinking a little first), else they wrap onto a second row, so model
+  // names are shown whole instead of cut.
+  const pad = 20;
+  const gap = 14;
+  const maxRow = SIZE - 80;
+  const total = (ws: number[]) => ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1);
+  let widths: number[] = [];
+  for (let size = 28; size >= 22; size -= 2) {
+    ctx.font = `${size}px ${BODY}`;
+    widths = chips.map((ch) => Math.min(maxRow, ctx.measureText(fit(ctx, ch.text, maxRow - pad * 2)).width + pad * 2));
+    if (total(widths) <= maxRow) break;
+  }
+  const all = chips.map((_, i) => i);
+  let chipRows = [all];
+  if (total(widths) > maxRow) {
+    // Two rows, split where they come out most even (2 + 2 rather than 3 + 1).
+    const w = (row: number[]) => total(row.map((j) => widths[j]));
+    let best = 1;
+    for (let k = 1; k < all.length; k++) {
+      if (Math.max(w(all.slice(0, k)), w(all.slice(k))) < Math.max(w(all.slice(0, best)), w(all.slice(best)))) best = k;
+    }
+    chipRows = [all.slice(0, best), all.slice(best)];
+  }
+  chipRows.forEach((row, k) => {
+    let x = (SIZE - total(row.map((j) => widths[j]))) / 2;
+    const y = 222 + k * 60;
+    for (const i of row) {
+      roundRect(ctx, x, y, widths[i], 50, 25);
+      ctx.fillStyle = chips[i].color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.fillText(fit(ctx, chips[i].text, maxRow - pad * 2), x + widths[i] / 2, y + 36);
+      x += widths[i] + gap;
+    }
   });
+  // A second chip row pushes the doodles down; the two rows of doodles sit a little closer to make room.
+  const extra = (chipRows.length - 1) * 60;
 
   // Doodle grid: 5 × 2.
   const cols = 5;
@@ -120,28 +144,31 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
     const inRow = Math.min(cols, shown.length - Math.floor(i / cols) * cols);
     const rowStart = (SIZE - inRow * tile - (inRow - 1) * tileGap) / 2;
     const cx = rowStart + (i % cols) * (tile + tileGap);
-    const cy = 320 + Math.floor(i / cols) * 330;
+    const cy = 320 + extra + Math.floor(i / cols) * (extra ? 314 : 330);
     drawTile(ctx, cx, cy, tile, images[i], i);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = INK;
-    ctx.font = `36px ${HAND}`;
-    ctx.fillText(fit(ctx, round.word, tile), cx + tile / 2, cy + tile + 46);
+    // The word on one line if it fits at a good size, else split over two ("statue of / liberty").
+    const lines = wordLines(ctx, round.word, tile + 16);
+    lines.forEach((line, n) => ctx.fillText(line, cx + tile / 2, cy + tile + 42 + n * 30));
+    const below = cy + tile + (lines.length - 1) * 30;
 
-    ctx.font = `25px ${BODY}`;
     if (round.winner !== null) {
       ctx.fillStyle = darker(colorOf(r, round.winner));
-      const t = round.seconds !== null ? ` ${round.seconds.toFixed(1)}s` : '';
-      ctx.fillText(fit(ctx, `✓ ${shortName(r.labels[round.winner], 12)}${t}`, tile + 10), cx + tile / 2, cy + tile + 78);
+      // The bot's whole name on this line; its time moves to the next line, before the funny guess.
+      ctx.fillText(fitFont(ctx, `✓ ${shortName(r.labels[round.winner], 30)}`, tile + 22, 22, 14, BODY), cx + tile / 2, below + 74);
     } else {
       ctx.fillStyle = MUTED;
-      ctx.fillText('✗ stumped', cx + tile / 2, cy + tile + 78);
+      ctx.font = `23px ${BODY}`;
+      ctx.fillText('✗ stumped', cx + tile / 2, below + 74);
     }
     const funny = round.guesses.flat()[0];
-    if (funny) {
+    const time = round.winner !== null && round.seconds !== null ? `${round.seconds.toFixed(1)}s` : '';
+    const note = [time, funny ? `“${funny}?”` : ''].filter(Boolean).join(' · ');
+    if (note) {
       ctx.fillStyle = MUTED;
-      ctx.font = `22px ${BODY}`;
-      ctx.fillText(fit(ctx, `“${funny}?”`, tile + 10), cx + tile / 2, cy + tile + 106);
+      ctx.fillText(fitFont(ctx, note, tile + 22, 20, 15, BODY), cx + tile / 2, below + 102);
     }
   });
 
@@ -151,8 +178,8 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 
 /**
  * Card 2, "What were the bots thinking?": a notebook table with one row per round (doodle + word)
- * and one column per bot. Each cell is that bot's guess trail: wrong guesses struck through in the
- * bot's color, the right one circled.
+ * and one column per bot. Each cell is that bot's guess trail: wrong guesses struck through in
+ * see-through red, the right one in the bot's color and circled.
  */
 export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
@@ -164,12 +191,11 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
 
   ctx.textAlign = 'center';
   ctx.fillStyle = INK;
-  ctx.font = `66px ${HAND}`;
-  ctx.fillText(r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?', SIZE / 2, 92);
+  ctx.fillText(fitFont(ctx, r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?', SIZE - 80, 66, 40, HAND), SIZE / 2, 92);
 
   // "Wildest guess" banner, slightly tilted like a sticker.
   const wild = wildestGuess(r);
-  ctx.font = `32px ${BODY}`;
+  ctx.font = `28px ${BODY}`;
   const banner = wild
     ? `Wildest guess: “${wild.guess}” for ${wild.word} (${shortName(r.labels[wild.bot], 16)})`
     : 'No wrong guesses at all. Show-offs!';
@@ -189,7 +215,7 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
 
   // Column headers: bot names in their colors.
   const left = 40;
-  const colStart = 300;
+  const colStart = 330;
   const colW = (SIZE - colStart - left) / Math.max(1, r.labels.length);
   ctx.textAlign = 'left';
   ctx.font = `30px ${HAND}`;
@@ -197,7 +223,7 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
   ctx.fillText('Round', left, top - 26);
   r.labels.forEach((label, b) => {
     ctx.fillStyle = darker(colorOf(r, b));
-    ctx.fillText(fit(ctx, shortName(label), colW - 16), colStart + b * colW, top - 26);
+    ctx.fillText(fitFont(ctx, shortName(label), colW - 16, 28, 18, HAND), colStart + b * colW, top - 26);
   });
 
   rows.forEach((round, i) => {
@@ -219,14 +245,14 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
     ctx.strokeRect(left, y + 12, t, t);
     ctx.textAlign = 'left';
     ctx.fillStyle = INK;
-    ctx.font = `34px ${HAND}`;
-    ctx.fillText(fit(ctx, round.word, colStart - left - t - 30), left + t + 16, y + 52);
+    const lines = wordLines(ctx, round.word, colStart - left - t - 30, 30, 24, 17);
+    lines.forEach((line, n) => ctx.fillText(line, left + t + 16, y + (lines.length === 1 ? 52 : 42) + n * 24));
     ctx.fillStyle = MUTED;
-    ctx.font = `20px ${BODY}`;
+    ctx.font = `18px ${BODY}`;
     ctx.fillText(
       round.winner === null ? 'stumped' : `got in ${round.seconds?.toFixed(1) ?? '?'}s`,
       left + t + 16,
-      y + 80,
+      y + 88,
     );
 
     // Each bot's guess trail.
@@ -256,16 +282,16 @@ function drawTrail(
   ctx.textAlign = 'left';
   if (trail.length === 0) {
     ctx.fillStyle = MUTED;
-    ctx.font = `24px ${BODY}`;
+    ctx.font = `20px ${BODY}`;
     ctx.fillText('(quiet)', x0, y0 + 10);
     return;
   }
-  const lineH = 29;
+  const lineH = 30;
   let x = x0;
   let line = 0;
   for (const item of trail) {
-    ctx.font = item.right ? `30px ${HAND}` : `24px ${BODY}`;
-    const text = fit(ctx, item.text, width - 40);
+    ctx.font = `20px ${BODY}`;
+    const text = item.right ? fitFont(ctx, item.text, width - 40, 24, 17, HAND) : fit(ctx, item.text, width - 40);
     const w = ctx.measureText(text).width;
     const need = item.right ? w + 40 : w;
     if (x > x0 && x + need > x0 + width) {
@@ -274,7 +300,7 @@ function drawTrail(
     }
     if (line > 2) {
       ctx.fillStyle = MUTED;
-      ctx.font = `24px ${BODY}`;
+      ctx.font = `20px ${BODY}`;
       ctx.fillText('…', x0 + width - 10, y0 + 2 * lineH);
       return;
     }
@@ -283,22 +309,23 @@ function drawTrail(
       ctx.fillStyle = darker(color);
       ctx.fillText(text, x + 6, y);
       ctx.beginPath(); // hand-drawn circle around the right answer
-      ctx.ellipse(x + 6 + w / 2, y - 9, w / 2 + 10, 18, -0.06, 0, Math.PI * 2);
+      ctx.ellipse(x + 6 + w / 2, y - 7, w / 2 + 9, 14, -0.06, 0, Math.PI * 2);
       ctx.lineWidth = 3;
       ctx.strokeStyle = MINT;
       ctx.stroke();
       ctx.fillStyle = '#05a37b';
-      ctx.font = `26px ${BODY}`;
+      ctx.font = `22px ${BODY}`;
       ctx.fillText('✓', x + w + 20, y);
       x += need + 8;
     } else {
+      // Wrong guess: struck through in see-through red, so the word stays readable.
       ctx.fillStyle = INK;
       ctx.fillText(text, x, y);
-      ctx.beginPath(); // scribbled strike-through in the bot's color
-      ctx.moveTo(x - 2, y - 7);
-      ctx.lineTo(x + w + 2, y - 9);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x - 2, y - 6);
+      ctx.lineTo(x + w + 2, y - 6);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = STRIKE;
       ctx.stroke();
       x += w + 14;
     }
@@ -335,9 +362,9 @@ function title(ctx: CanvasRenderingContext2D, width: number, y: number, size: nu
 function footer(ctx: CanvasRenderingContext2D, width: number, height: number, r: GameResult) {
   ctx.textAlign = 'center';
   ctx.fillStyle = MUTED;
-  ctx.font = `30px ${BODY}`;
   const url = gameUrl();
-  ctx.fillText(url ? `Play: ${url.replace(/^https?:\/\//, '')}` : r.doodler ? 'A bot doodles. Everyone races to guess it.' : 'You doodle. The bots guess. Fastest bot wins.', width / 2, height - 40);
+  const text = url ? `Play: ${url.replace(/^https?:\/\//, '')}` : r.doodler ? 'A bot doodles. Everyone races to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
+  ctx.fillText(fitFont(ctx, text, width - 80, 30, 20, BODY), width / 2, height - 40);
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, img: HTMLImageElement | null, i: number) {
@@ -375,6 +402,40 @@ function dashed(ctx: CanvasRenderingContext2D, x1: number, y: number, x2: number
   ctx.lineTo(x2, y);
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * A word as one line (from size down to `two` px), or two balanced lines (from `two` down to min) when it
+ * has a space; past that it is cut with "…". Sets ctx.font to the size used.
+ */
+function wordLines(ctx: CanvasRenderingContext2D, word: string, max: number, size = 34, two = 26, min = 20): string[] {
+  for (let px = size; px >= two; px--) {
+    ctx.font = `${px}px ${HAND}`;
+    if (ctx.measureText(word).width <= max) return [word];
+  }
+  const parts = word.split(' ');
+  if (parts.length < 2) return [fitFont(ctx, word, max, two, min, HAND)];
+  // Split where the two halves are closest in length.
+  let best = 1;
+  for (let i = 1; i < parts.length; i++) {
+    const diff = (k: number) => Math.abs(parts.slice(0, k).join(' ').length - parts.slice(k).join(' ').length);
+    if (diff(i) < diff(best)) best = i;
+  }
+  const pair = [parts.slice(0, best).join(' '), parts.slice(best).join(' ')];
+  for (let px = two; px >= min; px--) {
+    ctx.font = `${px}px ${HAND}`;
+    if (pair.every((l) => ctx.measureText(l).width <= max)) return pair;
+  }
+  return pair.map((l) => fit(ctx, l, max));
+}
+
+/** Set the largest font size from size down to min that fits text in max; past min, cut it with "…". */
+function fitFont(ctx: CanvasRenderingContext2D, text: string, max: number, size: number, min: number, family: string): string {
+  for (let px = size; px >= min; px--) {
+    ctx.font = `${px}px ${family}`;
+    if (ctx.measureText(text).width <= max) return text;
+  }
+  return fit(ctx, text, max);
 }
 
 function fit(ctx: CanvasRenderingContext2D, text: string, max: number): string {

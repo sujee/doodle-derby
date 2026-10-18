@@ -9,36 +9,41 @@ the preview folder never change underneath the user.
 
 | Folder | Path | Git branch | Dev server | Who uses it |
 |---|---|---|---|---|
-| **preview** | `draw-game/draw-claude` | `main` | http://localhost:5173 (launch config `preview`) | The user plays and tests here |
-| **dev** | `draw-game/draw-claude-dev` (a git worktree of the same repo) | `dev` | http://localhost:5174 (launch config `dev`) | The agent edits, builds and tests here |
+| **preview** | `draw-claude/main` | `main` | http://localhost:5173 (launch config `preview`) | The user plays and tests here |
+| **dev** | `draw-claude/dev` (a git worktree of the same repo) | `dev` | http://localhost:5174 (launch config `dev`) | The agent edits, builds and tests here |
 
 The two folders sit side by side (same depth), so nothing done in one can touch the other.
+The top folder `draw-claude` is not a git repo: it only holds `main/` and `dev/`, plus the
+launch configs (`draw-claude/.claude/launch.json`) that start each dev server in its own folder.
 List them with `git worktree list`. Run each dev server from its own folder.
 
 ### Rules
 
-1. **Never edit files in the preview folder** (except during a promotion, below). All work happens in `draw-claude-dev`.
+1. **Never edit or commit in the preview folder**, except the promotion merge below. All work happens in `dev`.
 2. **Commit in dev** in small, meaningful steps.
 3. **Before asking to promote**, in dev:
    - `npm test` passes,
    - `npm run build` passes (it type-checks too),
    - the change is play-tested on http://localhost:5174 (desktop and phone width; with Fake bots / mocked APIs).
 4. **Promote only after the user says yes.** Ask with a short summary of what changes.
-5. **Promotion is a copy, not a merge:** from the preview folder (`draw-claude`), copy the dev files over it, then commit there so it can be rolled back:
+5. **Promotion is a git merge:** commit everything in dev first (`git status` clean), then from
+   the preview folder (`main`) merge the `dev` branch with a merge commit, so the promotion is one
+   commit that can be rolled back:
 
    ```bash
-   rsync -a --delete --exclude .git --exclude node_modules --exclude dist ../draw-claude-dev/ ./
+   git merge --no-ff dev -m "Promote dev: <summary>"
    ```
    ```bash
    npm install   # only if package.json changed
    ```
-   ```bash
-   git add -A && git commit -m "Promote dev: <summary>"
-   ```
 
-   Then tell the user to reload http://localhost:5173.
-6. **Rollback** (only when the user asks): `git reset --hard HEAD~1` in the preview folder undoes the last promotion.
-7. After promoting, dev already has everything preview has; just keep working there.
+   Then tell the user to reload http://localhost:5173. Main only ever gets these merges, so
+   conflicts should not happen; if one does, stop (`git merge --abort`) and ask the user.
+6. **Rollback** (only when the user asks): `git reset --hard HEAD~1` in the preview folder undoes
+   the last promotion (`HEAD~1` of a merge commit is the main it was merged into). The commits stay
+   on `dev`.
+7. After promoting, dev already has everything preview has; just keep working there. After a
+   rollback, keep working in dev as usual; the next promotion merges the commits again.
 
 ## Commands
 

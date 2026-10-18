@@ -1,6 +1,5 @@
-import { installDebug } from './debug';
-import { installDebugPanel } from './debugPanel';
 import './style.css';
+import { installDebugPanel } from './debugPanel';
 import { confetti, doodlerBot, robot, you } from './art';
 import { el } from './dom';
 import { Game, type GameResult } from './game';
@@ -12,7 +11,9 @@ import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
 const app = document.getElementById('app')!;
-document.body.append(installSound(), installDebug(), ...installDebugPanel());
+// Corner tools on every screen: the debug log and the sound toggle, spaced out in one row.
+const debugLog = installDebugPanel();
+document.body.append(el('div', { class: 'corner-tools' }, [debugLog.button, installSound()]), debugLog.panel);
 let lastConfigs: GuesserConfig[] = [];
 let lastDoodler: GuesserConfig | null = null;
 
@@ -59,9 +60,9 @@ function showResults(r: GameResult) {
       el('h1', {}, headline),
       r.stopped ? el('p', { class: 'note' }, `Stopped after ${r.rounds.length} of 10 rounds.`) : '',
       podium,
+      el('div', { class: 'row center' }, [again, ...(r.rounds.length ? [share] : []), setup]),
       youBadge,
       receipt(r),
-      el('div', { class: 'row center' }, [again, ...(r.rounds.length ? [share] : []), setup]),
       el('details', { class: 'report' }, [
         el('summary', {}, 'Round by round'),
         el('table', { class: 'summary report-card' }, [
@@ -85,7 +86,7 @@ function showResults(r: GameResult) {
   );
 }
 
-/** "Bot bill": tokens and cost per bot, folded into one summary line. Hidden when every bot is fake. */
+/** "Bot bill": tokens and cost per bot, shown open (click the summary line to fold it). Hidden when every bot is fake. */
 function receipt(r: GameResult) {
   // Every bot that made calls: the guessers (not You), plus the doodler.
   const bots = [
@@ -99,7 +100,7 @@ function receipt(r: GameResult) {
   const tokens = bots.reduce((n, b) => n + b.usage.input + b.usage.output, 0);
   const totalText = known.length ? (known.length < costs.length ? `${formatUsd(total)}+` : formatUsd(total)) : 'price unknown';
   const cell = (text: string, cls = '') => el('td', cls ? { class: cls } : {}, text);
-  return el('details', { class: 'receipt' }, [
+  return el('details', { class: 'receipt', open: '' }, [
     el('summary', {}, `🧾 Bot bill: ${totalText} · ${formatTokens(tokens)} tokens`),
     el('table', {}, [
       el('thead', {}, el('tr', {}, ['Bot', 'Calls', 'In', 'Out', 'Cost'].map((h) => el('th', {}, h)))),
