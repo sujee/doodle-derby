@@ -1,4 +1,4 @@
-# Working on Doodle Duel
+# Working on Doodle Derby
 
 Instructions for AI agents (and humans) working in this repo. See SPEC.md for what the game does.
 

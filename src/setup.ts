@@ -159,7 +159,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
 
   container.append(
     el('section', { class: 'setup' }, [
-      el('h1', { class: 'logo' }, [robot(0), el('span', {}, [el('span', { class: 'w1' }, 'Doodle'), ' ', el('span', { class: 'w2' }, 'Duel')]), robot(1)]),
+      el('h1', { class: 'logo' }, [robot(0), el('span', {}, [el('span', { class: 'w1' }, 'Doodle'), ' ', el('span', { class: 'w2' }, 'Derby')]), robot(1)]),
       lede,
       slotsEl,
       note,

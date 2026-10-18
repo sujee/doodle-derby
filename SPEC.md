@@ -1,4 +1,4 @@
-# Doodle Duel — Spec
+# Doodle Derby — Spec
 
 A browser game: you draw, AI vision models (the Doodlebots) race to guess what it is.
 

@@ -19,7 +19,7 @@ import { ROUNDS, type Tier, type Word } from './words';
 
 export type { GameResult, RoundResult } from './engine';
 
-const HINT_KEY = 'doodle-duel-hint-seen';
+const HINT_KEY = 'doodle-derby-hint-seen';
 
 function hintSeen(): boolean {
   try {

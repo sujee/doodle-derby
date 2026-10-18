@@ -97,7 +97,7 @@ export function installDebugPanel(): { button: HTMLButtonElement; panel: HTMLEle
   return { button, panel };
 }
 
-const SIZE_KEY = 'doodle-duel-debug-size';
+const SIZE_KEY = 'doodle-derby-debug-size';
 
 /** Drag the left edge, bottom edge or bottom-left corner to resize; the size is remembered. */
 function makeResizable(panel: HTMLElement, head: HTMLElement) {

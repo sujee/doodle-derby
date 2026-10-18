@@ -50,7 +50,7 @@ export function shareText(r: GameResult): string {
     ? `${shortName(r.doodler.label)} doodled, and we raced to guess: ${bots}.`
     : `The bots guessed ${r.playerScore} of my ${r.rounds.length} doodles (${bots}).`;
   return (
-    `I just played Doodle Duel ✏️🤖 ${headlineFor(r)} ` +
+    `I just played Doodle Derby ✏️🤖 ${headlineFor(r)} ` +
     story +
     (url ? ` ${url}` : '')
   );
@@ -291,17 +291,17 @@ function paper(width: number, height: number) {
   return { c, ctx };
 }
 
-/** "Doodle Duel" in two colors, centered on baseline y. */
+/** "Doodle Derby" in two colors, centered on baseline y. */
 function title(ctx: CanvasRenderingContext2D, width: number, y: number, size: number) {
   ctx.textAlign = 'left';
   ctx.font = `${size}px ${HAND}`;
   const w1 = ctx.measureText('Doodle ').width;
-  const w2 = ctx.measureText('Duel').width;
+  const w2 = ctx.measureText('Derby').width;
   const x = (width - w1 - w2) / 2;
   ctx.fillStyle = BOT_COLORS[0];
   ctx.fillText('Doodle ', x, y);
   ctx.fillStyle = BOT_COLORS[1];
-  ctx.fillText('Duel', x + w1, y);
+  ctx.fillText('Derby', x + w1, y);
 }
 
 function footer(ctx: CanvasRenderingContext2D, width: number, height: number, r: GameResult) {
@@ -451,8 +451,8 @@ export async function openShareDialog(r: GameResult, onClose?: () => void) {
     const prep = await prepare(r);
     const [doodles, brains] = await Promise.all([buildDoodleCard(r, prep), buildBrainCard(r, prep)]);
     cards = [
-      { name: 'Doodles', file: 'doodle-duel.png', blob: doodles, url: URL.createObjectURL(doodles) },
-      { name: 'Bot brains', file: 'doodle-duel-bot-brains.png', blob: brains, url: URL.createObjectURL(brains) },
+      { name: 'Doodles', file: 'doodle-derby.png', blob: doodles, url: URL.createObjectURL(doodles) },
+      { name: 'Bot brains', file: 'doodle-derby-bot-brains.png', blob: brains, url: URL.createObjectURL(brains) },
     ];
   } catch {
     preview.replaceChildren(el('p', { class: 'note' }, 'Could not draw the share cards, sorry!'));
@@ -498,7 +498,7 @@ export async function openShareDialog(r: GameResult, onClose?: () => void) {
   };
 
   if (canShareFiles) {
-    actions.append(button('Share both…', 'primary', () => navigator.share({ files, text, title: 'Doodle Duel' })));
+    actions.append(button('Share both…', 'primary', () => navigator.share({ files, text, title: 'Doodle Derby' })));
   }
   actions.append(
     button('Download', canShareFiles ? '' : 'primary', () => {

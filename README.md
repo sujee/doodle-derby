@@ -1,4 +1,4 @@
-# Doodle Duel
+# Doodle Derby
 
 You draw, AI vision models race to guess what it is. See [SPEC.md](SPEC.md).
 
