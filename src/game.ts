@@ -38,7 +38,8 @@ export class Game {
   private views: PlayerView[];
   private botDraws: boolean;
 
-  private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)' }, '⏸ Pause');
+  // Icon + label; phones show just the icon so the whole HUD fits on one row.
+  private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)', 'aria-label': 'Pause' }, pauseFace(false));
   private pauseEl = el('div', { class: 'pause-layer', hidden: '' });
   // Share the game so far, any time after the first round (the round in play pauses meanwhile).
   private shareBtn = el('button', { type: 'button', class: 'icon-btn share-btn', title: 'Share after the first round', 'aria-label': 'Share the game so far', disabled: '' }, '📸');
@@ -50,7 +51,7 @@ export class Game {
   private timerBar = el('div', { class: 'ring', title: 'Seconds left' }, [ringSvg(), this.timerEl]);
   private paper = el('div', { class: 'paper' });
   private lastBeat = '';
-  /** Drawings guessed, as a badge on the paper's top edge (like the bots' wins badges). */
+  /** Drawings guessed, as a badge above the paper, beside the word (like the bots' wins badges). */
   private correctEl = el('span', { class: 'paper-badge' });
   private hint = el('div', { class: 'hint', 'aria-hidden': 'true' }, 'Draw here! The clock starts when the bots start guessing ✏️');
   // Round end: a bar under the paper, so nothing covers the doodle.
@@ -58,7 +59,6 @@ export class Game {
   private padWrap = el('div', { class: 'pad-wrap' });
   /** "Hall of shame": the round's wrong guess its bot was surest of (see wildestGuess), circled. */
   private wildEl = el('div', { class: 'wild card', hidden: '', role: 'status' });
-  private drawLabel = el('span', { class: 'draw-label' }, 'Your turn to draw: ');
 
   // Bot-doodler mode
   private doodlerMeter = el('div', { class: 'meter' });
@@ -145,7 +145,7 @@ export class Game {
 
     // No right-click menu anywhere on the paper: the canvas and the pop-ups over it (reveal, pause, sketching).
     this.paper.addEventListener('contextmenu', (e) => e.preventDefault());
-    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.correctEl);
+    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl);
     this.showCorrect();
     if (!hintSeen() && !this.botDraws) {
       this.paper.append(this.hint);
@@ -183,11 +183,15 @@ export class Game {
       el('section', { class: this.botDraws ? 'game bot-draws' : 'game' }, [
         el('header', { class: 'hud' }, [
           el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
-          el('div', { class: 'prompt' }, [this.drawLabel, this.wordEl]),
           el('div', { class: 'hud-right' }, [el('div', { class: 'clock' }, this.timerBar), this.pauseBtn, this.shareBtn, stop]),
         ]),
         el('div', { class: 'board' }, [
           (this.padWrap.replaceChildren(
+            // Just the word, right on top of the canvas, with your "N correct" beside it.
+            el('div', { class: 'paper-head' }, [
+              el('div', { class: 'prompt', title: this.botDraws ? 'The word to guess' : 'The word to draw' }, this.wordEl),
+              this.correctEl,
+            ]),
             this.paper,
             this.resultBar,
             this.botDraws
@@ -248,11 +252,10 @@ export class Game {
     this.stopSketchTimer();
     this.guessInput.value = '';
     sfx.roundStart();
-    this.roundEl.textContent = `Round ${round + 1}/${ROUNDS}`;
+    this.roundEl.replaceChildren(el('span', { class: 'round-word' }, 'Round '), `${round + 1}/${ROUNDS}`); // phones show just "3/10"
     this.tierEl.textContent = tier;
     this.tierEl.className = `tier ${tier}`;
     this.wordEl.textContent = this.botDraws ? '???' : word.word;
-    this.drawLabel.textContent = this.botDraws ? 'Guess the doodle: ' : 'Your turn to draw: ';
     for (const v of this.views) {
       v.feedEl.replaceChildren();
       v.row.reset();
@@ -392,7 +395,8 @@ export class Game {
     if (paused) {
       this.stopSketchTimer();
       if (playing) this.canvas.setEnabled(false);
-      this.pauseBtn.textContent = '▶ Resume';
+      this.pauseBtn.replaceChildren(...pauseFace(true));
+      this.pauseBtn.setAttribute('aria-label', 'Resume');
       this.pauseBtn.title = 'Resume (P)';
       this.renderPauseCard();
     } else {
@@ -400,7 +404,8 @@ export class Game {
         this.canvas.setEnabled(!this.botDraws);
         this.startSketchTimer(); // carry on drawing where it paused
       }
-      this.pauseBtn.textContent = '⏸ Pause';
+      this.pauseBtn.replaceChildren(...pauseFace(false));
+      this.pauseBtn.setAttribute('aria-label', 'Pause');
       this.pauseBtn.title = 'Pause and see this round’s guesses (P)';
     }
     this.pauseEl.hidden = !paused;
@@ -496,6 +501,14 @@ export class Game {
     if (p.human) return; // your row keeps its "type your guesses" hint
     renderMeter(this.views[i].meterEl, p.usage, p.price);
   }
+}
+
+/** The pause button's face: an icon, and a label that phones hide. */
+function pauseFace(paused: boolean): Node[] {
+  return [
+    el('span', { 'aria-hidden': 'true' }, paused ? '▶' : '⏸'),
+    el('span', { class: 'pause-label', 'aria-hidden': 'true' }, paused ? ' Resume' : ' Pause'),
+  ];
 }
 
 /** The ring's track and its arc; pathLength 100 lets CSS empty it with --left (1 → 0). */

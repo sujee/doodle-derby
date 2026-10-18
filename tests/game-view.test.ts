@@ -152,12 +152,14 @@ describe('Share in the game controls', () => {
   });
 });
 
-describe('the "N correct" badge on the paper', () => {
+describe('the word and the "N correct" badge above the paper', () => {
   it('counts your drawings that got guessed', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right
     const { game, draw } = startGame();
-    const badge = container.querySelector<HTMLElement>('.paper .paper-badge')!;
+    const badge = container.querySelector<HTMLElement>('.paper-head .paper-badge')!;
     expect(badge.textContent).toBe('0 correct');
+    expect(container.querySelector('.paper-head .word')!.textContent).toBe(game.engine.word.word); // just the word
+    expect(container.textContent).not.toContain('Your turn');
     draw();
     await vi.advanceTimersByTimeAsync(POLL_MS + 2500);
     expect(game.engine.roundOver).toBe(true);

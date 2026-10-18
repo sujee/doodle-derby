@@ -229,13 +229,13 @@ button.start:hover { animation-play-state: paused; }
 /* ---------- Game ---------- */
 .hud, .tools { -webkit-user-select: none; user-select: none; }
 .hud {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
   padding-right: 136px; margin-bottom: 18px; /* clear of the corner tools */
 }
 .round { display: flex; gap: 10px; align-items: center; font: 600 1.05rem var(--round); white-space: nowrap; }
 .prompt {
   position: relative; isolation: isolate;
-  padding: 8px 26px 10px;
+  padding: 6px 22px 8px;
   color: var(--scrap-ink);
   transform: rotate(-2deg);
   filter: drop-shadow(3px 3px 0 var(--shadow));
@@ -247,7 +247,6 @@ button.start:hover { animation-play-state: paused; }
   clip-path: polygon(0 6%, 6% 0, 13% 5%, 21% 1%, 29% 6%, 38% 0, 46% 4%, 55% 0, 63% 5%, 72% 1%, 80% 6%, 89% 0, 95% 5%, 100% 2%,
     99% 92%, 93% 100%, 85% 95%, 77% 100%, 68% 94%, 59% 100%, 50% 95%, 41% 100%, 33% 94%, 24% 100%, 16% 95%, 8% 100%, 1% 94%);
 }
-.draw-label { font-size: 0.95rem; color: #6d6252; white-space: nowrap; }
 .word { font: 2rem/1 var(--hand); color: var(--scrap-ink); } /* Short Stack runs wide */
 .hud-right { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
 .clock { display: flex; align-items: center; gap: 8px; }
@@ -282,10 +281,10 @@ button.start:hover { animation-play-state: paused; }
 
 .board { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 28px; align-items: start; }
 .board > .pad-wrap { grid-row: span 2; } /* the field, then the wrong-guess card, stack beside the paper */
-.pad-wrap { width: min(620px, 100dvh - 230px); min-width: 300px; }
+.pad-wrap { width: min(620px, 100dvh - 290px); min-width: 300px; }
 .paper {
   position: relative; margin: 0 auto;
-  max-width: min(620px, calc(100dvh - 230px)); min-width: 260px;
+  max-width: min(620px, calc(100dvh - 290px)); min-width: 260px;
 }
 /* The drawing surface itself stays plain white: models see the snapshot. */
 .pad {
@@ -608,15 +607,16 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   main { padding-top: 64px; } /* room for the sound toggle */
   .logo { font-size: 2.7rem; gap: 6px; }
   .logo .bot { width: 46px; }
-  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'round clock clock clock' 'prompt pause share stop'; padding-right: 0; gap: 12px 6px; }
+  .hud { grid-template-columns: minmax(0, 1fr) auto auto auto auto; grid-template-areas: 'round clock pause share stop'; padding-right: 0; gap: 6px; }
   .hud-right .share-btn { grid-area: share; }
   .hud-right .pause-btn { grid-area: pause; }
-  .round { grid-area: round; }
+  .round { grid-area: round; gap: 6px; font-size: 0.92rem; }
+  .round .tier { padding: 2px 7px; font-size: 0.68rem; }
+  .round-word { display: none; }
   .hud-right { display: contents; }
-  .clock { grid-area: clock; justify-self: end; }
+  .clock { grid-area: clock; justify-self: end; margin-right: 2px; }
   .hud-right .stop { grid-area: stop; justify-self: end; }
-  .prompt { grid-area: prompt; justify-self: start; padding: 6px 12px 8px; }
-  .draw-label { font-size: 0.78rem; white-space: normal; }
+  .prompt { padding: 5px 16px 7px; }
   .word { font-size: 1.7rem; }
   .ring { width: 46px; height: 46px; }
   .tape { width: 56px; }
@@ -771,12 +771,16 @@ button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-ra
 .pause-guesses .guess { overflow-wrap: anywhere; }
 .pause-guesses .when { font: 12px/1.2 var(--plain); color: var(--muted); white-space: nowrap; }
 @media (max-width: 760px) {
-  button.pause-btn { padding: 6px 10px; font-size: 0.9rem; }
+  /* Icon only, round like its neighbours, so the HUD is one row. */
+  button.pause-btn { width: 40px; height: 40px; padding: 0; font-size: 1rem; border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%; }
+  .pause-label { display: none; }
 }
 
-/* "5 correct": drawings guessed, a badge on the paper's top edge (clear of the corner tapes). */
+/* Above the paper: the word on its scrap of paper, and "5 correct" on the right. */
+.paper-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 4px 14px; min-width: 0; }
+.paper-head .prompt { min-width: 0; overflow-wrap: anywhere; }
 .paper-badge {
-  position: absolute; top: -13px; left: 50%; translate: -50% 0; z-index: 3; white-space: nowrap;
+  flex: none; white-space: nowrap;
   padding: 0 10px; border-radius: 999px; font: 600 0.85rem/1.5 var(--round); color: var(--muted);
   background: var(--surface); border: 2px solid color-mix(in srgb, var(--ink) 22%, transparent);
 }
