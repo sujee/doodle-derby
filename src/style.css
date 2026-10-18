@@ -117,11 +117,11 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
   padding: 16px;
 }
 .row { display: flex; gap: 8px; align-items: center; }
-/* Model box + refresh icon / custom name: same 4px rhythm as the label above (.field). */
+/* "Model" with the reload icon on its right, then the box full width below. */
+.field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.field-head > span { font-size: 1.05rem; color: var(--muted); }
+.field-head button.icon-btn.refresh { width: 30px; height: 30px; font-size: 1.05rem; }
 .stack { display: grid; gap: 4px; }
-/* The model box gets the full width; the refresh icon sits just after it. */
-.model-row { display: flex; align-items: center; gap: 10px; }
-.model-row select { flex: 1; min-width: 0; }
 button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 .row.center { justify-content: center; margin-top: 28px; gap: 16px; flex-wrap: wrap; }
 .note { color: var(--muted); font-size: 1rem; }
@@ -224,9 +224,9 @@ button.add-all { display: block; width: 100%; margin-top: 10px; background: colo
 }
 button.quiet { background: transparent; box-shadow: none; border-color: color-mix(in srgb, var(--ink) 40%, transparent); color: var(--muted); }
 .slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; min-width: 0; }
-.slot-head .bot { width: 52px; flex: none; }
+.slot-head .bot { width: 44px; flex: none; }
 .slot-avatar { display: flex; flex: none; }
-.slot-head h2 { margin: 0; font-size: clamp(1.3rem, 2.4vw, 1.8rem); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-head h2 { margin: 0; flex: 1; font-size: clamp(1.2rem, 2vw, 1.5rem); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; }
 .check input { width: 20px; height: 20px; accent-color: var(--mint); }
 .check.small { font-size: 1rem; color: var(--muted); margin: -4px 0 12px; }
