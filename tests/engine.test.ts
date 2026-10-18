@@ -242,7 +242,7 @@ describe('rounds and the end of the game', () => {
 });
 
 describe('requests cut off by the end of the round', () => {
-  it('a bot still waiting for its reply is marked cancelled, not idle, and it clears next round', async () => {
+  it('a bot still waiting for its reply is cancelled and just goes back to ready', async () => {
     const slow = new ScriptedBot('Slow', [{ guess: 'dog', confidence: 1 }], { hold: true });
     const fast = new ScriptedBot('Fast', [{ guess: 'cat', confidence: 90 }]);
     const { engine, clock, board, rec } = setup([slow, fast]);
@@ -250,10 +250,9 @@ describe('requests cut off by the end of the round', () => {
     await drawAndPoll(clock, board);
     expect(engine.roundOver).toBe(true);
     const badges = (i: number) => rec.log.filter((e) => e.name === 'badge' && e.args[0] === i).map((e) => e.args[2]);
-    expect(badges(0).at(-1)).toBe('cancelled');
-    expect(badges(1).at(-1)).toBe(''); // Fast answered: nothing to say
-    engine.nextRound();
-    expect(badges(0).at(-1)).toBe('');
+    expect(engine.players[0].inFlight).toBe(false);
+    expect(badges(0).at(-1)).toBe(''); // its request was cancelled; no badge for that
+    expect(badges(1).at(-1)).toBe('');
   });
 });
 

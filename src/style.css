@@ -199,6 +199,7 @@ button.add-bot {
   background: transparent; border-style: dashed; box-shadow: none; color: var(--muted); font-size: 1.05rem; padding: 16px 10px;
 }
 button.add-bot:hover { color: var(--ink); box-shadow: none; }
+button.add-all { display: block; width: 100%; margin-top: 10px; background: color-mix(in srgb, var(--mint) 35%, var(--surface)); }
 .add-bot .plus {
   display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
   background: var(--mint); color: #2b2b2b; border: 2.5px solid var(--ink); font: 700 2.6rem/1 var(--round); padding-bottom: 3px;
@@ -366,7 +367,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 }
 .row-avatar .bot { width: 46px; display: block; }
 .row-main { min-width: 0; }
-.row-head { display: grid; justify-items: start; gap: 3px; min-width: 0; }
+.row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; min-width: 0; } /* name, status and tokens on one line when they fit */
 .row-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; max-width: 100%; }
 .row-head h3 {
   margin: 0; min-width: 0; max-width: 100%; font: 1.1rem/1.2 var(--body); overflow-wrap: anywhere;
@@ -423,7 +424,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .feed li.right .guess::after { content: ' ✓'; color: #05a37b; }
 .feed:empty::before { content: 'zzz…'; color: var(--muted); font-size: 0.95rem; }
 
-/* Status chip beside the bot's name: thinking, waiting out a rate limit, an error, or cancelled. */
+/* Status chip beside the bot's name: 👀 ready, thinking, waiting out a rate limit, or an error. */
 .badge {
   flex: none; padding: 0 10px; border-radius: 999px; white-space: nowrap;
   background: var(--scrap); color: var(--scrap-ink); border: 2px solid var(--ink); font-size: 0.8rem; line-height: 1.4;
@@ -431,7 +432,6 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .field-row:has(.badge:not([hidden])) .feed:empty::before { content: none; }
 .badge.warn { background: #ffe57e; }
 .badge.error { background: #ffc9c9; }
-.badge.cancelled { background: none; color: var(--muted); border-style: dashed; }
 .badge.ready { background: none; border-color: transparent; padding: 0 2px; font-size: 1rem; line-height: 1.2; }
 .badge.thinking { background: color-mix(in srgb, var(--sun) 45%, var(--scrap)); }
 /* "thinking" + dots that fill in one by one */
@@ -618,6 +618,24 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .badge { font-size: 0.72rem; padding: 0 8px; }
   .row-time { font-size: 1.05rem; }
   .row-wins { top: -10px; right: 10px; font-size: 0.7rem; padding: 0 7px; }
+  /* More than 3 bots: two compact columns, so the canvas stays in view. */
+  .rows.many { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 8px; }
+  .rows.many .field-row { grid-template-columns: 24px minmax(0, 1fr); gap: 0 6px; padding: 5px 7px; border-radius: 12px; }
+  .rows.many .row-avatar { width: 24px; height: 24px; border-radius: 8px; }
+  .rows.many .row-avatar .bot { width: 19px; }
+  .rows.many .field-row { padding-top: 9px; } /* clear of the wins badge */
+  .rows.many .row-name { flex-wrap: nowrap; gap: 4px; }
+  .rows.many .row-head h3 { display: block; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rows.many .row-provider { display: none; }
+  .rows.many .row-side { display: none; }
+  .rows.many .badge { font-size: 0.62rem; padding: 0 5px; }
+  .rows.many .badge.thinking { font-size: 0; padding: 0; border: none; background: none; } /* just the moving dots */
+  .rows.many .badge.thinking::after { font-size: 0.9rem; font-weight: 700; }
+  .rows.many .row-guesses { min-height: 1.3rem; }
+  .rows.many .feed li:first-child { font-size: 0.95rem; }
+  .rows.many .feed li:not(:first-child) { display: none; }
+  .rows.many .row-wins { top: -9px; right: 6px; font-size: 0.62rem; padding: 0 5px; }
+  .rows.many .win-star { width: 20px; height: 20px; top: -10px; left: 2px; }
   .win-star { top: -14px; left: 6px; width: 26px; height: 26px; }
   .you-row { padding-top: 6px; }
   .tools { gap: 2px; }

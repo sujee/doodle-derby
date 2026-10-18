@@ -15,7 +15,7 @@ export class FieldRow {
   private winsEl = el('span', { class: 'row-wins', 'aria-hidden': 'true' }, '0 wins');
 
   /**
-   * bubbles: [badge, feed]. The status badge (thinking, cancelled…) goes beside the name; the feed
+   * bubbles: [badge, feed]. The status badge (👀, thinking…) goes beside the name; the feed
    * (latest guess first) gets the line below to itself.
    * score: the engine's score element, kept for screen readers; the row shows "N wins" itself.
    * art: the avatar (defaults to robot i); you() when You are guessing in bot-doodler mode.
@@ -23,7 +23,7 @@ export class FieldRow {
    */
   constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, meter?: Node, art?: Element, provider?: string | null) {
     score.classList.add('sr-only');
-    this.el = el('div', { class: art ? 'field-row human' : `field-row p${index}` }, [
+    this.el = el('div', { class: art ? 'field-row human' : `field-row p${index % 3}` }, [
       el('span', { class: 'win-star', 'aria-hidden': 'true' }, starSvg()),
       this.winsEl,
       el('div', { class: 'row-avatar', 'aria-hidden': 'true' }, art ?? robot(index)),

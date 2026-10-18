@@ -27,9 +27,10 @@ type Slot = {
   onChange(fn: () => void): void;
   /** Pick a random model that no other bot has (when added with Add bot). */
   reroll(): void;
+  /** Use Bot #1's provider with this model (Add all image models). */
+  useModel(id: string): void;
 };
 
-const MAX_BOTS = 3;
 
 /** A random model that can see images and isn't in avoid; any image model if all are taken. */
 export function pickModel(list: ModelInfo[], avoid: string[], random = Math.random): string | undefined {
@@ -39,16 +40,31 @@ export function pickModel(list: ModelInfo[], avoid: string[], random = Math.rand
   return pool[Math.floor(random() * pool.length)]?.id;
 }
 
-/** Render the setup screen. Calls onStart with 1–3 guesser configs, plus the doodler bot's config when a bot draws. */
+/** Render the setup screen. Calls onStart with the guesser configs (one or more), plus the doodler bot's config when a bot draws. */
 export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[], doodler: GuesserConfig | null) => void) {
   container.replaceChildren();
   let count = 1;
   // The models the other shown bots already use, so a new bot picks a different one.
   // (By index: a slot asks while it is still being built.)
   const takenBy = (i: number) => slots.slice(0, count).filter((_, j) => j !== i).map((s) => s.model());
-  const first = makeSlot(1);
+  // Bot #1's "Add all N image models": one bot per image model of its provider, no limit.
+  const addAll = (ids: string[]) => {
+    const rest = ids.filter((id) => id !== first.model());
+    setCount(1 + rest.length);
+    rest.forEach((id, j) => slots[j + 1].useModel(id));
+    slots[count - 1].root.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+  };
+  const first = makeSlot(1, undefined, false, () => [], addAll);
+  // Bots are made as they're added (no upper limit); removing one only hides it.
   const slots: Slot[] = [first];
-  for (let i = 1; i < MAX_BOTS; i++) slots.push(makeSlot(i + 1, first, false, () => takenBy(i)));
+  const addSlot = () => {
+    const i = slots.length;
+    const s = makeSlot(i + 1, first, false, () => takenBy(i));
+    s.removeBtn.addEventListener('click', () => setCount(count - 1));
+    s.onChange(syncNote);
+    slots.push(s);
+    guesserRow.insertBefore(s.root, add);
+  };
   const doodlerSlot = makeSlot(0, first, true);
 
   // Pick the doodler: click the You card or the Bot card. The picked card is highlighted; a picked
@@ -96,12 +112,12 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   };
   doodlerSlot.onChange(syncNote);
   const setCount = (n: number) => {
+    while (slots.length < n) addSlot();
     count = n;
     slots.forEach((s, i) => {
       s.root.hidden = i >= n;
       s.removeBtn.hidden = i === 0 || i !== n - 1;
     });
-    add.hidden = n >= MAX_BOTS;
     addLabel.textContent = `Bot #${n + 1}`;
     add.setAttribute('aria-label', `Add Bot #${n + 1}`);
     error.textContent = '';
@@ -153,7 +169,14 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
  * With a leader, the slot offers "Same provider as Guesser 1" and then only asks for a model.
  * The doodler slot (doodler = true) draws instead of guessing: no vision filter, and Test asks for a drawing.
  */
-function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string[] = () => []): Slot {
+function makeSlot(
+  n: number,
+  leader?: Slot,
+  doodler = false,
+  taken: () => string[] = () => [],
+  /** Bot #1 only: offered after Load models when the provider has 2+ image models. */
+  addAll?: (ids: string[]) => void,
+): Slot {
   // One flat provider list: OpenAI-compatible presets are "openai:<index>".
   // Fake guesser first (the no-key default), real providers A–Z, generic "OpenAI compatible" last.
   const presets = OPENAI_PRESETS.map((p, i) => [`openai:${i}`, p.name]);
@@ -173,6 +196,9 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
   const loadRow = el('div', { class: 'load-row' }, [loadBtn, loadHint]);
   const testBtn = el('button', { type: 'button' }, 'Test');
   const status = el('p', { class: 'status' });
+  const addAllBtn = el('button', { type: 'button', class: 'add-all', hidden: '' });
+  let visionIds: string[] = [];
+  addAllBtn.addEventListener('click', () => addAll?.(visionIds));
   const help = el('p', { class: 'note' });
 
   const urlRow = field('API URL', baseUrl);
@@ -204,6 +230,7 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
   const setModels = (all: ModelInfo[], prefer = modelValue()) => {
     ids = all;
     loadHint.hidden = all.length > 0;
+    if (!all.length) addAllBtn.hidden = true; // provider changed: its list is gone
     const list = visionOnly.checked ? all.filter((m) => m.vision === 'yes' || m.vision === 'likely') : all;
     const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (likely)` : m.id);
     const groups: [string, ModelInfo[]][] = [
@@ -304,7 +331,10 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
       );
       setModels(ids);
       notify();
-      const vision = ids.filter((m) => m.vision === 'yes' || m.vision === 'likely').length;
+      visionIds = ids.filter((m) => m.vision === 'yes' || m.vision === 'likely').map((m) => m.id);
+      const vision = visionIds.length;
+      addAllBtn.textContent = `＋ Add all ${vision} image models`;
+      addAllBtn.hidden = !addAll || vision < 2;
       status.textContent = doodler
         ? `${ids.length} models loaded. Any chat model can doodle.`
         : `${ids.length} models loaded, ${vision} accept images. “(likely)” is a guess from the name.`;
@@ -337,7 +367,8 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
 
   const removeBtn = el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove this bot', 'aria-label': `Remove Bot #${n}` }, '✕');
   if (doodler) removeBtn.hidden = true;
-  const root = el('div', { class: doodler ? 'slot card doodler-slot' : `slot card p${n - 1}` }, [
+  // Colors and robots repeat every three bots.
+  const root = el('div', { class: doodler ? 'slot card doodler-slot' : `slot card p${(n - 1) % 3}` }, [
     el('div', { class: 'slot-head' }, doodler ? [doodlerBot(), el('h2', {}, 'Doodler bot ✏️'), removeBtn] : [robot(n - 1), el('h2', {}, `Bot #${n}`), removeBtn]),
     sameRow,
     providerRow,
@@ -348,6 +379,7 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
     help,
     el('div', { class: 'row' }, [testBtn]),
     status,
+    addAllBtn,
   ]);
   refresh();
   return {
@@ -358,6 +390,13 @@ function makeSlot(n: number, leader?: Slot, doodler = false, taken: () => string
     models: () => ids,
     model: modelValue,
     onChange: (fn) => listeners.push(fn),
+    useModel: (id) => {
+      sameBox.checked = true;
+      refreshSame();
+      modelSelect.value = id;
+      syncCustom();
+      notify();
+    },
     reroll: () => {
       if (isSame()) refreshSame(true);
       else if (ids.length) setModels(ids, pickModel(ids, taken()));

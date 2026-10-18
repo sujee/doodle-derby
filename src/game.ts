@@ -210,7 +210,7 @@ export class Game {
             el('h2', { class: 'field-title' }, 'The field'),
             el(
               'div',
-              { class: 'rows' },
+              { class: this.engine.players.length > 3 ? 'rows many' : 'rows' }, // many: compact on phones
               this.engine.players.map((p, i) => {
                 const v = this.views[i];
                 v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined, p.human ? null : providerName(this.configs[i]));
@@ -395,7 +395,7 @@ export class Game {
     const total = players.reduce((n, p) => n + p.history.length, 0);
     const word = this.engine.roundOver || !this.botDraws ? this.engine.word.word : '???';
     const columns = players.map((p, i) =>
-      el('div', { class: `pause-col ${p.human ? 'human' : `p${i}`}` }, [
+      el('div', { class: `pause-col ${p.human ? 'human' : `p${i % 3}`}` }, [
         el('h3', { title: p.label }, p.label),
         p.history.length
           ? el(
@@ -518,7 +518,7 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
     el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
     el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
     el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
+    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'} total`), // the whole game so far, like the tokens
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
 }

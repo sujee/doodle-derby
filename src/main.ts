@@ -132,7 +132,7 @@ function receipt(r: GameResult) {
  * (pos 0 = tallest), so steps always differ; the number shows its rank, which ties share.
  */
 function podiumStep(i: number, label: string, score: number, rank: number, pos: number, winner: boolean, human = false) {
-  return el('div', { class: `podium-spot ${human ? 'human' : `p${i}`} pos${pos}${winner ? ' winner' : ''}` }, [
+  return el('div', { class: `podium-spot ${human ? 'human' : `p${i % 3}`} pos${pos}${winner ? ' winner' : ''}` }, [
     human ? you() : robot(i),
     el('div', { class: 'podium-name' }, label),
     el('div', { class: 'podium-score' }, `${score} ${score === 1 ? 'point' : 'points'}`),

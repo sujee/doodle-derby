@@ -34,7 +34,7 @@ function startGame() {
 }
 
 describe('a bot whose request is cancelled when the round ends', () => {
-  it('shows "cancelled" instead of the idle "zzz…", and clears next round', async () => {
+  it('just goes back to 👀 (no "cancelled" badge)', async () => {
     const { game, badge, feed, draw } = startGame();
     expect(badge.textContent).toBe('👀'); // before anything is asked
     draw();
@@ -46,15 +46,9 @@ describe('a bot whose request is cancelled when the round ends', () => {
     game.engine.skip();
     await flush();
     expect(badge.hidden).toBe(false);
-    expect(badge.textContent).toBe('cancelled');
-    expect(badge.classList.contains('cancelled')).toBe(true);
-    // No guesses yet, and the row hides its "zzz…" while the badge shows (CSS :has).
-    expect(feed.children).toHaveLength(0);
-    expect(badge.closest('.field-row')).toBe(feed.closest('.field-row'));
-
-    game.engine.nextRound();
     expect(badge.textContent).toBe('👀');
-    expect(badge.classList.contains('cancelled')).toBe(false);
+    expect(badge.className).toBe('badge ready');
+    expect(feed.children).toHaveLength(0);
     game.engine.stop();
   });
 

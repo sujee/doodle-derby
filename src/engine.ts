@@ -93,7 +93,7 @@ export type GameResult = {
   humanIndex?: number;
 };
 
-export type BadgeKind = '' | 'thinking' | 'warn' | 'error' | 'cancelled';
+export type BadgeKind = '' | 'thinking' | 'warn' | 'error';
 
 /** Everything the screen needs to hear about. All optional. */
 export interface EngineEvents {
@@ -238,7 +238,7 @@ export class Engine {
     for (const [i, p] of this.players.entries()) {
       p.wrong = [];
       p.history = [];
-      if (!p.disabled) this.events.badge?.(i, '', ''); // clear last round's "cancelled"
+      if (!p.disabled) this.events.badge?.(i, '', '');
     }
     const tier = tierForRound(this.round);
     this.log('game', `Round ${this.round + 1}: "${this.word.word}" (${tier})`);
@@ -372,9 +372,8 @@ export class Engine {
     this.abort.abort();
     this.stopTimers();
     for (const [i, p] of this.players.entries()) {
-      // A bot still waiting for its reply had its request cancelled: say so, rather than look idle.
-      if (p.inFlight) this.events.badge?.(i, 'cancelled', 'cancelled', 'Its request was still waiting for a reply when the round ended, so it was cancelled.');
-      else if (!p.disabled) this.events.badge?.(i, '', '');
+      // A request still waiting is cancelled (the debug log says so); the bot just goes back to ready.
+      if (!p.disabled) this.events.badge?.(i, '', '');
       p.inFlight = false;
     }
     const seconds = winner === null ? null : (this.clock.now() - this.roundStart) / 1000;
