@@ -1,3 +1,4 @@
+import { botColor } from './art';
 import { el } from './dom';
 import type { GameResult } from './game';
 import { ROUNDS } from './words';
@@ -12,7 +13,6 @@ const SIZE = 1080;
 const INK = '#2b2b2b';
 const MUTED = '#6d6252';
 const PAPER = '#fff8e7';
-const BOT_COLORS = ['#ff6b6b', '#4cc9f0', '#9b5de5'];
 const MINT = '#06d6a0';
 const STRIKE = 'rgb(229 56 59 / 0.45)'; // see-through red through wrong guesses
 const HAND = '"Short Stack", "Comic Sans MS", cursive';
@@ -65,7 +65,25 @@ async function prepare(r: GameResult): Promise<Prepared> {
 }
 
 /** Each column's color: bots coral / sky / grape, You in mint. */
-const colorOf = (r: GameResult, i: number) => (i === r.humanIndex ? MINT : BOT_COLORS[i % 3]);
+const colorOf = (r: GameResult, i: number) => (i === r.humanIndex ? MINT : botColor(i));
+
+/** Greedily pack item widths into rows that fit max (keeping their order). */
+function packRows(widths: number[], max: number, gap: number): number[][] {
+  const rows: number[][] = [];
+  let row: number[] = [];
+  let used = 0;
+  widths.forEach((w, i) => {
+    if (row.length && used + gap + w > max) {
+      rows.push(row);
+      row = [];
+      used = 0;
+    }
+    used += (row.length ? gap : 0) + w;
+    row.push(i);
+  });
+  if (row.length) rows.push(row);
+  return rows;
+}
 
 /** Card 1: the 10 doodles and who guessed each. */
 export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
@@ -77,34 +95,45 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
   ctx.fillStyle = INK;
   ctx.fillText(fitFont(ctx, headlineFor(r), SIZE - 80, 50, 32, BODY), SIZE / 2, 190);
 
-  // Score chips: each bot, then You.
+  // Score chips: each bot, then You. They wrap onto rows that fit, since a game can have many bots.
   const chips = [
     ...r.labels.map((l, i) => ({ text: `${shortName(l, 18)}: ${r.scores[i]}`, color: colorOf(r, i) })),
     r.doodler
       ? { text: `✏ ${shortName(r.doodler.label, 14)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
       : { text: `You: ${r.playerScore}/${r.rounds.length}`, color: MINT },
   ];
-  // The whole row shrinks until it fits the card (long model names, three bots).
-  const pad = 20;
+  const maxRow = SIZE - 60;
   const gap = 14;
+  // Shrink the text a little if that keeps it to fewer rows, then pack greedily.
+  let size = 28;
   let widths: number[] = [];
-  for (let size = 30; size >= 18; size -= 2) {
+  let rows: number[][] = [];
+  for (size = 28; size >= 20; size -= 2) {
     ctx.font = `${size}px ${BODY}`;
-    widths = chips.map((ch) => ctx.measureText(ch.text).width + pad * 2);
-    if (widths.reduce((a, b) => a + b, 0) + gap * (chips.length - 1) <= SIZE - 60) break;
+    widths = chips.map((ch) => Math.min(maxRow, Math.ceil(ctx.measureText(ch.text).width) + 40));
+    rows = packRows(widths, maxRow, gap);
+    if (rows.length <= 2) break;
   }
-  let x = (SIZE - widths.reduce((a, b) => a + b, 0) - gap * (chips.length - 1)) / 2;
-  chips.forEach((ch, i) => {
-    roundRect(ctx, x, 222, widths[i], 50, 25);
-    ctx.fillStyle = ch.color;
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.fillText(ch.text, x + widths[i] / 2, 258);
-    x += widths[i] + gap;
-  });
+  const chipH = 50;
+  const chipGapY = 12;
+  let y = 218;
+  for (const row of rows) {
+    const rowW = row.reduce((a, i) => a + widths[i], 0) + gap * (row.length - 1);
+    let x = (SIZE - rowW) / 2;
+    for (const i of row) {
+      roundRect(ctx, x, y, widths[i], chipH, chipH / 2);
+      ctx.fillStyle = chips[i].color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.fillText(fitFont(ctx, chips[i].text, widths[i] - 24, size, 13, BODY), x + widths[i] / 2, y + chipH / 2 + size * 0.36);
+      x += widths[i] + gap;
+    }
+    y += chipH + chipGapY;
+  }
+  const gridTop = y + 6;
 
   // Doodle grid: 5 × 2.
   const cols = 5;
@@ -116,7 +145,7 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
     const inRow = Math.min(cols, shown.length - Math.floor(i / cols) * cols);
     const rowStart = (SIZE - inRow * tile - (inRow - 1) * tileGap) / 2;
     const cx = rowStart + (i % cols) * (tile + tileGap);
-    const cy = 320 + Math.floor(i / cols) * 330;
+    const cy = gridTop + Math.floor(i / cols) * 330;
     drawTile(ctx, cx, cy, tile, images[i], i);
 
     ctx.textAlign = 'center';
@@ -298,9 +327,9 @@ function title(ctx: CanvasRenderingContext2D, width: number, y: number, size: nu
   const w1 = ctx.measureText('Doodle ').width;
   const w2 = ctx.measureText('Derby').width;
   const x = (width - w1 - w2) / 2;
-  ctx.fillStyle = BOT_COLORS[0];
+  ctx.fillStyle = botColor(0);
   ctx.fillText('Doodle ', x, y);
-  ctx.fillStyle = BOT_COLORS[1];
+  ctx.fillStyle = botColor(1);
   ctx.fillText('Derby', x + w1, y);
 }
 

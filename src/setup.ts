@@ -9,7 +9,7 @@ import {
   type ModelInfo,
   type ProviderKind,
 } from './providers';
-import { doodlerBot, robot, you } from './art';
+import { botColor, doodlerBot, robot, you } from './art';
 import { createDoodler } from './doodler';
 import { el } from './dom';
 
@@ -410,6 +410,7 @@ function makeSlot(
     status,
     addAllBtn,
   ]);
+  if (!doodler) root.style.setProperty('--lane', botColor(n - 1));
   refresh();
   return {
     root,
@@ -434,6 +435,7 @@ function makeSlot(
     setNumber: (num) => {
       if (doodler) return;
       root.className = `slot card p${(num - 1) % 3}`;
+      root.style.setProperty('--lane', botColor(num - 1));
       avatar.replaceChildren(robot(num - 1));
       title.textContent = `Bot #${num}`;
       removeBtn.setAttribute('aria-label', `Remove Bot #${num}`);

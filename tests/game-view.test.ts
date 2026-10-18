@@ -128,6 +128,22 @@ describe('Enter after a round', () => {
   });
 });
 
+describe('the guess count at the right of a row', () => {
+  it('counts the guesses the bot has made this round', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right on the first try
+    const { game, draw } = startGame();
+    const count = container.querySelector<HTMLElement>('.field-row .row-guess-count')!;
+    expect(count.textContent).toBe(''); // nothing yet
+    expect(container.querySelector('.field-row .meter')).toBeNull(); // the token meter is gone
+    draw();
+    await vi.advanceTimersByTimeAsync(POLL_MS + 2500);
+    expect(game.engine.roundOver).toBe(true);
+    expect(count.textContent).toBe('1 guess');
+    vi.restoreAllMocks();
+    game.engine.stop();
+  });
+});
+
 describe('the field order', () => {
   it('puts the bot with the most right guesses on top; ties keep their original order', () => {
     const game = new Game(container, [{ kind: 'fake' }, { kind: 'fake' }, { kind: 'fake' }], () => {}, null, WORDS);

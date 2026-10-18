@@ -50,9 +50,23 @@ const BOTS = [
    ${ARMS}`,
 ];
 
-/** A robot face for guesser i (0 = coral, 1 = sky, 2 = grape). */
+/** A robot face for guesser i (three designs repeat; the colour comes from botColor). */
 export function robot(i: number): SVGSVGElement {
   return svg(BOTS[i % BOTS.length], '-2 -2 104 90', `bot bot${i % BOTS.length}`);
+}
+
+/** Hue step for the golden-angle spread: successive bots land far apart, and any set stays well spread. */
+const GOLDEN_ANGLE = 137.508;
+
+/**
+ * A distinct colour for bot i. Hues are spread by the golden angle (starting at 25°, clear of the
+ * red used for wrong guesses), so any number of bots look different — there is no limit. One band of
+ * saturation and lightness, so they read the same on the sketchbook (light) and chalkboard (dark)
+ * theme. Bots beyond the first dozen or so start to look similar, but a game won't have that many.
+ */
+export function botColor(i: number): string {
+  const hue = Math.round((i * GOLDEN_ANGLE + 25) % 360);
+  return `hsl(${hue} 68% 58%)`;
 }
 
 /** The doodler bot: the round-faced robot in sunshine yellow, holding a pencil (✏️ shown next to it). */
