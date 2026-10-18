@@ -117,11 +117,12 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
   padding: 16px;
 }
 .row { display: flex; gap: 8px; align-items: center; }
-.stack { display: grid; gap: 8px; }
-/* Load models on its own row, so the model box gets the full width for long names. */
-.load-row { display: flex; align-items: center; gap: 10px; }
-.load-hint { font: 1rem var(--hand); color: var(--coral); white-space: nowrap; animation: nudge 0.9s ease-in-out infinite; }
-@keyframes nudge { 50% { translate: -6px 0; } }
+/* Model box + refresh icon / custom name: same 4px rhythm as the label above (.field). */
+.stack { display: grid; gap: 4px; }
+/* The model box gets the full width; the refresh icon sits just after it. */
+.model-row { display: flex; align-items: center; gap: 10px; }
+.model-row select { flex: 1; min-width: 0; }
+button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 .row.center { justify-content: center; margin-top: 28px; gap: 16px; flex-wrap: wrap; }
 .note { color: var(--muted); font-size: 1rem; }
 .error { color: var(--coral); min-height: 1.4em; font-size: 1.1rem; }
