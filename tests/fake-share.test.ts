@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GameResult } from '../src/engine';
 import { FakeGuesser } from '../src/providers/fake';
-import { headlineFor, shareText, shortName, wildestGuess } from '../src/share';
+import { headlineFor, shareText, shortName } from '../src/share';
 import { ALL_WORDS } from '../src/words';
 
 describe('fake guesser', () => {
@@ -68,16 +68,11 @@ describe('share text', () => {
     expect(shortName('a'.repeat(40), 10)).toBe(`${'a'.repeat(9)}…`);
   });
 
-  it('wildest guess is the wordiest wrong guess', () => {
-    expect(wildestGuess(game())).toEqual({ guess: 'a very sad cat', word: 'hat', bot: 1 });
-    expect(wildestGuess(game({ rounds: [] }))).toBeNull();
-  });
-
   it('share text tells the story, with no link when playing locally', () => {
     const text = shareText(game());
     expect(text).toMatch(/Doodle Duel/);
     expect(text).toMatch(/4 of my 2 doodles|guessed 4 of my 2/);
-    expect(text).toMatch(/Wildest guess: “a very sad cat” for hat/);
+    expect(text).not.toMatch(/Wildest/);
     expect(text).not.toMatch(/localhost/);
   });
 });

@@ -4,8 +4,8 @@ import { ROUNDS } from './words';
 
 /**
  * Share cards, drawn on a canvas (no DOM screenshot library) so they look the same everywhere:
- * 1. "Doodles": every round's doodle, who guessed it, and a funny wrong guess.
- * 2. "Bot brains": a table of every bot's guess trail per round, plus the wildest guess of the game.
+ * 1. "Doodles": every round's doodle and who guessed it.
+ * 2. "Bot brains": a table of every bot's guess trail per round.
  */
 
 const SIZE = 1080;
@@ -45,7 +45,6 @@ function gameUrl(): string {
 
 export function shareText(r: GameResult): string {
   const bots = r.labels.map((l, i) => `${shortName(l)} ${r.scores[i]}`).join(' · ');
-  const wild = wildestGuess(r);
   const url = gameUrl();
   const story = r.doodler
     ? `${shortName(r.doodler.label)} doodled, and we raced to guess: ${bots}.`
@@ -53,20 +52,8 @@ export function shareText(r: GameResult): string {
   return (
     `I just played Doodle Duel ✏️🤖 ${headlineFor(r)} ` +
     story +
-    (wild ? ` Wildest guess: “${wild.guess}” for ${wild.word}.` : '') +
     (url ? ` ${url}` : '')
   );
-}
-
-/** The wildest wrong guess of the game: the wordiest one (long guesses tend to be the funny ones). */
-export function wildestGuess(r: GameResult): { guess: string; word: string; bot: number } | null {
-  let best: { guess: string; word: string; bot: number } | null = null;
-  for (const round of r.rounds) {
-    round.guesses.forEach((list, bot) => {
-      for (const guess of list) if (!best || guess.length > best.guess.length) best = { guess, word: round.word, bot };
-    });
-  }
-  return best;
 }
 
 type Prepared = { images: (HTMLImageElement | null)[] };
@@ -80,7 +67,7 @@ async function prepare(r: GameResult): Promise<Prepared> {
 /** Each column's color: bots coral / sky / grape, You in mint. */
 const colorOf = (r: GameResult, i: number) => (i === r.humanIndex ? MINT : BOT_COLORS[i % 3]);
 
-/** Card 1: the 10 doodles, who guessed each, and one funny wrong guess. */
+/** Card 1: the 10 doodles and who guessed each. */
 export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
   const { c, ctx } = paper(SIZE, SIZE);
@@ -148,11 +135,6 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
       ctx.font = `23px ${BODY}`;
       ctx.fillText('✗ stumped', cx + tile / 2, below + 74);
     }
-    const funny = round.guesses.flat()[0];
-    if (funny) {
-      ctx.fillStyle = MUTED;
-      ctx.fillText(fitFont(ctx, `“${funny}?”`, tile + 16, 20, 16, BODY), cx + tile / 2, below + 102);
-    }
   });
 
   footer(ctx, SIZE, SIZE, r);
@@ -167,7 +149,7 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
 export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
   const rows = r.rounds.slice(0, 10);
-  const top = 290;
+  const top = 210;
   const rowH = 104;
   const height = Math.max(SIZE, top + rows.length * rowH + 100);
   const { c, ctx } = paper(SIZE, height);
@@ -175,26 +157,6 @@ export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Bl
   ctx.textAlign = 'center';
   ctx.fillStyle = INK;
   ctx.fillText(fitFont(ctx, r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?', SIZE - 80, 66, 40, HAND), SIZE / 2, 92);
-
-  // "Wildest guess" banner, slightly tilted like a sticker.
-  const wild = wildestGuess(r);
-  ctx.font = `28px ${BODY}`;
-  const banner = wild
-    ? `Wildest guess: “${wild.guess}” for ${wild.word} (${shortName(r.labels[wild.bot], 16)})`
-    : 'No wrong guesses at all. Show-offs!';
-  const bw = Math.min(SIZE - 80, ctx.measureText(banner).width + 60);
-  ctx.save();
-  ctx.translate(SIZE / 2, 152);
-  ctx.rotate((-1.2 * Math.PI) / 180);
-  roundRect(ctx, -bw / 2, -32, bw, 64, 32);
-  ctx.fillStyle = '#ffd23f';
-  ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = INK;
-  ctx.stroke();
-  ctx.fillStyle = INK;
-  ctx.fillText(fit(ctx, banner, bw - 40), 0, 11);
-  ctx.restore();
 
   // Column headers: bot names in their colors.
   const left = 40;
