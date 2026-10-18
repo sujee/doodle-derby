@@ -51,8 +51,7 @@ export class Game {
   private youScoreEl = el('span', { class: 'sr-only' }, '0');
   private youStars = new Stars();
   private hint = el('div', { class: 'hint', 'aria-hidden': 'true' }, 'Draw here! The clock starts when the bots start guessing ✏️');
-  // Round end: a sticker on the paper's corner and a bar under it, so nothing covers the doodle.
-  private sticker = el('div', { class: 'sticker', hidden: '', 'aria-hidden': 'true' });
+  // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
   /** "Wrong guess of the game": the wordiest wrong guess so far (the funny ones tend to be long). */
@@ -144,7 +143,7 @@ export class Game {
 
     // No right-click menu anywhere on the paper: the canvas and the pop-ups over it (reveal, pause, sketching).
     this.paper.addEventListener('contextmenu', (e) => e.preventDefault());
-    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl, this.sticker);
+    this.paper.replaceChildren(...tapes(), this.canvas.el, this.sketchEl);
     if (!hintSeen() && !this.botDraws) {
       this.paper.append(this.hint);
       this.canvas.el.addEventListener('pointerdown', () => this.hideHint(), { once: true });
@@ -226,7 +225,6 @@ export class Game {
   // --- Engine events -----------------------------------------------------------------------
 
   private onRoundStart(round: number, word: Word, tier: Tier) {
-    this.sticker.hidden = true;
     this.resultBar.hidden = true;
     this.padWrap.classList.remove('round-over');
     this.canvas.clear();
@@ -315,13 +313,6 @@ export class Game {
     const share = el('button', { type: 'button', class: 'share-round', title: 'Share your doodles so far' }, ['Share ', el('span', { 'aria-hidden': 'true' }, '📸')]);
     share.addEventListener('click', () => openShareDialog(this.engine.resultSoFar()));
     const who = winner === null ? null : players[winner];
-
-    // The sticker on the paper's corner: how fast, in the winner's color. None when nobody got it.
-    if (who) {
-      this.sticker.style.setProperty('--who', this.rowColor(winner!));
-      this.sticker.replaceChildren(el('span', { class: 'sticker-kicker' }, 'got it in'), el('strong', {}, `${seconds!.toFixed(1)}s`));
-    }
-    this.sticker.hidden = !who;
 
     // The bar under the paper (where the tools were): who got it, then Next.
     const name = who ? (who.human ? 'You' : who.label) : '';
