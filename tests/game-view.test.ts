@@ -129,3 +129,17 @@ describe('Enter after a round', () => {
     game.engine.stop();
   });
 });
+
+describe('the field order', () => {
+  it('puts the bot with the most right guesses on top; ties keep their original order', () => {
+    const game = new Game(container, [{ kind: 'fake' }, { kind: 'fake' }, { kind: 'fake' }], () => {}, null, WORDS);
+    const players = game.engine.players;
+    players[0].score = 1;
+    players[1].score = 3;
+    players[2].score = 3; // tied with #2, which keeps its place
+    (game as unknown as { orderField(animate: boolean): void }).orderField(false);
+    const order = [...container.querySelectorAll('.rows .field-row h3')].map((h) => h.textContent);
+    expect(order).toEqual([players[1].label, players[2].label, players[0].label]);
+    game.engine.stop();
+  });
+});

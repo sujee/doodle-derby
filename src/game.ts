@@ -57,6 +57,8 @@ export class Game {
   // Round end: a bar under the paper, so nothing covers the doodle.
   private resultBar = el('div', { class: 'result-bar', hidden: '', role: 'status' });
   private padWrap = el('div', { class: 'pad-wrap' });
+  /** The field's rows, kept in score order: the bot with the most right guesses on top. */
+  private rowsEl = el('div', { class: 'rows' });
 
   // Bot-doodler mode
   private doodlerMeter = el('div', { class: 'meter' });
@@ -210,10 +212,10 @@ export class Game {
           this.padWrap),
           el('aside', { class: 'field' }, [
             el('h2', { class: 'field-title' }, 'The field'),
-            el(
-              'div',
-              { class: this.engine.players.length > 3 ? 'rows many' : 'rows' }, // many: compact on phones
-              this.engine.players.map((p, i) => {
+            // Rows, in score order (all level at the start: engine order).
+            (this.rowsEl.className = this.engine.players.length > 3 ? 'rows many' : 'rows', // many: compact on phones
+            this.rowsEl.replaceChildren(
+              ...this.engine.players.map((p, i) => {
                 const v = this.views[i];
                 v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, v.meterEl, p.human ? you() : undefined, p.human ? null : providerName(this.configs[i]));
                 if (p.human) v.meterEl.textContent = 'type your guesses below';
@@ -222,6 +224,7 @@ export class Game {
                 return v.row.el;
               }),
             ),
+            this.rowsEl),
             ...(this.engine.doodler ? [(this.updateDoodlerMeter(), doodlerRow(this.engine.doodler.label, this.doodlerMeter))] : []),
           ]),
         ]),
@@ -322,7 +325,7 @@ export class Game {
       sfx.ding();
       confetti(this.paper);
       this.views[winner].row.win(players[winner].score, seconds);
-      this.views[winner].row.moveToTop(!sfx.reducedMotion()); // and stays there until another row wins
+      this.orderField(!sfx.reducedMotion()); // rows by right guesses: the leader rises to the top
     } else {
       sfx.wahWah();
       for (const v of this.views) v.row.shrug();
@@ -367,6 +370,25 @@ export class Game {
   /** The bot's own color, read off its row, so its name matches its row. */
   private rowColor(i: number): string {
     return getComputedStyle(this.views[i].row.el).getPropertyValue('--lane').trim() || 'var(--grape)';
+  }
+
+  /**
+   * Put the field's rows in score order: the bot with the most right guesses on top. Ties keep their
+   * places. With animate, the rows slide to their new spots (FLIP: measure, move in the DOM, then
+   * animate from the old spot back to none).
+   */
+  private orderField(animate: boolean) {
+    const rows = this.engine.players.map((p, i) => ({ i, el: this.views[i].row.el, score: p.score }));
+    const before = new Map(rows.map((r) => [r.el, r.el.getBoundingClientRect().top]));
+    rows.sort((a, b) => b.score - a.score || a.i - b.i);
+    this.rowsEl.replaceChildren(...rows.map((r) => r.el));
+    if (!animate) return;
+    for (const r of rows) {
+      const dy = (before.get(r.el) ?? 0) - r.el.getBoundingClientRect().top;
+      if (dy && typeof r.el.animate === 'function') {
+        r.el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 450, easing: 'cubic-bezier(0.3, 1.25, 0.5, 1)' });
+      }
+    }
   }
 
   private onPause(paused: boolean) {
@@ -524,7 +546,7 @@ export function renderMeter(meter: HTMLElement, usage: Usage, price: Price) {
     el('span', { class: 'chip', title: 'Input tokens (prompt + image), as reported by the provider' }, `↑ ${formatTokens(usage.input)} in`),
     el('span', { class: 'chip', title: 'Output tokens (reply, plus any thinking)' }, `↓ ${formatTokens(usage.output)} out`),
     el('span', { class: 'chip cost', title: price.kind === 'unknown' ? 'No price known for this model' : 'Cost so far, from models.dev prices' }, costText),
-    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'} total`), // the whole game so far, like the tokens
+    el('span', { class: 'chip quiet', title: 'Requests sent, including ones still waiting or cancelled (tokens count only answered ones)' }, `${usage.calls} call${usage.calls === 1 ? '' : 's'}`),
   );
   meter.title = `${usage.input} tokens in, ${usage.output} tokens out over ${usage.calls} calls`;
 }
