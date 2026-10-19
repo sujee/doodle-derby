@@ -442,6 +442,13 @@ button.tool.active .tool-icon { color: #2b2b2b; }
  */
 .field { display: grid; gap: 10px; align-content: start; min-width: 0; }
 .field-title { margin: 0 6px; font: 1.05rem var(--body); color: var(--muted); }
+/* Side by side, "The field" sits level with the round and the word, and the first row with the canvas top:
+   both heads are --head-h tall, and the gap below each comes to the same 14px. */
+@media (min-width: 761px) {
+  .board { --head-h: 52px; }
+  .paper-head { min-height: var(--head-h); }
+  .field-title { height: var(--head-h); display: flex; align-items: center; margin-bottom: 4px; } /* + the field's 10px gap */
+}
 .rows { display: grid; gap: 16px; } /* room for the wins badges on the corners */
 /* The confetti can poke past the screen edge: never let them cause a sideways scroll. */
 .game { overflow-x: clip; }
