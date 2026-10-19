@@ -3,20 +3,20 @@
 A browser game: you draw, AI vision models (the Doodlebots) race to guess what it is.
 
 ## Setup
-- Title screen with one Doodlebot card and a big **Play!** button; Play works at once with the Fake guesser. "+ Add a Doodlebot" adds up to **3 bots**.
+- Title screen with one Doodlebot card and a big **Play!** button; Play works at once with the Fake guesser. Cards wrap into rows of up to four.
 - Provider dropdown (Fake guesser first, then A–Z, "OpenAI compatible" last):
   - **Fake guesser**: no API key; simulated guesses for trying the game.
   - **Anthropic**: API key, model.
   - OpenAI-compatible APIs, each with an editable base URL: **Baseten, Fireworks, Nebius Token Factory, Ollama Cloud, Ollama local** (no key), **OpenAI, Together, OpenAI compatible** (any URL).
 - Base URL, the vision filter and Test sit under "More options".
 - Model dropdown stays empty until "Load models" fetches the endpoint's list (`?verbose=true` first). Models are grouped by image support (provider metadata, Ollama capabilities, or a name guess marked "likely"); "Vision models only" filter is on by default. "Other…" lets you type a model name.
-- Bots 2 and 3 default to "Same provider as Doodlebot #1", which reuses its provider, key and model list, so they only pick a model.
+- Bots 2 and up default to "Same as Bot #1", which reuses its provider, key and model list, so they only pick a model.
 - "Test" button sends one tiny image request to check the key, browser access, and image support.
 - API keys live in memory only. They are never saved, and are sent only to the chosen endpoint.
 
 ## Who doodles?
 - **You** (default): you draw, the bots guess.
-- **A bot**: a "Doodler bot" (any provider, Fake doodler with no key; "Same provider as Doodlebot #1" by default) draws the word and **you join the guessers**, typing guesses in a box under the canvas (sticky at the bottom on phones).
+- **A bot**: a "Doodler bot" (any provider, Fake doodler with no key; "Same as Bot #1" by default) draws the word and **you join the guessers**, typing guesses in a box under the canvas (sticky at the bottom on phones).
   - The doodler model returns strokes as JSON (`{"strokes": [[[x,y],...],...]}` on a 512×512 canvas; Anthropic uses structured outputs). Strokes are validated, clamped and capped, then animated onto the canvas over 8–15 s; the clock starts when drawing starts. The word is hidden until the round ends.
   - The next round's drawing is fetched during the current round, so later rounds start without waiting.
   - A failed drawing is retried once; then the round is skipped with a friendly message.

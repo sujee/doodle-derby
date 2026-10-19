@@ -238,7 +238,7 @@ function makeSlot(
   const providerRow = field('Provider', kind);
   const sameBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
   sameBox.checked = !!leader();
-  const sameRow = el('label', { class: 'check' }, [sameBox, 'Same provider as Bot #1']);
+  const sameRow = el('label', { class: 'check' }, [sameBox, 'Same as Bot #1']);
   sameRow.hidden = !leader();
   const isSame = () => !!leader() && sameBox.checked;
   let ids: ModelInfo[] = [];
@@ -250,7 +250,7 @@ function makeSlot(
     el('div', { class: 'field-head' }, [el('span', {}, 'Model'), loadBtn]),
     el('div', { class: 'stack' }, [modelSelect, customModel]),
   ]);
-  const visionRow = el('label', { class: 'check small' }, [visionOnly, 'Only show models that can see images']);
+  const visionRow = el('label', { class: 'check small' }, [visionOnly, 'Vision models only']);
 
   const slotKind = (): ProviderKind => kind.value.split(':')[0] as ProviderKind;
 
