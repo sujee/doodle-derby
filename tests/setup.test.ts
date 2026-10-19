@@ -125,3 +125,81 @@ describe('Test shows an apple, and grades the answer', () => {
     expect(testVerdict('pineapple')).toContain('can’t see'); // not "apple" at the end of a word
   });
 });
+
+describe('the setup screen’s Play, keys note and model labels', () => {
+  const fresh = async (onStart = vi.fn()) => {
+    const { renderSetup } = await import('../src/setup');
+    const { OPENAI_PRESETS } = await import('../src/providers');
+    HTMLElement.prototype.scrollIntoView ??= () => {};
+    const container = document.createElement('div');
+    document.body.append(container);
+    renderSetup(container, onStart);
+    const provider = container.querySelector<HTMLSelectElement>('.conn select')!;
+    const use = (name: string) => {
+      provider.value = `openai:${OPENAI_PRESETS.findIndex((p) => p.name === name)}`;
+      provider.dispatchEvent(new Event('change'));
+    };
+    return { container, use, onStart, error: () => container.querySelector('.error')!.textContent, play: () => container.querySelector<HTMLButtonElement>('.start')!.click() };
+  };
+
+  it('starts at once with the Fake guesser (no key, no model)', async () => {
+    const { container, onStart, play, error } = await fresh();
+    play();
+    expect(onStart).toHaveBeenCalledWith([{ kind: 'fake' }], null);
+    expect(error()).toBe('');
+    container.remove();
+  });
+
+  it('asks for a model before it starts with a real provider that has none yet', async () => {
+    const { container, use, onStart, play, error } = await fresh();
+    use('OpenAI');
+    play();
+    expect(onStart).not.toHaveBeenCalled();
+    expect(error()).toBe('Pick a model for each Doodlebot first.');
+    container.remove();
+  });
+
+  it('says the keys stay in the tab only once a real provider is picked', async () => {
+    const { container, use } = await fresh();
+    const note = container.querySelector<HTMLElement>('.setup > .note')!;
+    expect(note.hidden).toBe(true); // nothing to protect with the Fake guesser
+    use('OpenAI');
+    expect(note.hidden).toBe(false);
+    container.remove();
+  });
+
+  it('loads the model list by itself a moment after a key is typed', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [{ id: 'some-model' }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { container, use } = await fresh();
+    use('OpenAI');
+    fetchMock.mockClear();
+    const key = container.querySelector<HTMLInputElement>('.conn input[type=password]')!;
+    key.value = 'sk-test';
+    key.dispatchEvent(new Event('input'));
+    await vi.advanceTimersByTimeAsync(300);
+    expect(fetchMock).not.toHaveBeenCalled(); // still waiting for the typing to stop
+    await vi.advanceTimersByTimeAsync(500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.conn .status')!.textContent).toContain('1 models');
+    container.remove();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('labels a model whose image support is unknown, with a hint to Test it', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [{ id: 'zz-unheard-of-7b' }] }), { status: 200 })));
+    const { container, use } = await fresh();
+    use('OpenAI');
+    container.querySelector<HTMLButtonElement>('.conn .refresh')!.click();
+    await vi.waitFor(() => expect(container.querySelector('.conn .status')!.textContent).toContain('1 models'));
+    container.querySelector<HTMLInputElement>('.conn input[type=checkbox]')!.click(); // show models that may not take images too
+    const label = container.querySelector<HTMLElement>('.slot .model-vis')!;
+    expect(label.dataset.vision).toBe('unknown');
+    expect(label.textContent).toContain('Test it');
+    expect(label.title).toContain('use Test');
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+});

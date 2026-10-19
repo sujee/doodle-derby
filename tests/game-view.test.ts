@@ -161,6 +161,26 @@ describe('the call count at the right of a row', () => {
   });
 });
 
+describe('the word above the canvas', () => {
+  const words = ['pear', 'crocodile', 'baseball bat', 'cat', 'sun', 'hat', 'fish', 'tree', 'bird', 'owl'].map((word) => ({ word }));
+
+  it('is set smaller from 10 letters up, so a long one keeps the row’s shape', async () => {
+    const game = new Game(container, [{ kind: 'fake' }], () => {}, null, words);
+    const word = container.querySelector<HTMLElement>('.word')!;
+    const next = async () => {
+      game.engine.skip();
+      await flush();
+      game.engine.nextRound();
+    };
+    expect([word.textContent, word.dataset.long]).toEqual(['pear', 'false']);
+    await next();
+    expect([word.textContent, word.dataset.long]).toEqual(['crocodile', 'false']); // 9 letters still fit
+    await next();
+    expect([word.textContent, word.dataset.long]).toEqual(['baseball bat', 'true']);
+    game.engine.stop();
+  });
+});
+
 describe('the provider on the field', () => {
   const on = (baseUrl: string) => ({ kind: 'openai' as const, apiKey: 'k', model: 'm', baseUrl });
   const fireworks = 'https://api.fireworks.ai/inference/v1';
