@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ModelInfo } from '../src/providers';
-import { pickModel, testVerdict } from '../src/setup';
+import { forgetProviders, pickModel, testVerdict } from '../src/setup';
+
+// The setup screen remembers keys and model lists for the tab; each test starts with none.
+afterEach(forgetProviders);
 
 const m = (id: string, vision: ModelInfo['vision'] = 'yes') => ({ id, vision }) as ModelInfo;
 
@@ -89,10 +92,10 @@ describe('Add bot on the setup screen', () => {
   it('a bot can switch to its own provider, and back', async () => {
     const { slots, done } = await loaded();
     const card = slots()[0];
-    card.querySelector<HTMLButtonElement>('.link-btn')!.click();
+    card.querySelector<HTMLButtonElement>('.slot-foot .link-btn')!.click();
     expect(card.querySelector('.own-conn .conn')).not.toBeNull();
     expect(card.querySelector<HTMLElement>('.model-pick')!.hidden).toBe(true); // its own provider starts as Fake
-    card.querySelector<HTMLButtonElement>('.link-btn')!.click();
+    card.querySelector<HTMLButtonElement>('.slot-foot .link-btn')!.click();
     expect(card.querySelector('.own-conn .conn')).toBeNull();
     expect(card.querySelector<HTMLSelectElement>('.model-pick select')!.value).toBeTruthy();
     done();
@@ -201,5 +204,77 @@ describe('the setup screen’s Play, keys note and model labels', () => {
     expect(label.title).toContain('use Test');
     container.remove();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('a provider’s key and models are asked for once per tab', () => {
+  const ids = ['gpt-4o', 'gpt-4.1'];
+  async function setup() {
+    const { renderSetup } = await import('../src/setup');
+    const { OPENAI_PRESETS } = await import('../src/providers');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: ids.map((id) => ({ id })) }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    HTMLElement.prototype.scrollIntoView ??= () => {};
+    const container = document.createElement('div');
+    document.body.append(container);
+    const openai = `openai:${OPENAI_PRESETS.findIndex((p) => p.name === 'OpenAI')}`;
+    const pick = (conn: HTMLElement) => {
+      const provider = conn.querySelector('select')!;
+      provider.value = openai;
+      provider.dispatchEvent(new Event('change'));
+    };
+    const render = () => renderSetup(container, () => {});
+    const shared = () => container.querySelector<HTMLElement>('.conn.card')!;
+    const keyBox = (conn: HTMLElement) => conn.querySelector<HTMLInputElement>('input[type=password]')!.closest<HTMLElement>('.field')!;
+    const keySet = (conn: HTMLElement) => conn.querySelector<HTMLElement>('.key-set')!;
+    const firstModel = () => container.querySelector<HTMLSelectElement>('.guessers-side .slot .model-pick select')!.value;
+    const done = () => {
+      container.remove();
+      vi.unstubAllGlobals();
+    };
+    // Set the shared provider up once: pick OpenAI, type a key, load the list.
+    render();
+    pick(shared());
+    const key = shared().querySelector<HTMLInputElement>('input[type=password]')!;
+    key.value = 'sk-test';
+    shared().querySelector<HTMLButtonElement>('.refresh')!.click();
+    await vi.waitFor(() => expect(firstModel()).toBeTruthy());
+    return { container, fetchMock, render, pick, shared, keyBox, keySet, firstModel, done };
+  }
+
+  it('shows "Key set" instead of the key box once the key worked', async () => {
+    const { shared, keyBox, keySet, done } = await setup();
+    expect(keyBox(shared()).hidden).toBe(true);
+    expect(keySet(shared()).hidden).toBe(false);
+    keySet(shared()).querySelector('button')!.click(); // Change brings the box back, key still in it
+    expect(keyBox(shared()).hidden).toBe(false);
+    expect(shared().querySelector<HTMLInputElement>('input[type=password]')!.value).toBe('sk-test');
+    done();
+  });
+
+  it('back on the setup screen, keeps the provider and its models without loading again', async () => {
+    const { fetchMock, render, shared, keyBox, firstModel, done } = await setup();
+    fetchMock.mockClear();
+    render(); // "Change bots"
+    expect(keyBox(shared()).hidden).toBe(true);
+    expect(ids).toContain(firstModel());
+    expect(shared().querySelector('.status')!.textContent).toContain(`${ids.length} models`);
+    expect(fetchMock).not.toHaveBeenCalled();
+    done();
+  });
+
+  it('a bot switched to its own provider reuses that provider’s key and models', async () => {
+    const { container, fetchMock, pick, keyBox, keySet, done } = await setup();
+    container.querySelector<HTMLButtonElement>('.add-bot')!.click();
+    fetchMock.mockClear();
+    const card = [...container.querySelectorAll<HTMLElement>('.guessers-side .slot')][1];
+    card.querySelector<HTMLButtonElement>('.slot-foot .link-btn')!.click(); // Use another provider
+    const own = card.querySelector<HTMLElement>('.own-conn .conn')!;
+    pick(own);
+    expect(keyBox(own).hidden).toBe(true);
+    expect(keySet(own).hidden).toBe(false);
+    expect(ids).toContain(card.querySelector<HTMLSelectElement>('.model-pick select')!.value);
+    expect(fetchMock).not.toHaveBeenCalled();
+    done();
   });
 });

@@ -272,13 +272,16 @@ button.quiet { background: transparent; box-shadow: none; border-color: color-mi
 .conn-fields { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: end; }
 .conn-fields > .field { flex: 1 1 200px; margin-bottom: 0; }
 .conn-fields > .refresh { width: 38px; height: 38px; margin-bottom: 2px; }
+/* "🔑 Key set · Change" in place of the key box, once that provider's key worked. */
+.conn-fields > .key-set { flex: 1 1 200px; display: flex; align-items: center; gap: 10px; min-height: 38px; margin: 0 0 2px; color: var(--muted); }
+.key-set[hidden] { display: none; }
 .conn > .note { margin: 8px 0 0; font-size: 0.95rem; }
 .conn-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 10px; }
 .conn-foot .status { flex: 1 1 220px; margin: 0; }
 .conn-foot .check.small { margin: 0; }
 .conn-foot button.add-all { width: auto; margin: 0; }
 .conn.stacked .conn-fields { flex-direction: column; align-items: stretch; }
-.conn.stacked .conn-fields > .field { flex: none; }
+.conn.stacked .conn-fields > .field, .conn.stacked .conn-fields > .key-set { flex: none; }
 .conn.stacked .conn-fields > .refresh { align-self: flex-end; }
 .own-conn:not(:empty) { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent); }
 /* The model: the whole id on two lines, with the real <select> laid invisibly on top. */

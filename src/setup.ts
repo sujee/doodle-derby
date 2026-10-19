@@ -62,6 +62,26 @@ type Bot = {
   setNumber(n: number): void;
 };
 
+/**
+ * What this tab remembers between setup screens, in memory only (never saved): each provider's key
+ * and URL once its models loaded, the model lists, and the shared provider picked last. So "Change
+ * bots" doesn't ask for the key again, and the model list shows at once.
+ */
+const memory = {
+  provider: 'fake',
+  keys: new Map<string, string>(),
+  urls: new Map<string, string>(),
+  models: new Map<string, ModelInfo[]>(),
+};
+
+/** Forget the remembered keys and lists (tests). */
+export function forgetProviders() {
+  memory.provider = 'fake';
+  memory.keys.clear();
+  memory.urls.clear();
+  memory.models.clear();
+}
+
 /** A random model that can see images and isn't in avoid; any image model if all are taken. */
 export function pickModel(list: ModelInfo[], avoid: string[], random = Math.random): string | undefined {
   const usable = list.filter((m) => m.vision !== 'no');
@@ -74,7 +94,7 @@ export function pickModel(list: ModelInfo[], avoid: string[], random = Math.rand
 export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[], doodler: GuesserConfig | null) => void) {
   container.replaceChildren();
   // One provider for everybody, set once above the cards. A bot can still switch to its own.
-  const shared = makeConnection();
+  const shared = makeConnection(false, false, true);
   // The visible bots, in order. Adding appends; the ✕ removes one and the rest renumber (Bot #1, #2…).
   const bots: Bot[] = [];
   /** The models the other bots already use, so a new bot picks a different one. */
@@ -138,7 +158,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     addLabel,
   ]);
   const error = el('p', { class: 'error', role: 'alert' });
-  const note = el('p', { class: 'note' }, 'Your API keys stay in this tab. They’re never saved and only go to the endpoint you pick.');
+  const note = el('p', { class: 'note' }, 'Your API keys stay in this tab until you reload. They’re never saved and only go to the endpoint you pick.');
   const syncNote = () => (note.hidden = ![...bots, ...(botDraws ? [doodlerBotCard] : [])].some((b) => b.kind() !== 'fake'));
   /** Drop a bot; the others keep their state and take the numbers 1..N again. */
   const removeBot = (b: Bot) => {
@@ -213,14 +233,14 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
  * A provider picker: provider, API URL (generic OpenAI-compatible only), API key, and the model list.
  * The list loads by itself once there is a key (⟳ loads it again). stacked = inside a bot card.
  */
-function makeConnection(doodler = false, stacked = false): Conn {
+function makeConnection(doodler = false, stacked = false, isShared = false): Conn {
   // One flat provider list: OpenAI-compatible presets are "openai:<index>".
   // Fake guesser first (the no-key default), real providers A–Z, generic "OpenAI compatible" last.
   const presets = OPENAI_PRESETS.map((p, i) => [`openai:${i}`, p.name]);
   const generic = presets.filter(([, name]) => name === 'OpenAI compatible');
   const named = [['anthropic', 'Anthropic'], ...presets.filter((p) => !generic.includes(p))];
   named.sort((a, b) => a[1].localeCompare(b[1]));
-  const kind = select([['fake', doodler ? 'Fake doodler (no key)' : 'Fake guesser (no key)'], ...named, ...generic], 'fake');
+  const kind = select([['fake', doodler ? 'Fake doodler (no key)' : 'Fake guesser (no key)'], ...named, ...generic], isShared ? memory.provider : 'fake');
   const baseUrl = el('input', { type: 'url', placeholder: 'https://…/v1' }) as HTMLInputElement;
   const apiKey = el('input', { type: 'password', autocomplete: 'off', placeholder: 'API key' }) as HTMLInputElement;
   const loadBtn = el('button', { type: 'button', class: 'icon-btn refresh', title: 'Load the model list', 'aria-label': 'Load the model list' }, '⟳');
@@ -233,8 +253,12 @@ function makeConnection(doodler = false, stacked = false): Conn {
 
   const urlRow = field('API URL', baseUrl);
   const keyRow = field('API key', apiKey);
+  // Once a provider's key worked, it isn't asked for again: a short "Key set" line, with Change to type a new one.
+  const changeKey = el('button', { type: 'button', class: 'link-btn' }, 'Change');
+  const keySet = el('p', { class: 'key-set' }, [el('span', {}, '🔑 Key set'), changeKey]);
+  let editingKey = false;
   const root = el('div', { class: stacked ? 'conn stacked' : 'conn card' }, [
-    el('div', { class: 'conn-fields' }, [field('Provider', kind), urlRow, keyRow, loadBtn]),
+    el('div', { class: 'conn-fields' }, [field('Provider', kind), urlRow, keyRow, keySet, loadBtn]),
     help,
     footer,
   ]);
@@ -255,6 +279,20 @@ function makeConnection(doodler = false, stacked = false): Conn {
     }
   };
 
+  /** Models are remembered per provider, URL and key. */
+  const listKey = () => `${kind.value}|${baseUrl.value.trim()}|${apiKey.value.trim()}`;
+  const showList = (list: ModelInfo[]) => {
+    all = list;
+    status.textContent = doodler ? `✓ ${list.length} models. Any chat model can doodle.` : `✓ ${list.length} models, ${imageIds().length} see images`;
+    notify();
+  };
+  const showKey = () => {
+    const needed = slotKind() !== 'fake' && !preset()?.keyless;
+    const known = memory.keys.has(kind.value) && !editingKey;
+    keyRow.hidden = !needed || known;
+    keySet.hidden = !needed || !known;
+  };
+
   /** Bumped on every load and provider change, so a slow, stale list never lands. */
   let loadId = 0;
   const load = async () => {
@@ -271,10 +309,12 @@ function makeConnection(doodler = false, stacked = false): Conn {
         }),
       );
       if (id !== loadId) return;
-      all = list;
-      const vision = imageIds().length;
-      status.textContent = doodler ? `✓ ${list.length} models. Any chat model can doodle.` : `✓ ${list.length} models, ${vision} see images`;
-      notify();
+      memory.models.set(listKey(), list);
+      if (c.kind !== 'fake' && c.apiKey) memory.keys.set(kind.value, c.apiKey);
+      if (c.kind === 'openai') memory.urls.set(kind.value, c.baseUrl);
+      editingKey = false;
+      showKey();
+      showList(list);
     } catch (e) {
       if (id !== loadId) return;
       status.textContent = `Couldn’t load the models: ${errorText(e)}`;
@@ -285,7 +325,10 @@ function makeConnection(doodler = false, stacked = false): Conn {
   const autoLoad = () => {
     const p = preset();
     if (slotKind() === 'fake' || !baseUrl.value.trim() && slotKind() === 'openai') return;
-    if (apiKey.value.trim() || p?.keyless) void load();
+    if (!apiKey.value.trim() && !p?.keyless) return;
+    const known = memory.models.get(listKey());
+    if (known) showList(known);
+    else void load();
   };
 
   const refresh = () => {
@@ -294,10 +337,13 @@ function makeConnection(doodler = false, stacked = false): Conn {
     const remote = k !== 'fake';
     const p = preset();
     urlRow.hidden = !p || !!p.baseUrl; // presets know their URL; only the generic one asks
-    keyRow.hidden = !remote || !!p?.keyless;
+    apiKey.value = memory.keys.get(kind.value) ?? '';
+    editingKey = false;
+    showKey();
+    if (isShared) memory.provider = kind.value;
     loadBtn.hidden = visionRow.hidden = !remote;
     visionRow.hidden ||= doodler;
-    baseUrl.value = p?.baseUrl ?? '';
+    baseUrl.value = p?.baseUrl ?? memory.urls.get(kind.value) ?? '';
     help.textContent = p?.keyless ? 'No key needed. Ollama must allow this site: set OLLAMA_ORIGINS. Safari may block http://localhost from an https page.' : '';
     help.hidden = !help.textContent;
     all = [];
@@ -315,6 +361,12 @@ function makeConnection(doodler = false, stacked = false): Conn {
   apiKey.addEventListener('input', loadSoon);
   baseUrl.addEventListener('input', loadSoon);
   loadBtn.addEventListener('click', () => void load());
+  changeKey.addEventListener('click', () => {
+    editingKey = true;
+    showKey();
+    apiKey.select();
+    apiKey.focus();
+  });
   visionOnly.addEventListener('change', notify);
   refresh();
 
