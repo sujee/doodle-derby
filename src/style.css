@@ -381,7 +381,7 @@ button.hud-btn.stop { color: var(--coral); }
 .tier.hard::before { content: '🔥 '; }
 
 .board { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: start; }
-.pad-wrap { width: min(620px, 100dvh - 290px); min-width: 300px; }
+.pad-wrap { width: min(620px, 100dvh - 290px); min-width: 300px; container: pad / inline-size; } /* the head below reacts to this width, not the window's */
 .paper {
   position: relative; margin: 0 auto;
   max-width: min(620px, calc(100dvh - 290px)); min-width: 260px;
@@ -850,9 +850,20 @@ button.pause-btn, button.hud-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--r
 }
 
 /* Above the paper: the word on its scrap of paper, and "5 correct" on the right. */
-.paper-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 4px 14px; min-width: 0; }
-.paper-head .round { flex: none; }
-.paper-head .prompt { min-width: 0; overflow-wrap: anywhere; }
+.paper-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; margin: 0 4px 14px; min-width: 0; }
+/* Round on the left, "N correct" on the right, the word between them: a long word shrinks, then wraps, rather than pushing "N correct" down. */
+.paper-head .round { flex-direction: column; align-items: flex-start; gap: 4px; } /* the round over its level, which leaves the word the room */
+.paper-head .prompt { justify-self: center; min-width: 0; max-width: 100%; overflow-wrap: break-word; }
+.word[data-long='true'] { font-size: 1.45rem; line-height: 1.1; }
+/* The room for the word is what the canvas leaves between the round and "N correct", and the canvas shrinks with the
+   window's height too, so this goes by the canvas's width: on a narrower canvas every word gets a row of its own. */
+@container pad (max-width: 490px) {
+  .paper-head { grid-template-columns: 1fr auto; }
+  .paper-head .prompt { grid-column: 1 / -1; grid-row: 2; }
+  .word[data-long='true'] { font-size: 1.7rem; } /* the whole row is its own, so it needn't shrink */
+}
+@container pad (max-width: 300px) { .word[data-long='true'] { font-size: 1.3rem; } } /* "christmas tree" on a 320px phone */
+
 .paper-badge {
   flex: none; white-space: nowrap;
   padding: 0 10px; border-radius: 999px; font: 600 0.85rem/1.5 var(--round); color: var(--muted);

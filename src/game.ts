@@ -272,7 +272,7 @@ export class Game {
     this.roundEl.replaceChildren(el('span', { class: 'round-word' }, 'Round '), `${round + 1}/${ROUNDS}`); // phones show just "3/10"
     this.tierEl.textContent = tier;
     this.tierEl.className = `tier ${tier}`;
-    this.wordEl.textContent = this.youGuess ? '???' : word.word; // watching a bot draw, you see the word
+    this.showWord(this.youGuess ? '???' : word.word); // watching a bot draw, you see the word
     for (const v of this.views) {
       v.feedEl.replaceChildren();
       v.feedEl.dataset.empty = 'ready';
@@ -292,6 +292,12 @@ export class Game {
       if (beat !== this.lastBeat) sfx.tick(n % 2 === 0);
       this.lastBeat = beat;
     }
+  }
+
+  /** The word above the canvas; a long one ("baseball bat") is set smaller so the row keeps its shape. */
+  private showWord(text: string) {
+    this.wordEl.textContent = text;
+    this.wordEl.dataset.long = String(text.length > 9);
   }
 
   private onGuess(i: number, entry: GuessEntry) {
@@ -324,7 +330,7 @@ export class Game {
     this.canvas.setEnabled(false);
     this.hint.remove();
     this.sketchEl.hidden = true;
-    this.wordEl.textContent = word;
+    this.showWord(word);
     const players = this.engine.players;
     if (winner !== null) {
       this.views[winner].scoreEl.textContent = String(players[winner].score);
