@@ -1,4 +1,5 @@
 import { botColor } from './art';
+import { REPO } from './header';
 import { el } from './dom';
 import type { GameResult } from './game';
 import { ROUNDS } from './words';
@@ -6,7 +7,7 @@ import { ROUNDS } from './words';
 /**
  * Share cards, drawn on a canvas (no DOM screenshot library) so they look the same everywhere:
  * 1. "Doodles": every round's doodle and who guessed it.
- * 2. "Bot brains": a table of every bot's guess trail per round.
+ * 2. "Bot brains": pages of every bot's guess trail per round (more bots or rounds make more pages).
  */
 
 const SIZE = 1080;
@@ -237,143 +238,184 @@ async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
     }
   });
 
-  footer(ctx, SIZE, SIZE, r);
+  footer(ctx, SIZE, SIZE);
   return toPng(c);
+}
+
+/** The bot brains pages: each is one square page, so a long game or many bots simply take more pages. */
+const BRAIN_TOP = 145;
+const BRAIN_BOTTOM = 1008;
+const BRAIN_LINE = 23;
+const BRAIN_MIN_BLOCK = 82; // a round's doodle, word and time have to fit its block
+
+/** How many rounds fit a page (a round's block is one line per bot), and which rounds go on which page, evenly. */
+export function brainLayout(rounds: number, bots: number): { blockH: number; pages: number[][] } {
+  const blockH = Math.max(BRAIN_MIN_BLOCK, bots * BRAIN_LINE + 9);
+  const perPage = Math.max(1, Math.floor((BRAIN_BOTTOM - BRAIN_TOP) / blockH));
+  const count = Math.max(1, Math.ceil(rounds / perPage));
+  // Spread the rounds over the pages (4, 3, 3 rather than 4, 4, 2): the first pages take the extra ones.
+  const base = Math.floor(rounds / count);
+  const extra = rounds % count;
+  let next = 0;
+  const pages = Array.from({ length: count }, (_, p) => {
+    const size = base + (p < extra ? 1 : 0);
+    return Array.from({ length: size }, () => next++);
+  });
+  return { blockH, pages };
 }
 
 /**
- * Card 2, "What were the bots thinking?": a notebook table with one row per round (doodle + word)
- * and one column per bot. Each cell is that bot's guess trail: wrong guesses struck through in
- * see-through red, the right one in the bot's color and circled.
+ * Cards 2+, "What were the bots thinking?": a notebook page of rounds, each with its doodle, its word and time,
+ * and one line per bot (best first) of that bot's guesses: wrong ones struck through, the right one circled.
  */
-async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
+async function buildBrainPages(r: GameResult, prep?: Prepared): Promise<Blob[]> {
   const { images } = prep ?? (await prepare(r));
-  const rows = r.rounds.slice(0, 10);
-  const top = 210;
-  const rowH = 104;
-  const height = Math.max(SIZE, top + rows.length * rowH + 100);
-  const { c, ctx } = paper(SIZE, height);
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = INK;
-  ctx.fillText(fitFont(ctx, r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?', SIZE - 80, 66, 40, HAND), SIZE / 2, 92);
-
-  // Column headers: bot names in their colors.
+  const rounds = r.rounds.slice(0, 10);
+  const order = chipOrder(r.scores);
+  const { blockH, pages } = brainLayout(rounds.length, order.length);
+  const heading = r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?';
   const left = 40;
-  const colStart = 330;
-  const colW = (SIZE - colStart - left) / Math.max(1, r.labels.length);
-  ctx.textAlign = 'left';
-  ctx.font = `30px ${HAND}`;
-  ctx.fillStyle = MUTED;
-  ctx.fillText('Round', left, top - 26);
-  r.labels.forEach((label, b) => {
-    ctx.fillStyle = darker(colorOf(r, b));
-    ctx.fillText(fitFont(ctx, shortName(label), colW - 16, 28, 18, HAND), colStart + b * colW, top - 26);
-  });
+  const nameX = 290;
+  const trailX = 510;
+  const blobs: Blob[] = [];
 
-  rows.forEach((round, i) => {
-    const y = top + i * rowH;
-    if (i % 2 === 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.fillRect(left - 12, y, SIZE - (left - 12) * 2, rowH);
-    }
-    dashed(ctx, left - 12, y, SIZE - left + 12);
-
-    // Thumbnail + word + time.
-    const t = 80;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(left, y + 12, t, t);
-    const img = images[i];
-    if (img) ctx.drawImage(img, left + 2, y + 14, t - 4, t - 4);
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = INK;
-    ctx.strokeRect(left, y + 12, t, t);
-    ctx.textAlign = 'left';
+  for (const [p, idxs] of pages.entries()) {
+    const { c, ctx } = paper(SIZE, SIZE);
+    ctx.textAlign = 'center';
     ctx.fillStyle = INK;
-    const lines = wordLines(ctx, round.word, colStart - left - t - 30, 30, 24, 17);
-    lines.forEach((line, n) => ctx.fillText(line, left + t + 16, y + (lines.length === 1 ? 52 : 42) + n * 24));
-    ctx.fillStyle = MUTED;
-    ctx.font = `18px ${BODY}`;
-    ctx.fillText(
-      round.winner === null ? 'stumped' : `got in ${round.seconds?.toFixed(1) ?? '?'}s`,
-      left + t + 16,
-      y + 88,
-    );
+    ctx.fillText(fitFont(ctx, heading, SIZE - 80, 66, 40, HAND), SIZE / 2, 92);
+    if (pages.length > 1) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = MUTED;
+      ctx.font = `22px ${BODY}`;
+      ctx.fillText(`page ${p + 1} of ${pages.length}`, SIZE - left - 4, 128);
+    }
 
-    // Each bot's guess trail.
-    r.labels.forEach((_, b) => {
-      const trail = [
-        ...(round.guesses[b] ?? []).map((g) => ({ text: g, right: false })),
-        ...(round.winner === b ? [{ text: round.word, right: true }] : []),
-      ];
-      drawTrail(ctx, trail, colStart + b * colW, y + 36, colW - 22, colorOf(r, b));
+    idxs.forEach((i, k) => {
+      const round = rounds[i];
+      const y = BRAIN_TOP + k * blockH;
+      if (k % 2 === 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(left - 12, y, SIZE - (left - 12) * 2, blockH);
+      }
+      dashed(ctx, left - 12, y, SIZE - left + 12);
+
+      // The doodle, its word, and how fast it was guessed (who guessed it is the mint band). The doodle is
+      // bigger when the block is, i.e. with more bots.
+      const t = Math.min(86, Math.max(62, blockH - 24));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(left, y + 10, t, t);
+      const img = images[i];
+      if (img) ctx.drawImage(img, left + 2, y + 12, t - 4, t - 4);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = INK;
+      ctx.strokeRect(left, y + 10, t, t);
+      const textX = left + t + 12;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = INK;
+      const lines = wordLines(ctx, round.word, nameX - textX - 12, 30, 24, 17);
+      lines.forEach((line, n) => ctx.fillText(line, textX, y + (lines.length === 1 ? 38 : 28) + n * 22));
+      const pillTop = y + (lines.length === 1 ? 48 : 58);
+      if (round.winner === null || round.seconds === null) {
+        ctx.fillStyle = MUTED;
+        ctx.font = `18px ${BODY}`;
+        ctx.fillText('✗ stumped', textX, pillTop + 17);
+      } else {
+        const tint = TIME_TINT[speedTier(round.seconds)];
+        ctx.font = `18px ${BODY}`;
+        const label = `${round.seconds.toFixed(1)}s`;
+        const pw = Math.ceil(ctx.measureText(label).width) + 22;
+        roundRect(ctx, textX, pillTop, pw, 24, 12);
+        ctx.fillStyle = tint.bg;
+        ctx.fill();
+        ctx.fillStyle = tint.fg;
+        ctx.fillText(label, textX + 11, pillTop + 18);
+      }
+
+      // One line per bot, best first; the bot that got it right is on a mint band.
+      order.forEach((b, j) => {
+        const ly = y + 8 + j * BRAIN_LINE;
+        const won = round.winner === b;
+        if (won) {
+          roundRect(ctx, nameX - 8, ly, SIZE - left - nameX + 8, BRAIN_LINE - 1, 7);
+          ctx.fillStyle = '#d3f5e8';
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(nameX + 6, ly + BRAIN_LINE / 2, 6, 0, Math.PI * 2);
+        ctx.fillStyle = colorOf(r, b);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = INK;
+        ctx.stroke();
+        ctx.fillStyle = INK;
+        ctx.textAlign = 'left';
+        ctx.fillText(fitFont(ctx, shortName(r.labels[b], 40), trailX - nameX - 34, 16, 11, BODY), nameX + 20, ly + 17);
+        const trail = [
+          ...(round.guesses[b] ?? []).map((g) => ({ text: g, right: false })),
+          ...(won ? [{ text: round.word, right: true }] : []),
+        ];
+        drawTrailLine(ctx, trail, trailX, ly + 17, SIZE - left - trailX, darker(colorOf(r, b)));
+      });
     });
-  });
-  dashed(ctx, left - 12, top + rows.length * rowH, SIZE - left + 12);
 
-  footer(ctx, SIZE, height, r);
-  return toPng(c);
+    footer(ctx, SIZE, SIZE);
+    blobs.push(await toPng(c));
+  }
+  return blobs;
 }
 
-/** Lay out guesses left to right, wrapping, up to 3 lines: wrong ones struck through, the right one circled. */
-function drawTrail(
-  ctx: CanvasRenderingContext2D,
-  trail: { text: string; right: boolean }[],
-  x0: number,
-  y0: number,
-  width: number,
-  color: string,
-) {
+/**
+ * One bot's guesses on one line, left to right: wrong ones struck through, the right one circled with a ✓.
+ * When they don't all fit, the earliest are left off ("…"), so the latest, what it thought last, stays.
+ */
+function drawTrailLine(ctx: CanvasRenderingContext2D, trail: { text: string; right: boolean }[], x0: number, y: number, width: number, rightColor: string) {
   ctx.textAlign = 'left';
+  ctx.font = `18px ${BODY}`;
   if (trail.length === 0) {
     ctx.fillStyle = MUTED;
-    ctx.font = `20px ${BODY}`;
-    ctx.fillText('(quiet)', x0, y0 + 10);
+    ctx.font = `16px ${BODY}`;
+    ctx.fillText('round ended', x0, y);
     return;
   }
-  const lineH = 30;
+  const gap = 16;
+  const ellipsis = ctx.measureText('… ').width;
+  const sized = trail.map((item) => {
+    const w = ctx.measureText(item.text).width;
+    return { ...item, w, need: item.right ? w + 24 + 24 : w };
+  });
+  let from = 0;
+  const total = (f: number) => sized.slice(f).reduce((a, it) => a + it.need, 0) + gap * (sized.length - f - 1) + (f > 0 ? ellipsis : 0);
+  while (from < sized.length - 1 && total(from) > width) from++;
   let x = x0;
-  let line = 0;
-  for (const item of trail) {
-    ctx.font = `20px ${BODY}`;
-    const text = item.right ? fitFont(ctx, item.text, width - 40, 24, 17, HAND) : fit(ctx, item.text, width - 40);
-    const w = ctx.measureText(text).width;
-    const need = item.right ? w + 40 : w;
-    if (x > x0 && x + need > x0 + width) {
-      line++;
-      x = x0;
-    }
-    if (line > 2) {
-      ctx.fillStyle = MUTED;
-      ctx.font = `20px ${BODY}`;
-      ctx.fillText('…', x0 + width - 10, y0 + 2 * lineH);
-      return;
-    }
-    const y = y0 + line * lineH;
+  if (from > 0) {
+    ctx.fillStyle = MUTED;
+    ctx.fillText('…', x, y);
+    x += ellipsis;
+  }
+  for (const item of sized.slice(from)) {
+    const text = item.need > width ? fit(ctx, item.text, width - (item.right ? 48 : 0)) : item.text;
     if (item.right) {
-      ctx.fillStyle = darker(color);
-      ctx.fillText(text, x + 6, y);
-      ctx.beginPath(); // hand-drawn circle around the right answer
-      ctx.ellipse(x + 6 + w / 2, y - 7, w / 2 + 9, 14, -0.06, 0, Math.PI * 2);
+      ctx.fillStyle = rightColor;
+      ctx.fillText(text, x + 12, y);
+      ctx.beginPath(); // a hand-drawn circle around the right answer
+      ctx.ellipse(x + 12 + item.w / 2, y - 6, item.w / 2 + 11, 12, -0.06, 0, Math.PI * 2);
       ctx.lineWidth = 3;
       ctx.strokeStyle = MINT;
       ctx.stroke();
       ctx.fillStyle = '#05a37b';
-      ctx.font = `22px ${BODY}`;
-      ctx.fillText('✓', x + w + 20, y);
-      x += need + 8;
+      ctx.fillText('✓', x + item.w + 30, y);
     } else {
-      // Wrong guess: struck through in see-through red, so the word stays readable.
       ctx.fillStyle = INK;
       ctx.fillText(text, x, y);
-      ctx.beginPath();
+      ctx.beginPath(); // struck through in see-through red, so the word stays readable
       ctx.moveTo(x - 2, y - 6);
-      ctx.lineTo(x + w + 2, y - 6);
+      ctx.lineTo(x + item.w + 2, y - 6);
       ctx.lineWidth = 2.5;
       ctx.strokeStyle = STRIKE;
       ctx.stroke();
-      x += w + 14;
     }
+    x += item.need + gap;
   }
 }
 
@@ -404,12 +446,13 @@ function title(ctx: CanvasRenderingContext2D, width: number, y: number, size: nu
   ctx.fillText('Derby', x + w1, y);
 }
 
-function footer(ctx: CanvasRenderingContext2D, width: number, height: number, r: GameResult) {
+function footer(ctx: CanvasRenderingContext2D, width: number, height: number) {
   ctx.textAlign = 'center';
   ctx.fillStyle = MUTED;
-  const url = gameUrl();
-  const text = url ? `Play: ${url.replace(/^https?:\/\//, '')}` : r.doodler ? 'A bot doodles. Everyone races to guess it.' : 'You doodle. The bots guess. Fastest bot wins.';
-  ctx.fillText(fitFont(ctx, text, width - 80, 30, 20, BODY), width / 2, height - 40);
+  // The source link, with the game's own link first when it is hosted somewhere (not when running locally).
+  const url = gameUrl().replace(/^https?:\/\//, '');
+  const source = REPO.replace(/^https?:\/\//, '');
+  ctx.fillText(fitFont(ctx, url ? `Play: ${url}  ·  ${source}` : source, width - 80, 30, 20, BODY), width / 2, height - 40);
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, img: HTMLImageElement | null, i: number) {
@@ -515,9 +558,9 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-type Card = { name: string; file: string; blob: Blob; url: string };
+type Card = { name: string; kind: 'doodles' | 'brains'; file: string; blob: Blob; url: string };
 
-/** Modal with both cards (tabs), and share / download / copy actions for the one shown. */
+/** Modal with the cards (tabs: doodles, then the brains pages), and share / download / copy actions for the one shown. */
 export async function openShareDialog(r: GameResult, onClose?: () => void) {
   const status = el('p', { class: 'share-status', role: 'status' });
   const tabs = el('div', { class: 'share-tabs', role: 'tablist' });
@@ -549,10 +592,17 @@ export async function openShareDialog(r: GameResult, onClose?: () => void) {
 
   try {
     const prep = await prepare(r);
-    const [doodles, brains] = await Promise.all([buildDoodleCard(r, prep), buildBrainCard(r, prep)]);
+    const [doodles, brains] = await Promise.all([buildDoodleCard(r, prep), buildBrainPages(r, prep)]);
+    const many = brains.length > 1;
     cards = [
-      { name: 'Doodles', file: 'doodle-derby.png', blob: doodles, url: URL.createObjectURL(doodles) },
-      { name: 'Bot brains', file: 'doodle-derby-bot-brains.png', blob: brains, url: URL.createObjectURL(brains) },
+      { name: 'Doodles', kind: 'doodles', file: 'doodle-derby.png', blob: doodles, url: URL.createObjectURL(doodles) },
+      ...brains.map((blob, i) => ({
+        name: many ? `Brains ${i + 1}/${brains.length}` : 'Bot brains',
+        kind: 'brains' as const,
+        file: many ? `doodle-derby-bot-brains-${i + 1}.png` : 'doodle-derby-bot-brains.png',
+        blob,
+        url: URL.createObjectURL(blob),
+      })),
     ];
   } catch {
     preview.replaceChildren(el('p', { class: 'note' }, 'Could not draw the share cards, sorry!'));
@@ -570,7 +620,7 @@ export async function openShareDialog(r: GameResult, onClose?: () => void) {
     preview.replaceChildren(
       el('img', {
         src: card.url,
-        alt: card.name === 'Doodles' ? 'Share card with all your doodles' : 'Table of every bot’s guesses for each round',
+        alt: card.kind === 'doodles' ? 'Share card with all your doodles' : 'Page of every bot’s guesses for each round',
       }),
     );
     for (const b of tabs.children) b.setAttribute('aria-selected', String(b.textContent === card.name));
@@ -598,7 +648,7 @@ export async function openShareDialog(r: GameResult, onClose?: () => void) {
   };
 
   if (canShareFiles) {
-    actions.append(button('Share both…', 'primary', () => navigator.share({ files, text, title: 'Doodle Derby' })));
+    actions.append(button(cards.length > 2 ? 'Share all…' : 'Share both…', 'primary', () => navigator.share({ files, text, title: 'Doodle Derby' })));
   }
   actions.append(
     button('Download', canShareFiles ? '' : 'primary', () => {

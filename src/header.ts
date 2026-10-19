@@ -8,7 +8,7 @@ import { el } from './dom';
  * normal flow above the app, so it never covers anything, and its right padding keeps clear of the
  * fixed corner tools.
  */
-const REPO = 'https://github.com/sujee/doodle-derby';
+export const REPO = 'https://github.com/sujee/doodle-derby';
 const SITE = 'https://sujee.dev';
 const TWITTER = 'https://x.com/sujee_dev';
 
