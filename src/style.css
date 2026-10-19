@@ -183,7 +183,7 @@ button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px;
   max-width: 1400px; margin: 0 auto; padding: 12px 220px 4px 16px; /* right: clear of the corner tools */
 }
-.site-head .brand { font: 1.3rem var(--hand); }
+.site-head .brand { font: 2rem/1.2 var(--hand); }
 .site-head .w1 { color: var(--coral); }
 .site-head .w2 { color: var(--sky); }
 .site-head .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; font: 0.78rem var(--round); color: var(--muted); }
@@ -330,6 +330,12 @@ button.start:hover { animation-play-state: paused; }
   /* Clear of the corner tools: 3 × 48px buttons + 2 × 14px gaps + 12px margin + a little air. */
   padding-right: 202px; margin-bottom: 18px;
 }
+button.hud-btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; transform: none; }
+button.hud-btn.stop { color: var(--coral); }
+/* Wide screens: the clock and the game's buttons join the top row, left of the corner tools. */
+@media (min-width: 1080px) {
+  .hud { position: fixed; top: 12px; right: 202px; z-index: 50; height: 48px; padding: 0; margin: 0; }
+}
 .round { display: flex; gap: 10px; align-items: center; font: 600 1.05rem var(--round); white-space: nowrap; }
 .prompt {
   position: relative; isolation: isolate;
@@ -442,6 +448,13 @@ button.tool.active .tool-icon { color: #2b2b2b; }
  */
 .field { display: grid; gap: 10px; align-content: start; min-width: 0; }
 .field-title { margin: 0 6px; font: 1.05rem var(--body); color: var(--muted); }
+/* Side by side, "The field" sits level with the round and the word, and the first row with the canvas top:
+   both heads are --head-h tall, and the gap below each comes to the same 14px. */
+@media (min-width: 761px) {
+  .board { --head-h: 52px; }
+  .paper-head { min-height: var(--head-h); }
+  .field-title { height: var(--head-h); display: flex; align-items: center; margin-bottom: 4px; } /* + the field's 10px gap */
+}
 .rows { display: grid; gap: 16px; } /* room for the wins badges on the corners */
 /* The confetti can poke past the screen edge: never let them cause a sideways scroll. */
 .game { overflow-x: clip; }
@@ -534,8 +547,6 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 button.icon-btn { width: 40px; height: 40px; padding: 0; font: 700 1.1rem/1 var(--round); border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%; box-shadow: 2px 2px 0 var(--shadow); }
-button.icon-btn.stop { color: var(--muted); }
-button.icon-btn.share-btn { font-size: 1.15rem; }
 button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; transform: none; }
 .pause-layer {
   position: absolute; inset: 0; z-index: 6; display: grid; place-items: center;
@@ -669,7 +680,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   body { font-size: 17px; }
   /* The header sits under the fixed corner tools, so it needs no clearance of its own. */
   .site-head { padding: 50px 16px 2px; }
-  .site-head .brand { font-size: 1.15rem; }
+  .site-head .brand { font-size: 1.5rem; }
   .site-head .meta { font-size: 0.68rem; gap: 2px 8px; }
   main { padding-top: 2px; }
   .logo { font-size: 2.7rem; gap: 6px; }
@@ -818,7 +829,7 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 }
 
 /* Pause: a labelled button, and a card listing every guess so far this round */
-button.pause-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-radius: 18px 14px 20px 15px; box-shadow: 3px 3px 0 var(--shadow); }
+button.pause-btn, button.hud-btn { padding: 6px 14px; font: 700 1rem/1.2 var(--round); border-radius: 18px 14px 20px 15px; box-shadow: 3px 3px 0 var(--shadow); }
 .pause-card { width: min(640px, 94%); max-height: 94%; overflow-y: auto; }
 .pause-card .kicker strong { color: var(--grape); }
 .pause-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 14px; text-align: left; }

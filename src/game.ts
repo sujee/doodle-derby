@@ -42,7 +42,7 @@ export class Game {
   private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)', 'aria-label': 'Pause' }, pauseFace(false));
   private pauseEl = el('div', { class: 'pause-layer', hidden: '' });
   // Share the game so far, any time after the first round (the round in play pauses meanwhile).
-  private shareBtn = el('button', { type: 'button', class: 'icon-btn share-btn', title: 'Share after the first round', 'aria-label': 'Share the game so far', disabled: '' }, '📸');
+  private shareBtn = el('button', { type: 'button', class: 'hud-btn share-btn', title: 'The game so far, to share (after the first round)', disabled: '' }, 'Status');
   private roundEl = el('span');
   private tierEl = el('span', { class: 'tier' });
   private wordEl = el('span', { class: 'word' });
@@ -149,7 +149,7 @@ export class Game {
       this.paper.append(this.hint);
       this.canvas.el.addEventListener('pointerdown', () => this.hideHint(), { once: true });
     }
-    const stop = el('button', { type: 'button', class: 'icon-btn stop', title: 'Stop game', 'aria-label': 'Stop game' }, '✕');
+    const stop = el('button', { type: 'button', class: 'hud-btn stop', title: 'Stop the game and see the results' }, 'Stop');
     stop.addEventListener('click', () => {
       if (confirm('Stop the game and see the results so far?')) this.engine.stop();
     });
@@ -330,7 +330,7 @@ export class Game {
     }
 
     this.shareBtn.removeAttribute('disabled');
-    this.shareBtn.title = 'Share the game so far';
+    this.shareBtn.title = 'The game so far, to share';
 
     // The next round starts only when you click (or press Enter on the focused button).
     const last = round === ROUNDS - 1;
