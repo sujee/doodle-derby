@@ -3,7 +3,7 @@
  * The AudioContext is only created after the first user gesture, as browsers require.
  */
 
-const KEY = 'doodle-duel-muted';
+const KEY = 'doodle-derby-muted';
 const VOLUME = 0.22;
 
 let ctx: AudioContext | null = null;
@@ -22,11 +22,7 @@ function readMuted(): boolean {
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function isMuted() {
-  return muted;
-}
-
-export function setMuted(m: boolean) {
+function setMuted(m: boolean) {
   muted = m;
   try {
     localStorage.setItem(KEY, m ? '1' : '0');
@@ -37,7 +33,7 @@ export function setMuted(m: boolean) {
   if (!m) boop();
 }
 
-export function onMuteChange(fn: (muted: boolean) => void) {
+function onMuteChange(fn: (muted: boolean) => void) {
   listeners.push(fn);
 }
 
@@ -115,7 +111,7 @@ function noise(dur: number, freq: number, o: { delay?: number; gain?: number; to
 }
 
 /** UI button press. */
-export function boop() {
+function boop() {
   tone(560, 0.09, { to: 360, gain: 0.35 });
 }
 
@@ -123,18 +119,6 @@ export function boop() {
 export function roundStart() {
   tone(260, 0.28, { type: 'triangle', to: 880, gain: 0.45 });
   for (let i = 0; i < 4; i++) noise(0.07, 2500 + (i % 2) * 1500, { delay: 0.3 + i * 0.08, gain: 0.35, to: 1800 });
-}
-
-/** A guess bubble pops up. Each robot has its own pitch. */
-export function pop(robot: number) {
-  const base = [700, 1050, 520][robot % 3];
-  tone(base, 0.12, { to: base / 2.6, gain: 0.5 });
-}
-
-/** Wrong guess: a scratchy squiggle. */
-export function wrong() {
-  tone(340, 0.28, { type: 'sawtooth', to: 180, gain: 0.12, vibrato: 40 });
-  noise(0.22, 1400, { gain: 0.18, to: 600 });
 }
 
 /** Clock tick (true) or tock (false). */
@@ -153,11 +137,6 @@ export function ding() {
 export function wahWah() {
   [392, 370, 349].forEach((f, i) => tone(f, 0.32, { type: 'triangle', delay: i * 0.34, gain: 0.4 }));
   tone(330, 0.9, { type: 'triangle', delay: 1.02, gain: 0.4, vibrato: 8 });
-}
-
-/** Countdown blip; pitch rises as n goes 3 → 1. */
-export function blip(n: number) {
-  tone([0, 1047, 784, 659][n] ?? 523, 0.1, { type: 'square', gain: 0.18 });
 }
 
 /** Results fanfare. */

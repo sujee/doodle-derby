@@ -1,34 +1,47 @@
 import './style.css';
 import { installDebugPanel } from './debugPanel';
-import { confetti, doodlerBot, robot, you } from './art';
+import { confetti, doodlerBot, you } from './art';
 import { el } from './dom';
 import { Game, type GameResult } from './game';
+import { installHeader } from './header';
 import type { GuesserConfig } from './providers';
-import { costOf, formatTokens, formatUsd, PRICES_FETCHED } from './pricing';
 import { renderSetup } from './setup';
+import { tallyTable } from './tally';
+import { installSettings } from './settings';
 import { headlineFor, openShareDialog } from './share';
 import { fanfare, installSound } from './sound';
 import { tierForRound } from './words';
 
 const app = document.getElementById('app')!;
-// Corner tools on every screen: the debug log and the sound toggle, spaced out in one row.
+// The name and links at the top of every screen, then the corner tools (debug, sound, settings).
+installHeader();
+// Corner tools on every screen: the debug log, the sound toggle and the settings menu.
 const debugLog = installDebugPanel();
-document.body.append(el('div', { class: 'corner-tools' }, [debugLog.button, installSound()]), debugLog.panel);
+const settings = installSettings();
+document.body.append(
+  el('div', { class: 'corner-tools' }, [debugLog.button, installSound(), settings.button]),
+  settings.panel,
+  debugLog.panel,
+);
 let lastConfigs: GuesserConfig[] = [];
 let lastDoodler: GuesserConfig | null = null;
 
+/** A new screen starts at its top, not wherever the last one was scrolled to (Play sits at the bottom). */
+const toTop = () => window.scrollTo({ top: 0, behavior: 'instant' });
+
 function showSetup() {
   renderSetup(app, startGame);
+  toTop();
 }
 
 function startGame(configs: GuesserConfig[], doodler: GuesserConfig | null) {
   lastConfigs = configs;
   lastDoodler = doodler;
   new Game(app, configs, showResults, doodler);
+  toTop();
 }
 
 function showResults(r: GameResult) {
-  const best = Math.max(...r.scores);
   const headline = headlineFor(r);
 
   const again = el('button', { class: 'primary big' }, 'Play again!');
@@ -38,34 +51,24 @@ function showResults(r: GameResult) {
   const share = el('button', {}, 'Share your doodles 📸');
   share.addEventListener('click', () => openShareDialog(r));
 
-  // Podium: bots ranked by score (ties share a step), laid out 2nd – 1st – 3rd.
-  const ranks = r.scores.map((s) => r.scores.filter((o) => o > s).length);
-  const order = r.labels.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a] || a - b);
-  const layout = order.length >= 2 ? [order[1], order[0], ...order.slice(2)] : order;
-  fanfare();
-  const podium = el(
-    'div',
-    { class: 'podium' },
-    layout.map((i) =>
-      podiumStep(i, r.labels[i], r.scores[i], ranks[i], order.indexOf(i), r.scores[i] === best && best > 0, i === r.humanIndex),
-    ),
-  );
   const drawings = `${r.playerScore} of ${r.rounds.length} drawing${r.rounds.length === 1 ? '' : 's'} guessed`;
   const youBadge = r.doodler
     ? el('div', { class: 'you-badge doodler-badge card' }, [doodlerBot(), el('span', {}, [el('strong', {}, `✏️ ${r.doodler.label}`), ` got ${drawings}`])])
     : el('div', { class: 'you-badge card' }, [you(), el('span', {}, [el('strong', {}, 'You'), ` got ${drawings}`])]);
-  if (best > 0) requestAnimationFrame(() => confetti(podium, 60));
+
+  const tally = tallyTable(r);
+  fanfare();
+  requestAnimationFrame(() => confetti(tally, 60));
   app.replaceChildren(
     el('section', { class: 'results' }, [
       el('h1', {}, headline),
       r.stopped ? el('p', { class: 'note' }, `Stopped after ${r.rounds.length} of 10 rounds.`) : '',
-      podium,
+      tally,
       el('div', { class: 'row center' }, [again, ...(r.rounds.length ? [share] : []), setup]),
       youBadge,
-      receipt(r),
-      el('details', { class: 'report' }, [
-        el('summary', {}, 'Round by round'),
+      el('section', { class: 'report' }, [
         el('table', { class: 'summary report-card' }, [
+          el('caption', {}, 'Round by round'),
           el('thead', {}, el('tr', {}, ['#', 'Word', 'Level', 'Guessed by', 'Time'].map((h) => el('th', {}, h)))),
           el(
             'tbody',
@@ -84,60 +87,7 @@ function showResults(r: GameResult) {
       ]),
     ]),
   );
-}
-
-/** "Bot bill": tokens and cost per bot, shown open (click the summary line to fold it). Hidden when every bot is fake. */
-function receipt(r: GameResult) {
-  // Every bot that made calls: the guessers (not You), plus the doodler.
-  const bots = [
-    ...r.labels.map((label, i) => ({ label, usage: r.usage[i], price: r.prices[i] })).filter((_, i) => i !== r.humanIndex),
-    ...(r.doodler ? [{ ...r.doodler, label: `✏️ ${r.doodler.label}` }] : []),
-  ];
-  if (bots.every((b) => b.price.kind === 'free' && b.price.why === 'fake bot')) return '';
-  const costs = bots.map((b) => costOf(b.usage, b.price));
-  const known = costs.filter((c): c is number => c !== null);
-  const total = known.reduce((a, b) => a + b, 0);
-  const tokens = bots.reduce((n, b) => n + b.usage.input + b.usage.output, 0);
-  const totalText = known.length ? (known.length < costs.length ? `${formatUsd(total)}+` : formatUsd(total)) : 'price unknown';
-  const cell = (text: string, cls = '') => el('td', cls ? { class: cls } : {}, text);
-  return el('details', { class: 'receipt', open: '' }, [
-    el('summary', {}, `🧾 Bot bill: ${totalText} · ${formatTokens(tokens)} tokens`),
-    el('table', {}, [
-      el('thead', {}, el('tr', {}, ['Bot', 'Calls', 'In', 'Out', 'Cost'].map((h) => el('th', {}, h)))),
-      el(
-        'tbody',
-        {},
-        bots.map(({ label, usage, price }, i) =>
-          el('tr', {}, [
-            cell(label, 'bot-name'),
-            cell(String(usage.calls)),
-            cell(formatTokens(usage.input)),
-            cell(formatTokens(usage.output)),
-            cell(price.kind === 'free' ? (price.why === 'fake bot' ? 'free (fake)' : 'free (local)') : formatUsd(costs[i])),
-          ]),
-        ),
-      ),
-      el('tfoot', {}, el('tr', {}, [cell('Total'), cell(''), cell(''), cell(''), cell(totalText)])),
-    ]),
-    el(
-      'p',
-      { class: 'note' },
-      `Prices from models.dev (${PRICES_FETCHED}). Requests cancelled when a round ended aren't counted, so the real bill can be a little higher.`,
-    ),
-  ]);
-}
-
-/**
- * One bot standing on its podium step. The step height comes from its place in the standings
- * (pos 0 = tallest), so steps always differ; the number shows its rank, which ties share.
- */
-function podiumStep(i: number, label: string, score: number, rank: number, pos: number, winner: boolean, human = false) {
-  return el('div', { class: `podium-spot ${human ? 'human' : `p${i}`} pos${pos}${winner ? ' winner' : ''}` }, [
-    human ? you() : robot(i),
-    el('div', { class: 'podium-name' }, label),
-    el('div', { class: 'podium-score' }, `${score} ${score === 1 ? 'point' : 'points'}`),
-    el('div', { class: 'step' }, el('span', { class: 'place' }, String(rank + 1))),
-  ]);
+  toTop();
 }
 
 showSetup();

@@ -1,10 +1,15 @@
 import { debugFetch } from '../debug';
+import { thinkingMode, type Thinking } from '../settings';
 import { sortModels, visionFromMetadata, type ModelInfo } from './vision';
 import { errorFromStatus, GuessError, promptFor, parseGuess, type Guesser, type GuessRequest, type GuessResult } from './types';
 
 /** Any endpoint that speaks the OpenAI chat-completions API. */
 export class OpenAICompatGuesser implements Guesser {
   readonly label: string;
+  /** Which of thinkingOff()'s settings this endpoint accepts; moves on after a 400. */
+  private attempt = 0;
+  /** The thinking mode this attempt was chosen under; a change starts the ladder again. */
+  private mode: Thinking = thinkingMode();
 
   constructor(
     private baseUrl: string,
@@ -27,11 +32,28 @@ export class OpenAICompatGuesser implements Guesser {
         },
       ],
     };
-    const res = await request(`${trimSlash(this.baseUrl)}/chat/completions`, this.apiKey, signal, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const mode = thinkingMode();
+    if (mode !== this.mode) {
+      this.mode = mode; // the setting changed: re-negotiate the dialect
+      this.attempt = 0;
+    }
+    // "default" sends nothing at all; "off" tries each dialect in turn (none as the last resort).
+    const tries = mode === 'default' ? [{}] : thinkingOff(this.baseUrl);
+    let res: Response;
+    for (;;) {
+      try {
+        res = await request(`${trimSlash(this.baseUrl)}/chat/completions`, this.apiKey, signal, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, ...tries[this.attempt] }),
+        });
+        break;
+      } catch (e) {
+        // Rejected: maybe it doesn't know that setting. Try the next one (the last adds none), and keep it.
+        if (!(e instanceof GuessError) || e.kind !== 'bad_request' || this.attempt >= tries.length - 1) throw e;
+        this.attempt++;
+      }
+    }
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || !text.trim()) throw new GuessError('other', 'Empty response');
@@ -58,6 +80,23 @@ export async function listOpenAIModels(baseUrl: string, apiKey: string): Promise
   let models = raw.filter((m) => m?.id).map((m) => ({ id: String(m.id), vision: visionFromMetadata(m) }));
   if (isOllama(baseUrl)) models = await withOllamaCapabilities(baseUrl, apiKey, models);
   return sortModels(models);
+}
+
+/**
+ * Thinking off, so guesses come back fast and cheap. There's no standard switch, so these are the
+ * dialects to try in order, ending with no setting at all:
+ * - OpenAI: reasoning_effort "none" (GPT-5.1 and later), else "minimal" (GPT-5); older models take neither.
+ * - Ollama: reasoning_effort "none", plus its own think: false.
+ * - Other hosts (mostly vLLM / SGLang): the chat template's enable_thinking (Qwen3) / thinking (DeepSeek)
+ *   flags, plus reasoning_effort "low" for models that ignore them.
+ */
+export function thinkingOff(baseUrl: string): Record<string, unknown>[] {
+  if (/api\.openai\.com/.test(baseUrl)) return [{ reasoning_effort: 'none' }, { reasoning_effort: 'minimal' }, {}];
+  if (isOllama(baseUrl)) return [{ reasoning_effort: 'none', think: false }, {}];
+  // Measured on Nebius: the template flags stop Qwen, DeepSeek, Kimi…; GLM ignores them but stops at
+  // reasoning_effort "low"; Muse Spark can't stop, and "low" is its least (it rejects "none").
+  const template = { chat_template_kwargs: { enable_thinking: false, thinking: false } };
+  return [{ ...template, reasoning_effort: 'low' }, template, {}];
 }
 
 function isOllama(baseUrl: string) {

@@ -9,7 +9,6 @@ import { OPENAI_PRESETS, type GuesserConfig } from './providers';
 type Entry = { in?: number; out?: number; img?: boolean };
 type Provider = { name: string; api?: string; models: Record<string, Entry> };
 const PROVIDERS = catalog.providers as Record<string, Provider>;
-export const PRICES_FETCHED = catalog.fetched;
 
 export type Usage = { input: number; output: number; calls: number };
 export type Price =
@@ -79,7 +78,5 @@ export function formatTokens(n: number): string {
 
 export function formatUsd(x: number | null): string {
   if (x === null) return 'price unknown';
-  if (x === 0) return '$0.00'; // free bots are labelled by their callers
-  if (x < 0.01) return `$${x.toFixed(4)}`;
-  return `$${x.toFixed(2)}`;
+  return `$${x.toFixed(3)}`; // always three decimals, so small costs stay readable
 }

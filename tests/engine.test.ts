@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Doodle, Doodler } from '../src/doodler';
-import { DOODLE_FAIL_MS, Engine, POLL_MS, ROUND_MS, type GameResult } from '../src/engine';
+import { DOODLE_FAIL_MS, Engine, POLL_MS, REASK_MS, ROUND_MS, type GameResult } from '../src/engine';
 import { GuessError } from '../src/providers/types';
 import { FakeBoard, FakeClock, ScriptedBot, WORDS, flush, recordEvents } from './helpers';
 
 const FREE = { kind: 'free', why: 'fake bot' } as const;
 
-function setup(bots: ScriptedBot[], opts: { doodler?: Doodler } = {}) {
+function setup(bots: ScriptedBot[], opts: { doodler?: Doodler; youGuess?: boolean } = {}) {
   const clock = new FakeClock();
   const board = new FakeBoard();
   const rec = recordEvents();
@@ -16,7 +16,7 @@ function setup(bots: ScriptedBot[], opts: { doodler?: Doodler } = {}) {
     board,
     clock,
     words: WORDS,
-    doodler: opts.doodler ? { doodler: opts.doodler, price: { kind: 'unknown' } } : undefined,
+    doodler: opts.doodler ? { doodler: opts.doodler, price: { kind: 'unknown' }, youGuess: opts.youGuess } : undefined,
     events: { ...rec.events, finish: (r) => (result = r) },
   });
   return { engine, clock, board, rec, result: () => result };
@@ -68,25 +68,46 @@ describe('polling the bots', () => {
     engine.start();
     await clock.advance(1000);
     await drawAndPoll(clock, board);
-    expect(a.calls).toBe(1);
-    expect(b.calls).toBe(1);
+    expect(a.calls).toBeGreaterThanOrEqual(1);
+    expect(b.calls).toBe(a.calls);
     expect(a.requests[0].image).toBe(b.requests[0].image);
-    expect(board.snapshots).toBe(1);
+    expect(board.snapshots).toBe(a.calls); // one snapshot per ask, shared by both
     expect(engine.clockRunning).toBe(true);
     // The clock started with the first snapshot (at 2.5 s), not when the round opened.
     expect(engine.timeLeft()).toBe(ROUND_MS - (clock.now() - POLL_MS));
   });
 
-  it('does not resend an unchanged drawing, but does once it changes', async () => {
+  it('keeps asking until time runs out, even with an unchanged drawing: soon after each wrong answer', async () => {
     const bot = new ScriptedBot('A');
     const { engine, clock, board } = setup([bot]);
     engine.start();
     await drawAndPoll(clock, board);
-    await clock.advance(POLL_MS * 3);
     expect(bot.calls).toBe(1);
-    board.draw();
-    await clock.advance(POLL_MS);
+    await clock.advance(REASK_MS);
     expect(bot.calls).toBe(2);
+    await clock.advance(REASK_MS);
+    expect(bot.calls).toBe(3);
+    await clock.advance(ROUND_MS);
+    expect(engine.roundOver).toBe(true);
+    const calls = bot.calls;
+    await clock.advance(POLL_MS * 2);
+    expect(bot.calls).toBe(calls); // not after the round
+  });
+
+  it('counts calls per round, and resets them when the next round starts', async () => {
+    const bot = new ScriptedBot('A');
+    const { engine, clock, board } = setup([bot]);
+    engine.start();
+    await drawAndPoll(clock, board);
+    expect(engine.players[0].roundCalls).toBe(1);
+    await clock.advance(REASK_MS);
+    expect(engine.players[0].roundCalls).toBe(2);
+    await clock.advance(ROUND_MS);
+    const total = engine.players[0].usage.calls;
+    expect(engine.players[0].roundCalls).toBeGreaterThan(2); // kept guessing all round
+    engine.nextRound();
+    expect(engine.players[0].roundCalls).toBe(0); // this round is fresh
+    expect(engine.players[0].usage.calls).toBe(total); // the game total keeps counting
   });
 
   it('keeps at most one request in flight per bot', async () => {
@@ -107,7 +128,8 @@ describe('polling the bots', () => {
     const bot = new ScriptedBot('A', [{ guess: 'dog', confidence: 5 }, { guess: 'dog', confidence: 5 }, { guess: 'cow', confidence: 5 }, { guess: 'x', confidence: 1 }]);
     const { engine, clock, board } = setup([bot]);
     engine.start();
-    for (let i = 0; i < 4; i++) await drawAndPoll(clock, board);
+    await drawAndPoll(clock, board);
+    await clock.advance(REASK_MS * 3);
     expect(bot.requests.map((r) => r.wrongGuesses)).toEqual([[], ['dog'], ['dog'], ['dog', 'cow']]);
     expect(engine.players[0].history.map((h) => h.guess)).toEqual(['dog', 'dog', 'cow', 'x']);
   });
@@ -125,7 +147,7 @@ describe('guessing and scoring (you draw)', () => {
     expect(engine.playerScore).toBe(1);
     const round = engine.results[0];
     expect(round).toMatchObject({ word: 'cat', winner: 0, guesses: [['dog']] });
-    expect(round.seconds).toBeCloseTo(POLL_MS / 1000, 5);
+    expect(round.seconds).toBeCloseTo(REASK_MS / 1000, 5); // asked again right after 'dog'
     expect(round.image).toMatch(/^data:image\/jpeg/);
     expect(rec.names()).toContain('roundEnding');
     expect(rec.names().indexOf('roundEnding')).toBeLessThan(rec.names().indexOf('roundEnd'));
@@ -236,7 +258,7 @@ describe('rounds and the end of the game', () => {
 });
 
 describe('requests cut off by the end of the round', () => {
-  it('a bot still waiting for its reply is marked cancelled, not idle, and it clears next round', async () => {
+  it('a bot still waiting for its reply is cancelled and just goes back to ready', async () => {
     const slow = new ScriptedBot('Slow', [{ guess: 'dog', confidence: 1 }], { hold: true });
     const fast = new ScriptedBot('Fast', [{ guess: 'cat', confidence: 90 }]);
     const { engine, clock, board, rec } = setup([slow, fast]);
@@ -244,10 +266,9 @@ describe('requests cut off by the end of the round', () => {
     await drawAndPoll(clock, board);
     expect(engine.roundOver).toBe(true);
     const badges = (i: number) => rec.log.filter((e) => e.name === 'badge' && e.args[0] === i).map((e) => e.args[2]);
-    expect(badges(0).at(-1)).toBe('cancelled');
-    expect(badges(1).at(-1)).toBe(''); // Fast answered: nothing to say
-    engine.nextRound();
-    expect(badges(0).at(-1)).toBe('');
+    expect(engine.players[0].inFlight).toBe(false);
+    expect(badges(0).at(-1)).toBe(''); // its request was cancelled; no badge for that
+    expect(badges(1).at(-1)).toBe('');
   });
 });
 
@@ -327,10 +348,22 @@ describe('a bot draws (bot-doodler mode)', () => {
     return { label: 'Painter', words, draw: (word) => (words.push(word), draw(word)) };
   }
 
-  it('adds You as a guesser; you can guess only once the drawing has started', async () => {
+  it('by default you just watch: only the bots guess', async () => {
+    const doodler = doodlerThat(async () => doodle);
+    const { engine, result } = setup([new ScriptedBot('A'), new ScriptedBot('B')], { doodler });
+    engine.start();
+    await flush();
+    expect(engine.players.map((p) => p.label)).toEqual(['A', 'B']);
+    expect(engine.humanIndex).toBe(-1);
+    expect(engine.submitGuess('cat')).toBe(false);
+    engine.stop();
+    expect(result()).not.toHaveProperty('humanIndex');
+  });
+
+  it('with youGuess, adds You as a guesser; you can guess only once the drawing has started', async () => {
     let finishDrawing!: (d: Doodle) => void;
     const doodler = doodlerThat(() => new Promise((r) => (finishDrawing = r)));
-    const { engine, rec } = setup([new ScriptedBot('A')], { doodler });
+    const { engine, rec } = setup([new ScriptedBot('A')], { doodler, youGuess: true });
     engine.start();
     expect(engine.players.map((p) => p.label)).toEqual(['A', 'You']);
     expect(engine.humanIndex).toBe(1);
@@ -390,7 +423,7 @@ describe('a bot draws (bot-doodler mode)', () => {
 
   it('the results name the doodler and where You are', async () => {
     const doodler = doodlerThat(async () => doodle);
-    const { engine, result } = setup([new ScriptedBot('A')], { doodler });
+    const { engine, result } = setup([new ScriptedBot('A')], { doodler, youGuess: true });
     engine.start();
     await flush();
     engine.stop();
@@ -404,7 +437,7 @@ describe('a bot draws (bot-doodler mode)', () => {
     engine.start();
     await flush();
     await drawAndPoll(clock, board); // the sketch puts lines on the board
-    expect(engine.players.map((p) => p.score)).toEqual([1, 0]);
+    expect(engine.players.map((p) => p.score)).toEqual([1]); // no "You" row: you watch
     expect(engine.playerScore).toBe(1);
   });
 });

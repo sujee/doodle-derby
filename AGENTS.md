@@ -1,4 +1,4 @@
-# Working on Doodle Duel
+# Working on Doodle Derby
 
 Instructions for AI agents (and humans) working in this repo. See SPEC.md for what the game does.
 
@@ -44,6 +44,44 @@ List them with `git worktree list`. Run each dev server from its own folder.
    on `dev`.
 7. After promoting, dev already has everything preview has; just keep working there. After a
    rollback, keep working in dev as usual; the next promotion merges the commits again.
+
+## Versions and releases
+
+The version is a plain counter: **v1, v2, v3…** It goes up by one each time `main` is pushed to
+GitHub (production), and only then, so it tells us what is running in production.
+
+- `package.json` holds it as `N.0.0` (npm needs semver). The header shows only `vN`.
+- Each release commit on `main` gets a git tag `vN`.
+
+**Releasing** (only after the user says to push):
+
+1. In the current work worktree (e.g. `dev`), with everything committed, bring in main and
+   resolve any conflicts there, never on main:
+
+   ```bash
+   git merge main
+   ```
+2. Still in the work worktree, bump the version and commit it:
+
+   ```bash
+   npm version major --no-git-tag-version
+   ```
+   ```bash
+   git commit -am "Release vN: <summary>"
+   ```
+3. `npm test` and `npm run build` pass.
+4. In the `main` worktree, merge the work branch (no conflicts now, thanks to step 1), tag it and
+   push. Pushes always go from `main`:
+
+   ```bash
+   git merge --no-ff <work-branch> -m "Release vN: <summary>"
+   ```
+   ```bash
+   git tag vN
+   ```
+   ```bash
+   git push origin main --tags
+   ```
 
 ## Commands
 

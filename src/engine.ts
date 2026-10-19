@@ -18,6 +18,8 @@ import { pickWords, ROUNDS, tierForRound, type Tier, type Word } from './words';
 
 export const ROUND_MS = 30_000;
 export const POLL_MS = 2_500;
+/** After a wrong answer, a bot is asked again this soon, so it keeps working until time runs out. */
+export const REASK_MS = 300;
 export const TICK_MS = 100;
 /** How long the "the doodler got stuck" message shows before the round is skipped. */
 export const DOODLE_FAIL_MS = 2_500;
@@ -57,12 +59,12 @@ export type PlayerState = {
   /** Every guess this round, oldest first. */
   history: GuessEntry[];
   inFlight: boolean;
-  /** Board version this bot last saw, so an unchanged drawing isn't sent twice. */
-  lastVersion: number;
   backoffUntil: number;
   /** Set after a bad key: the bot sits out the rest of the game. */
   disabled: boolean;
   usage: Usage;
+  /** Calls made this round (reset each round), for the meter's "this round / total". */
+  roundCalls: number;
   price: Price;
 };
 
@@ -86,14 +88,14 @@ export type GameResult = {
   rounds: RoundResult[];
   stopped: boolean;
   /**
-   * Set when a bot drew. Then playerScore is the doodler's score (drawings guessed), and "You" are
-   * one of the guessers, at index humanIndex in labels/scores/usage/prices.
+   * Set when a bot drew. Then playerScore is the doodler's score (drawings guessed). If you guessed
+   * too, "You" are one of the guessers, at index humanIndex in labels/scores/usage/prices.
    */
   doodler?: { label: string; usage: Usage; price: Price };
   humanIndex?: number;
 };
 
-export type BadgeKind = '' | 'thinking' | 'warn' | 'error' | 'cancelled';
+export type BadgeKind = '' | 'thinking' | 'warn' | 'error';
 
 /** Everything the screen needs to hear about. All optional. */
 export interface EngineEvents {
@@ -128,8 +130,11 @@ export type EngineOptions = {
   clock?: Clock;
   /** The 10 words to play (default: random, getting harder). */
   words?: Word[];
-  /** Set when a bot draws instead of you. */
-  doodler?: { doodler: Doodler; price: Price };
+  /**
+   * Set when a bot draws instead of you. By default you just watch (bots-only race); with youGuess
+   * you join the guessers and type your guesses.
+   */
+  doodler?: { doodler: Doodler; price: Price; youGuess?: boolean };
 };
 
 export class Engine {
@@ -159,6 +164,8 @@ export class Engine {
   readonly doodler: Doodler | null;
   readonly doodlerPrice: Price;
   readonly doodlerUsage: Usage = { input: 0, output: 0, calls: 0 };
+  /** Doodler calls made this round (reset each round), for its meter's "this round / total". */
+  doodlerRoundCalls = 0;
   private doodles = new Map<number, Promise<Doodle>>();
   private doodleAbort = new AbortController();
   /** True once this round's drawing has started (you may guess). */
@@ -181,7 +188,7 @@ export class Engine {
     const bots = opts.bots(fake);
     this.guessers = bots.map((b) => b.guesser);
     this.players = bots.map((b) => newPlayer(b.guesser.label, b.price));
-    if (this.doodler) {
+    if (opts.doodler?.youGuess) {
       // You join the guessers, after the bots.
       this.guessers.push({ label: 'You', guess: () => Promise.reject(new Error('You guess by typing')) });
       this.players.push({ ...newPlayer('You', { kind: 'free', why: 'you' }), human: true });
@@ -238,9 +245,10 @@ export class Engine {
     for (const [i, p] of this.players.entries()) {
       p.wrong = [];
       p.history = [];
-      p.lastVersion = -1;
-      if (!p.disabled) this.events.badge?.(i, '', ''); // clear last round's "cancelled"
+      p.roundCalls = 0;
+      if (!p.disabled) this.events.badge?.(i, '', '');
     }
+    this.doodlerRoundCalls = 0;
     const tier = tierForRound(this.round);
     this.log('game', `Round ${this.round + 1}: "${this.word.word}" (${tier})`);
     this.events.roundStart?.(this.round, this.word, tier);
@@ -267,14 +275,16 @@ export class Engine {
     if (left === 0) this.endRound(null);
   }
 
-  /** Send one shared snapshot to every idle bot whose last view is out of date. */
+  /**
+   * Send one shared snapshot to every idle bot. Even an unchanged drawing goes again: each bot gets
+   * its wrong guesses back, so it tries something new, and keeps guessing until time runs out.
+   */
   poll() {
     if (this.roundOver || this.paused || this.board.isEmpty) return;
-    const version = this.board.changeVersion;
     const now = this.clock.now();
     const ready = this.players
       .map((p, i) => ({ p, i }))
-      .filter(({ p }) => !p.human && !p.disabled && !p.inFlight && now >= p.backoffUntil && p.lastVersion !== version);
+      .filter(({ p }) => !p.human && !p.disabled && !p.inFlight && now >= p.backoffUntil);
     if (ready.length === 0) return;
     const image = this.board.snapshot();
     this.events.snapshot?.(image, ready.map((r) => r.i));
@@ -283,8 +293,7 @@ export class Engine {
       this.clockRunning = true;
       this.roundStart = this.clock.now();
     }
-    for (const { p, i } of ready) {
-      p.lastVersion = version;
+    for (const { i } of ready) {
       void this.ask(i, image);
     }
   }
@@ -296,6 +305,7 @@ export class Engine {
     p.inFlight = true;
     // Counted when sent, so the meter shows every bot is being asked even while its reply is slow.
     p.usage.calls++;
+    p.roundCalls++;
     this.events.usage?.(i);
     this.events.badge?.(i, 'thinking…', 'thinking');
     try {
@@ -310,6 +320,7 @@ export class Engine {
       p.inFlight = false; // answered (before guess(), which may end the round)
       this.events.badge?.(i, '', '');
       this.guess(i, guess, confidence);
+      if (!this.roundOver) this.clock.setTimeout(() => this.roundId === roundId && this.poll(), REASK_MS);
     } catch (e) {
       if (roundId !== this.roundId || (e as Error)?.name === 'AbortError') return;
       this.handleError(i, e);
@@ -371,9 +382,8 @@ export class Engine {
     this.abort.abort();
     this.stopTimers();
     for (const [i, p] of this.players.entries()) {
-      // A bot still waiting for its reply had its request cancelled: say so, rather than look idle.
-      if (p.inFlight) this.events.badge?.(i, 'cancelled', 'cancelled', 'Its request was still waiting for a reply when the round ended, so it was cancelled.');
-      else if (!p.disabled) this.events.badge?.(i, '', '');
+      // A request still waiting is cancelled (the debug log says so); the bot just goes back to ready.
+      if (!p.disabled) this.events.badge?.(i, '', '');
       p.inFlight = false;
     }
     const seconds = winner === null ? null : (this.clock.now() - this.roundStart) / 1000;
@@ -409,8 +419,7 @@ export class Engine {
       this.abort.abort();
       for (const [i, p] of this.players.entries()) {
         p.inFlight = false;
-        p.lastVersion = -1;
-        if (!p.disabled) this.events.badge?.(i, '', '');
+          if (!p.disabled) this.events.badge?.(i, '', '');
       }
     }
     this.events.pause?.(true);
@@ -456,6 +465,7 @@ export class Engine {
       const signal = this.doodleAbort.signal;
       const attempt = () => {
         this.doodlerUsage.calls++;
+        this.doodlerRoundCalls++;
         this.events.doodlerUsage?.();
         return this.doodler!.draw(word, signal).then((d) => {
           if (d.usage) {
@@ -509,21 +519,27 @@ export class Engine {
     if (this.finished) return;
     this.finished = true;
     this.doodleAbort.abort(); // drop any drawing fetched ahead
-    const humanIndex = this.humanIndex;
     this.log('game', this.stopped ? 'Game stopped' : 'Game over', {
       scores: Object.fromEntries(this.players.map((p) => [p.label, p.score])),
       usage: Object.fromEntries(this.players.map((p) => [p.label, p.usage])),
     });
-    this.events.finish?.({
-      ...(this.doodler ? { doodler: { label: this.doodler.label, usage: { ...this.doodlerUsage }, price: this.doodlerPrice }, humanIndex } : {}),
+    this.events.finish?.(this.resultSoFar());
+  }
+
+  /** The game so far as a GameResult: what the results screen and the share cards show. */
+  resultSoFar(): GameResult {
+    const humanIndex = this.humanIndex;
+    return {
+      ...(this.doodler ? { doodler: { label: this.doodler.label, usage: { ...this.doodlerUsage }, price: this.doodlerPrice } } : {}),
+      ...(humanIndex >= 0 ? { humanIndex } : {}),
       usage: this.players.map((p) => ({ ...p.usage })),
       prices: this.players.map((p) => p.price),
       stopped: this.stopped,
       labels: this.players.map((p) => p.label),
       scores: this.players.map((p) => p.score),
       playerScore: this.playerScore,
-      rounds: this.results,
-    });
+      rounds: [...this.results],
+    };
   }
 
   private log(kind: 'game' | 'error', message: string, data?: unknown) {
@@ -539,10 +555,10 @@ function newPlayer(label: string, price: Price): PlayerState {
     wrong: [],
     history: [],
     inFlight: false,
-    lastVersion: -1,
     backoffUntil: 0,
     disabled: false,
     usage: { input: 0, output: 0, calls: 0 },
+    roundCalls: 0,
     price,
   };
 }

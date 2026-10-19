@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDoodler } from '../src/doodler';
 import { AnthropicGuesser, listAnthropicModels } from '../src/providers/anthropic';
 import { listOpenAIModels, OpenAICompatGuesser } from '../src/providers/openaiCompat';
+import { providerName, providerTag } from '../src/providers';
 import { GuessError } from '../src/providers/types';
+import { setThinking } from '../src/settings';
 
 const IMAGE = 'data:image/jpeg;base64,QUJDREVGRw==';
 
@@ -48,6 +50,57 @@ describe('OpenAI-compatible guesser', () => {
     expect(text).toMatchObject({ type: 'text' });
     expect(text.text).toMatch(/already wrong.*dog/);
     expect(image).toEqual({ type: 'image_url', image_url: { url: IMAGE } });
+  });
+
+  describe('asks for no thinking', () => {
+    const ask = (g: OpenAICompatGuesser) => g.guess({ image: IMAGE, wrongGuesses: [], signal: signal() });
+
+    it('other hosts get the chat template flags', async () => {
+      const calls = mockFetch(() => reply('cat | 72'));
+      await ask(new OpenAICompatGuesser('https://api.tokenfactory.nebius.com/v1', 'k', 'Qwen/Qwen3-VL'));
+      expect(calls[0].body.chat_template_kwargs).toEqual({ enable_thinking: false, thinking: false });
+      expect(calls[0].body.reasoning_effort).toBe('low'); // for models that ignore the template flags (GLM)
+    });
+
+    it('Ollama gets think: false', async () => {
+      const calls = mockFetch(() => reply('cat | 72'));
+      await ask(new OpenAICompatGuesser('http://localhost:11434/v1', '', 'qwen3-vl'));
+      expect(calls[0].body).toMatchObject({ think: false, reasoning_effort: 'none' });
+    });
+
+    it('thinking "default" sends no hints at all, leaving it to the provider', async () => {
+      const calls = mockFetch(() => reply('cat | 72'));
+      setThinking('default');
+      try {
+        await ask(new OpenAICompatGuesser('https://api.tokenfactory.nebius.com/v1', 'k', 'Qwen/Qwen3-VL'));
+        expect(calls[0].body).not.toHaveProperty('chat_template_kwargs');
+        expect(calls[0].body).not.toHaveProperty('reasoning_effort');
+        expect(calls[0].body).not.toHaveProperty('think');
+      } finally {
+        setThinking('off');
+      }
+    });
+
+    it('OpenAI: a 400 moves on to the next setting, and the one that worked is kept', async () => {
+      const calls = mockFetch((c) =>
+        c.body.reasoning_effort === 'none' ? json({ error: { message: "Unsupported value: 'none'" } }, 400) : reply('cat | 72'),
+      );
+      const g = new OpenAICompatGuesser('https://api.openai.com/v1', 'k', 'gpt-5');
+      await expect(ask(g)).resolves.toMatchObject({ guess: 'cat' });
+      await ask(g);
+      expect(calls.map((c) => c.body.reasoning_effort)).toEqual(['none', 'minimal', 'minimal']);
+    });
+
+    it('a model that takes no setting gets a plain request; a real 400 still surfaces', async () => {
+      const plain = mockFetch((c) => ('reasoning_effort' in c.body ? json({ error: { message: 'Unsupported parameter' } }, 400) : reply('cat | 72')));
+      await ask(new OpenAICompatGuesser('https://api.openai.com/v1', 'k', 'gpt-4o'));
+      expect(plain).toHaveLength(3);
+      expect(plain[2].body).not.toHaveProperty('reasoning_effort');
+
+      const failing = mockFetch(() => json({ error: { message: 'model does not support images' } }, 400));
+      await expect(ask(new OpenAICompatGuesser('https://x.test/v1', 'k', 'm'))).rejects.toThrow('model does not support images');
+      expect(failing).toHaveLength(3); // each setting, then none
+    });
   });
 
   it('sends no Authorization header when there is no key (local Ollama)', async () => {
@@ -160,6 +213,18 @@ describe('Anthropic guesser', () => {
     expect(calls[0].headers['anthropic-beta']).toBeUndefined();
   });
 
+  it('thinking "default" drops the low-effort setting even on models that take it', async () => {
+    const calls = mockFetch(() => message('cat | 50'));
+    setThinking('default');
+    try {
+      await new AnthropicGuesser('k', 'claude-sonnet-5-5').guess({ image: IMAGE, wrongGuesses: [], signal: signal() });
+      expect(calls[0].body.output_config).toBeUndefined();
+      expect(calls[0].body.fallbacks).toBe('default'); // only the thinking setting is affected
+    } finally {
+      setThinking('off');
+    }
+  });
+
   it('a refusal or an empty reply is an error', async () => {
     mockFetch(() => message('', { stop_reason: 'refusal', content: [] }));
     await expect(new AnthropicGuesser('k', 'claude-sonnet-5-5').guess({ image: IMAGE, wrongGuesses: [], signal: signal() })).rejects.toThrow('declined');
@@ -225,5 +290,23 @@ describe('doodlers that call models', () => {
     const d = await createDoodler({ kind: 'openai', baseUrl: 'https://x.test/v1', apiKey: 'k', model: 'm' }).draw('sun', signal());
     expect(d.strokes).toHaveLength(2);
     expect(d.usage).toEqual({ input: 80, output: 600 });
+  });
+});
+
+describe('providerName (shown after the model in the field)', () => {
+  it('names the preset, else the API host', () => {
+    expect(providerName({ kind: 'fake' })).toBeNull();
+    expect(providerName({ kind: 'anthropic', apiKey: 'k', model: 'm' })).toBe('Anthropic');
+    expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'https://api.fireworks.ai/inference/v1/' })).toBe('Fireworks');
+    expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'https://api.example.com/v1' })).toBe('example.com');
+    expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'not a url' })).toBeNull();
+  });
+
+  it('has a shorter tag for a row when the bots differ', () => {
+    const nebius = { kind: 'openai' as const, apiKey: 'k', model: 'm', baseUrl: 'https://api.tokenfactory.nebius.com/v1' };
+    expect(providerName(nebius)).toBe('Nebius Token Factory');
+    expect(providerTag(nebius)).toBe('Nebius');
+    expect(providerTag({ ...nebius, baseUrl: 'https://api.together.xyz/v1' })).toBe('Together'); // no shorter form: the same
+    expect(providerTag({ kind: 'fake' })).toBeNull();
   });
 });
