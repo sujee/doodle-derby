@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { brainLayout, chipOrder, speedTier } from '../src/share';
+import { brainLayout, chipOrder } from '../src/share';
+import { speedTier } from '../src/speed';
 
 describe('the doodle card’s score chips', () => {
   it('put the bot with the most wins first, and keep ties in their original order', () => {

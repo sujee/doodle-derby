@@ -161,6 +161,25 @@ describe('the call count at the right of a row', () => {
   });
 });
 
+describe('the winner row', () => {
+  it('shows the time of the right guess after the name, tinted by its speed, and clears it next round', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right on the first try
+    const { game, draw } = startGame();
+    const pill = container.querySelector<HTMLElement>('.field-row .row-time')!;
+    expect(pill.textContent).toBe(''); // nobody has won yet
+    draw();
+    await vi.advanceTimersByTimeAsync(POLL_MS + 2500);
+    expect(game.engine.roundOver).toBe(true);
+    expect(pill.textContent).toMatch(/^\d+\.\ds$/);
+    expect(pill.className).toMatch(/\b(fast|mid|slow)\b/);
+    expect(container.querySelector('.feed .when .conf')?.closest('li')?.classList.contains('right')).toBe(true); // the feed keeps its own, hidden, details
+    game.engine.nextRound();
+    expect(pill.textContent).toBe('');
+    vi.restoreAllMocks();
+    game.engine.stop();
+  });
+});
+
 describe('a row before its first guess', () => {
   it('says ready, then waiting while asked, then round ended if the round ends first', async () => {
     const { game, draw } = startGame();

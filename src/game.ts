@@ -338,7 +338,7 @@ export class Game {
       replay(this.correctEl, 'bump');
       sfx.ding();
       confetti(this.paper);
-      this.views[winner].row.win(players[winner].score);
+      this.views[winner].row.win(players[winner].score, seconds);
       this.orderField(!sfx.reducedMotion()); // rows by right guesses: the leader rises to the top
     } else {
       sfx.wahWah();

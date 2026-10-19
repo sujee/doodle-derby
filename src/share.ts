@@ -1,5 +1,6 @@
 import { botColor } from './art';
 import { REPO } from './header';
+import { speedTier } from './speed';
 import { el } from './dom';
 import type { GameResult } from './game';
 import { ROUNDS } from './words';
@@ -86,10 +87,6 @@ function packRows(widths: number[], max: number, gap: number): number[][] {
   return rows;
 }
 
-/** How fast a guess was: up to 5 s, up to 15 s, slower (a round is 30 s). Tints the time on the doodle card. */
-export function speedTier(secs: number): 'fast' | 'mid' | 'slow' {
-  return secs <= 5 ? 'fast' : secs <= 15 ? 'mid' : 'slow';
-}
 const TIME_TINT = {
   fast: { bg: '#c9f2e3', fg: '#05694f' },
   mid: { bg: '#fdf0b8', fg: '#7a5b00' },

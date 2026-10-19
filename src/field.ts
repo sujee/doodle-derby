@@ -2,16 +2,19 @@
  * "The field": one row per guesser, stacked beside the canvas. A row shows the bot, its latest guess
  * big (crossed out in red if wrong, ✓ if right), its earlier guesses as greyed chips, and at the
  * right how many calls it has made this round, with its rounds won as a badge on the corner. The
- * round's winner gets a spinning star and its own color. Display only; no game logic here.
+ * round's winner gets a star and its own color. Display only; no game logic here.
  */
 
 import { botColor, replay, robot } from './art';
 import { el } from './dom';
+import { speedTier } from './speed';
 
 export class FieldRow {
   readonly el: HTMLElement;
   /** Requests sent this round, at the row's right end ("10 calls"), answered or not. */
   private callsEl = el('span', { class: 'row-guess-count' });
+  /** How fast the winner's right guess was, as a pill after its name; empty until it wins. */
+  private timeEl = el('span', { class: 'row-time' });
   /** Rounds won, as a badge on the row's top-right corner. */
   private winsEl = el('span', { class: 'row-wins', 'aria-hidden': 'true' }, '0 wins');
 
@@ -35,6 +38,7 @@ export class FieldRow {
               shortLabel(label),
               ...(provider ? [el('span', { class: 'row-provider' }, ` · ${provider}`)] : []),
             ]),
+            this.timeEl,
             bubbles[0],
           ]),
         ]),
@@ -54,9 +58,13 @@ export class FieldRow {
     this.el.classList.toggle('thinking', on);
   }
 
-  /** Won this round: the star, its color and the new win count. */
-  win(score: number) {
+  /** Won this round: the star, its color, the new win count and how fast the right guess was. */
+  win(score: number, secs: number | null = null) {
     this.el.classList.add('won');
+    if (secs !== null) {
+      this.timeEl.textContent = `${secs.toFixed(1)}s`;
+      this.timeEl.className = `row-time ${speedTier(secs)}`;
+    }
     this.winsEl.textContent = `${score} win${score === 1 ? '' : 's'}`;
     this.winsEl.classList.add('has-wins');
     replay(this.winsEl, 'bump');
@@ -65,6 +73,7 @@ export class FieldRow {
   /** New round: back to a plain row (the win count stays, the guess count restarts). */
   reset() {
     this.el.classList.remove('won', 'shrug');
+    this.timeEl.textContent = '';
     this.setCalls(0);
   }
 
@@ -79,7 +88,7 @@ function shortLabel(label: string): string {
   return label.split('/').pop() || label;
 }
 
-/** A sunny five-point star with an ink outline: spins on the round winner's corner. */
+/** A sunny five-point star with an ink outline: sits on the round winner's corner. */
 function starSvg(): SVGSVGElement {
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
