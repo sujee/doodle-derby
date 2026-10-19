@@ -14,6 +14,14 @@ import { createDoodler } from './doodler';
 import { el } from './dom';
 
 const CUSTOM = '__custom__';
+/** Can the model see the doodle (picture in → words out)? A short label under its name, the longer story on hover. */
+const VISION_LABEL: Record<ModelInfo['vision'], string> = { yes: '🖼️ → 💬', likely: '🖼️ → 💬 ?', unknown: '🖼️ ? · Test it', no: '💬 only · can’t see' };
+const VISION_HINT: Record<ModelInfo['vision'], string> = {
+  yes: 'Takes images: it can see your doodle',
+  likely: 'Probably takes images (a guess from its name)',
+  unknown: 'Not sure it takes images: use Test to check',
+  no: 'Text only: it can’t see your doodle',
+};
 /**
  * The doodler picker (You | Bot) is off: the bot-doodler mode is being rethought. Its code stays
  * (doodler.ts, Engine's doodler option, the game's watch mode); set true to bring the picker back.
@@ -347,7 +355,8 @@ function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false
     const cut = id.lastIndexOf('/');
     org.textContent = id && id !== CUSTOM && cut > 0 ? id.slice(0, cut + 1) : '';
     name.textContent = id === CUSTOM ? 'Other…' : id ? id.slice(cut + 1) : modelSelect.selectedOptions[0]?.textContent ?? '';
-    vis.textContent = !m ? '' : m.vision === 'yes' ? 'sees images' : m.vision === 'likely' ? 'likely sees images' : m.vision === 'no' ? 'text only (won’t work)' : 'images? use Test';
+    vis.textContent = !m ? '' : VISION_LABEL[m.vision];
+    vis.title = !m ? '' : VISION_HINT[m.vision];
     vis.dataset.vision = m?.vision ?? '';
     customModel.hidden = id !== CUSTOM;
   };
@@ -356,11 +365,11 @@ function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false
   // Grouped so image-capable models come first; text-only ones are still pickable but flagged.
   const render = (prefer: string | undefined) => {
     const list = conn().models();
-    const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (likely)` : m.id);
+    const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (probably)` : m.id);
     const groups: [string, ModelInfo[]][] = [
-      ['Accepts images', list.filter((m) => m.vision === 'yes' || m.vision === 'likely')],
-      ['Unknown (use Test to check)', list.filter((m) => m.vision === 'unknown')],
-      ['Text only (won’t work)', list.filter((m) => m.vision === 'no')],
+      ['🖼️ → 💬 Sees images', list.filter((m) => m.vision === 'yes' || m.vision === 'likely')],
+      ['🖼️ ? Not sure (use Test to check)', list.filter((m) => m.vision === 'unknown')],
+      ['💬 only: can’t see images (won’t work)', list.filter((m) => m.vision === 'no')],
     ];
     modelSelect.replaceChildren(
       ...(list.length ? [] : [el('option', { value: '', disabled: '' }, 'Models load once the provider is set')]),
