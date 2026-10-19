@@ -634,8 +634,7 @@ button.icon-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; tran
   background: color-mix(in srgb, var(--mint) var(--tint), var(--surface)); font-size: 1.15rem;
 }
 .you-badge .bot { width: 38px; }
-details.report { margin: 30px auto 0; max-width: 640px; }
-details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05rem; width: fit-content; margin: 0 auto 14px; }
+.report { margin: 30px auto 0; max-width: 640px; } /* round by round: always open, no toggle */
 
 /* Report card on notebook paper */
 .report-card {

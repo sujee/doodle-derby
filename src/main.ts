@@ -66,9 +66,9 @@ function showResults(r: GameResult) {
       tally,
       el('div', { class: 'row center' }, [again, ...(r.rounds.length ? [share] : []), setup]),
       youBadge,
-      el('details', { class: 'report' }, [
-        el('summary', {}, 'Round by round'),
+      el('section', { class: 'report' }, [
         el('table', { class: 'summary report-card' }, [
+          el('caption', {}, 'Round by round'),
           el('thead', {}, el('tr', {}, ['#', 'Word', 'Level', 'Guessed by', 'Time'].map((h) => el('th', {}, h)))),
           el(
             'tbody',
