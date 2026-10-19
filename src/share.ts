@@ -3,7 +3,7 @@ import { REPO } from './header';
 import { speedTier } from './speed';
 import { el } from './dom';
 import type { GameResult } from './game';
-import { ROUNDS } from './words';
+import { ROUNDS, tierForRound } from './words';
 
 /**
  * Share cards, drawn on a canvas (no DOM screenshot library) so they look the same everywhere:
@@ -87,6 +87,12 @@ function packRows(widths: number[], max: number, gap: number): number[][] {
   return rows;
 }
 
+/** How hard a round was, the same marks as the game's badge (rounds 1–3 easy, 4–7 medium, 8–10 hard). */
+const TIER_MARK = {
+  easy: { icon: '🌱', bg: '#b8f5dd' },
+  medium: { icon: '⭐', bg: '#ffe57e' },
+  hard: { icon: '🔥', bg: '#dcc4fa' },
+};
 const TIME_TINT = {
   fast: { bg: '#c9f2e3', fg: '#05694f' },
   mid: { bg: '#fdf0b8', fg: '#7a5b00' },
@@ -272,8 +278,8 @@ async function buildBrainPages(r: GameResult, prep?: Prepared): Promise<Blob[]> 
   const { blockH, pages } = brainLayout(rounds.length, order.length);
   const heading = r.doodler ? 'What was everyone thinking?' : 'What were the bots thinking?';
   const left = 40;
-  const nameX = 290;
-  const trailX = 510;
+  const nameX = 300;
+  const trailX = 520;
   const blobs: Blob[] = [];
 
   for (const [p, idxs] of pages.entries()) {
@@ -297,9 +303,10 @@ async function buildBrainPages(r: GameResult, prep?: Prepared): Promise<Blob[]> 
       }
       dashed(ctx, left - 12, y, SIZE - left + 12);
 
-      // The doodle, its word, and how fast it was guessed (who guessed it is the mint band). The doodle is
-      // bigger when the block is, i.e. with more bots.
-      const t = Math.min(86, Math.max(62, blockH - 24));
+      // The doodle (numbered), its word, and how fast it was guessed and how hard it was (who guessed it is the
+      // mint band). With more bots the block is taller, so the doodle is bigger and the time goes under it.
+      const roomy = blockH >= 130;
+      const t = roomy ? 86 : 62;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(left, y + 10, t, t);
       const img = images[i];
@@ -307,27 +314,55 @@ async function buildBrainPages(r: GameResult, prep?: Prepared): Promise<Blob[]> 
       ctx.lineWidth = 3;
       ctx.strokeStyle = INK;
       ctx.strokeRect(left, y + 10, t, t);
+      // The round's number, on the doodle's corner.
+      ctx.beginPath();
+      ctx.arc(left + 4, y + 16, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd23f';
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.textAlign = 'center';
+      ctx.font = `${i >= 9 ? 15 : 19}px ${BODY}`;
+      ctx.fillText(String(i + 1), left + 4, y + 16 + (i >= 9 ? 5 : 6));
       const textX = left + t + 12;
       ctx.textAlign = 'left';
       ctx.fillStyle = INK;
       const lines = wordLines(ctx, round.word, nameX - textX - 12, 30, 24, 17);
       lines.forEach((line, n) => ctx.fillText(line, textX, y + (lines.length === 1 ? 38 : 28) + n * 22));
-      const pillTop = y + (lines.length === 1 ? 48 : 58);
+      // The time (or "stumped") and the difficulty, side by side: under the doodle when it is big, else under the word.
+      let markX = roomy ? left : textX;
+      const markY = roomy ? y + 10 + t + 10 : y + (lines.length === 1 ? 48 : 58);
       if (round.winner === null || round.seconds === null) {
         ctx.fillStyle = MUTED;
-        ctx.font = `18px ${BODY}`;
-        ctx.fillText('✗ stumped', textX, pillTop + 17);
+        ctx.font = `${roomy ? 16 : 15}px ${BODY}`;
+        const stumped = roomy ? '✗ stumped' : 'stumped'; // the compact row has less room beside the doodle
+        ctx.fillText(stumped, markX, markY + 17);
+        markX += Math.ceil(ctx.measureText(stumped).width) + 8;
       } else {
         const tint = TIME_TINT[speedTier(round.seconds)];
-        ctx.font = `18px ${BODY}`;
+        ctx.font = `${roomy ? 18 : 17}px ${BODY}`;
         const label = `${round.seconds.toFixed(1)}s`;
-        const pw = Math.ceil(ctx.measureText(label).width) + 22;
-        roundRect(ctx, textX, pillTop, pw, 24, 12);
+        const padX = roomy ? 11 : 8;
+        const pw = Math.ceil(ctx.measureText(label).width) + padX * 2;
+        roundRect(ctx, markX, markY, pw, 24, 12);
         ctx.fillStyle = tint.bg;
         ctx.fill();
         ctx.fillStyle = tint.fg;
-        ctx.fillText(label, textX + 11, pillTop + 18);
+        ctx.fillText(label, markX + padX, markY + 18);
+        markX += pw + (roomy ? 7 : 5);
       }
+      const tier = tierForRound(i);
+      ctx.font = `${roomy ? 15 : 14}px ${BODY}`;
+      const tierLabel = `${TIER_MARK[tier].icon} ${tier}`;
+      const tw = Math.ceil(ctx.measureText(tierLabel).width) + (roomy ? 20 : 14);
+      roundRect(ctx, markX, markY, tw, 24, 12);
+      ctx.fillStyle = TIER_MARK[tier].bg;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.fillText(tierLabel, markX + (roomy ? 10 : 7), markY + 17);
 
       // One line per bot, best first; the bot that got it right is on a mint band.
       order.forEach((b, j) => {
