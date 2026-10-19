@@ -22,11 +22,7 @@ function readMuted(): boolean {
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function isMuted() {
-  return muted;
-}
-
-export function setMuted(m: boolean) {
+function setMuted(m: boolean) {
   muted = m;
   try {
     localStorage.setItem(KEY, m ? '1' : '0');
@@ -37,7 +33,7 @@ export function setMuted(m: boolean) {
   if (!m) boop();
 }
 
-export function onMuteChange(fn: (muted: boolean) => void) {
+function onMuteChange(fn: (muted: boolean) => void) {
   listeners.push(fn);
 }
 
@@ -115,7 +111,7 @@ function noise(dur: number, freq: number, o: { delay?: number; gain?: number; to
 }
 
 /** UI button press. */
-export function boop() {
+function boop() {
   tone(560, 0.09, { to: 360, gain: 0.35 });
 }
 
@@ -141,11 +137,6 @@ export function ding() {
 export function wahWah() {
   [392, 370, 349].forEach((f, i) => tone(f, 0.32, { type: 'triangle', delay: i * 0.34, gain: 0.4 }));
   tone(330, 0.9, { type: 'triangle', delay: 1.02, gain: 0.4, vibrato: 8 });
-}
-
-/** Countdown blip; pitch rises as n goes 3 → 1. */
-export function blip(n: number) {
-  tone([0, 1047, 784, 659][n] ?? 523, 0.1, { type: 'square', gain: 0.18 });
 }
 
 /** Results fanfare. */

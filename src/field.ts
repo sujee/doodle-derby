@@ -11,7 +11,7 @@ import { el } from './dom';
 export class FieldRow {
   readonly el: HTMLElement;
   /** Requests sent this round, at the row's right end ("10 calls"), answered or not. */
-  private guessesEl = el('span', { class: 'row-guess-count' });
+  private callsEl = el('span', { class: 'row-guess-count' });
   /** Rounds won, as a badge on the row's top-right corner. */
   private winsEl = el('span', { class: 'row-wins', 'aria-hidden': 'true' }, '0 wins');
 
@@ -40,14 +40,14 @@ export class FieldRow {
         ]),
         el('div', { class: 'row-guesses' }, bubbles.slice(1)),
       ]),
-      el('div', { class: 'row-side' }, [this.guessesEl, score]),
+      el('div', { class: 'row-side' }, [this.callsEl, score]),
     ]);
     if (!art) this.el.style.setProperty('--lane', botColor(index));
   }
 
   /** How many calls the bot has made this round (cancelled ones too). Hidden at zero. */
   setCalls(n: number) {
-    this.guessesEl.textContent = n > 0 ? `${n} call${n === 1 ? '' : 's'}` : '';
+    this.callsEl.textContent = n > 0 ? `${n} call${n === 1 ? '' : 's'}` : '';
   }
 
   setThinking(on: boolean) {

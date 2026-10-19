@@ -170,16 +170,17 @@ export class Game {
     const togglePause = () => (this.engine.paused ? this.engine.resume() : this.engine.pause());
     this.pauseBtn.addEventListener('click', togglePause);
     // P pauses / resumes; Enter starts the next round once this one is over (unless you're typing,
-    // a button has focus and handles Enter itself, or the share dialog is open).
+    // a button has focus and handles Enter itself). Neither works while Standings or Share is open.
     const onKey = (e: KeyboardEvent) => {
       if (!this.paper.isConnected) return document.removeEventListener('keydown', onKey);
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (document.querySelector('.share-backdrop')) return; // Standings or Share is open: it has the keys
       const target = e.target as HTMLElement | null;
       if (target?.closest('input, textarea, select')) return;
       if (e.key.toLowerCase() === 'p') {
         e.preventDefault();
         togglePause();
-      } else if (e.key === 'Enter' && this.engine.roundOver && !this.engine.paused && !target?.closest('button') && !document.querySelector('.share-backdrop')) {
+      } else if (e.key === 'Enter' && this.engine.roundOver && !this.engine.paused && !target?.closest('button')) {
         e.preventDefault();
         this.engine.nextRound();
       }

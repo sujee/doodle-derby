@@ -71,14 +71,14 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const takenBy = (self: Bot) => bots.filter((b) => b !== self).map((b) => b.model());
   const addBot = () => {
     let self!: Bot;
-    const b = makeBot(bots.length + 1, shared, () => takenBy(self));
+    const b = makeBot(bots.length + 1, shared, () => takenBy(self), false, () => syncNote());
     self = b;
     b.removeBtn.addEventListener('click', () => removeBot(b));
     bots.push(b);
     guesserRow.insertBefore(b.root, add);
     return b;
   };
-  const doodlerBotCard = makeBot(0, shared, () => [], true);
+  const doodlerBotCard = makeBot(0, shared, () => [], true, () => syncNote());
 
   // "Add all N image models": one bot per image model of the shared provider, no limit.
   const addAllBtn = el('button', { type: 'button', class: 'add-all', hidden: '' });
@@ -323,7 +323,7 @@ function makeConnection(doodler = false, stacked = false): Conn {
  * One bot card: its robot, its model and a Test button. It uses the shared provider unless it is
  * switched to its own. The doodler card (doodler = true) always has its own provider, and Test asks for a drawing.
  */
-function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false): Bot {
+function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false, onOwnChange?: () => void): Bot {
   let own: Conn | null = null;
   const conn = () => own ?? shared;
   const ownBox = el('div', { class: 'own-conn' });
@@ -393,7 +393,10 @@ function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false
 
   const setOwn = (on: boolean) => {
     own = on ? makeConnection(doodler, true) : null;
-    own?.onChange(() => assign());
+    own?.onChange(() => {
+      assign();
+      onOwnChange?.();
+    });
     ownBox.replaceChildren(...(own ? [own.root] : []));
     ownBtn.textContent = on ? 'Use the shared provider' : 'Use another provider';
     ownBtn.hidden = doodler;

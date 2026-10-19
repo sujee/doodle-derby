@@ -94,7 +94,6 @@ button.primary { background: var(--sun); color: var(--on-bright); font-weight: 7
 button.big { padding: 12px 32px; font-size: 1.3rem; }
 button.ghost { background: transparent; box-shadow: none; border-style: dashed; }
 button.ghost:active { transform: translate(1px, 1px); }
-button.danger { color: var(--coral); border-color: var(--coral); }
 
 /* API keys, URLs and model IDs stay in a plain, readable font. */
 input, select {
@@ -117,11 +116,6 @@ input:focus, select:focus { outline: 3px solid var(--sky); outline-offset: 1px; 
   padding: 16px;
 }
 .row { display: flex; gap: 8px; align-items: center; }
-/* "Model" with the reload icon on its right, then the box full width below. */
-.field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.field-head > span { font-size: 1.05rem; color: var(--muted); }
-.field-head button.icon-btn.refresh { width: 30px; height: 30px; font-size: 1.05rem; }
-.stack { display: grid; gap: 4px; }
 button.icon-btn.refresh { flex: none; font-size: 1.25rem; color: var(--sky); }
 .row.center { justify-content: center; margin-top: 28px; gap: 16px; flex-wrap: wrap; }
 .note { color: var(--muted); font-size: 1rem; }

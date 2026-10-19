@@ -9,7 +9,6 @@ import { OPENAI_PRESETS, type GuesserConfig } from './providers';
 type Entry = { in?: number; out?: number; img?: boolean };
 type Provider = { name: string; api?: string; models: Record<string, Entry> };
 const PROVIDERS = catalog.providers as Record<string, Provider>;
-export const PRICES_FETCHED = catalog.fetched;
 
 export type Usage = { input: number; output: number; calls: number };
 export type Price =

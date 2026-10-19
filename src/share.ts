@@ -86,7 +86,7 @@ function packRows(widths: number[], max: number, gap: number): number[][] {
 }
 
 /** Card 1: the 10 doodles and who guessed each. */
-export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
+async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
   const { c, ctx } = paper(SIZE, SIZE);
   title(ctx, SIZE, 120, 104);
@@ -175,7 +175,7 @@ export async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<B
  * and one column per bot. Each cell is that bot's guess trail: wrong guesses struck through in
  * see-through red, the right one in the bot's color and circled.
  */
-export async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
+async function buildBrainCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
   const rows = r.rounds.slice(0, 10);
   const top = 210;
