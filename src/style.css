@@ -657,8 +657,8 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
   .board { grid-template-columns: 1fr; }
   .pad-wrap { width: auto; min-width: 0; }
   .paper { max-width: min(620px, calc(100dvh - 260px)); }
-  /* The field sits above the canvas, with compact rows. */
-  .field { order: -1; gap: 6px; }
+  /* The field stays under the canvas, with compact rows: the drawing is the point on a phone. */
+  .field { gap: 6px; }
   .rows { gap: 14px; }
   .field-title { font-size: 0.9rem; }
   .field-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 10px; border-radius: 16px; }
