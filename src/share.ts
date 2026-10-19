@@ -85,6 +85,44 @@ function packRows(widths: number[], max: number, gap: number): number[][] {
   return rows;
 }
 
+/** How fast a guess was: up to 5 s, up to 15 s, slower (a round is 30 s). Tints the time on the doodle card. */
+export function speedTier(secs: number): 'fast' | 'mid' | 'slow' {
+  return secs <= 5 ? 'fast' : secs <= 15 ? 'mid' : 'slow';
+}
+const TIME_TINT = {
+  fast: { bg: '#c9f2e3', fg: '#05694f' },
+  mid: { bg: '#fdf0b8', fg: '#7a5b00' },
+  slow: { bg: '#fcd9cc', fg: '#9a3412' },
+};
+
+/** Bot indexes, most wins first; ties keep their original order. */
+export function chipOrder(scores: number[]): number[] {
+  return scores.map((_, i) => i).sort((a, b) => scores[b] - scores[a] || a - b);
+}
+
+/** Break at a dash, slash or space into at most two lines that fit max, shrinking the text from size down to min. */
+function wrapName(ctx: CanvasRenderingContext2D, text: string, max: number, size: number, min: number): { lines: string[]; px: number } {
+  const parts = text.split(/(?<=[-/ ])/);
+  for (let px = size; px >= min; px--) {
+    ctx.font = `${px}px ${BODY}`;
+    if (ctx.measureText(text).width <= max) return { lines: [text], px };
+    // The break that leaves the two halves closest in width.
+    let best: string[] | null = null;
+    let bestDiff = Infinity;
+    for (let k = 1; k < parts.length; k++) {
+      const pair = [parts.slice(0, k).join('').trimEnd(), parts.slice(k).join('')];
+      const [w1, w2] = pair.map((l) => ctx.measureText(l).width);
+      if (w1 <= max && w2 <= max && Math.abs(w1 - w2) < bestDiff) {
+        best = pair;
+        bestDiff = Math.abs(w1 - w2);
+      }
+    }
+    if (best) return { lines: best, px };
+  }
+  ctx.font = `${min}px ${BODY}`;
+  return { lines: [fit(ctx, text, max)], px: min };
+}
+
 /** Card 1: the 10 doodles and who guessed each. */
 async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   const { images } = prep ?? (await prepare(r));
@@ -95,74 +133,107 @@ async function buildDoodleCard(r: GameResult, prep?: Prepared): Promise<Blob> {
   ctx.fillStyle = INK;
   ctx.fillText(fitFont(ctx, headlineFor(r), SIZE - 80, 50, 32, BODY), SIZE / 2, 190);
 
-  // Score chips: each bot, then You. They wrap onto rows that fit, since a game can have many bots.
+  // Score chips: the bots by wins (ties keep their order), then You. Each shows the whole model name and its
+  // score in a small bubble, wrapping onto as many rows as it takes (the text shrinks a little to keep it to 3).
   const chips = [
-    ...r.labels.map((l, i) => ({ text: `${shortName(l, 18)}: ${r.scores[i]}`, color: colorOf(r, i) })),
+    ...chipOrder(r.scores).map((i) => ({ name: shortName(r.labels[i], 40), score: String(r.scores[i]), color: colorOf(r, i) })),
     r.doodler
-      ? { text: `✏ ${shortName(r.doodler.label, 14)}: ${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
-      : { text: `You: ${r.playerScore}/${r.rounds.length}`, color: MINT },
+      ? { name: `✏ ${shortName(r.doodler.label, 40)}`, score: `${r.playerScore}/${r.rounds.length}`, color: '#ffd23f' }
+      : { name: 'You', score: `${r.playerScore}/${r.rounds.length}`, color: MINT },
   ];
   const maxRow = SIZE - 60;
-  const gap = 14;
-  // Shrink the text a little if that keeps it to fewer rows, then pack greedily.
-  let size = 28;
+  const gap = 12;
+  const chipH = 46;
+  const chipGapY = 10;
+  const bubbleOf = (score: string) => Math.max(34, Math.ceil(ctx.measureText(score).width) + 20);
+  let size = 26;
   let widths: number[] = [];
   let rows: number[][] = [];
-  for (size = 28; size >= 20; size -= 2) {
+  for (size = 26; size >= 18; size -= 2) {
     ctx.font = `${size}px ${BODY}`;
-    widths = chips.map((ch) => Math.min(maxRow, Math.ceil(ctx.measureText(ch.text).width) + 40));
+    widths = chips.map((ch) => Math.min(maxRow, Math.ceil(ctx.measureText(ch.name).width) + bubbleOf(ch.score) + 38));
     rows = packRows(widths, maxRow, gap);
-    if (rows.length <= 2) break;
+    if (rows.length <= 3) break;
   }
-  const chipH = 50;
-  const chipGapY = 12;
   let y = 218;
   for (const row of rows) {
     const rowW = row.reduce((a, i) => a + widths[i], 0) + gap * (row.length - 1);
     let x = (SIZE - rowW) / 2;
     for (const i of row) {
+      const ch = chips[i];
       roundRect(ctx, x, y, widths[i], chipH, chipH / 2);
-      ctx.fillStyle = chips[i].color;
+      ctx.fillStyle = ch.color;
       ctx.fill();
       ctx.lineWidth = 3;
       ctx.strokeStyle = INK;
       ctx.stroke();
+      // The score's bubble, on the right end.
+      ctx.font = `${size}px ${BODY}`;
+      const bw = bubbleOf(ch.score);
+      const bh = chipH - 14;
+      roundRect(ctx, x + widths[i] - bw - 7, y + 7, bw, bh, bh / 2);
+      ctx.fillStyle = PAPER;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.stroke();
       ctx.fillStyle = INK;
-      ctx.fillText(fitFont(ctx, chips[i].text, widths[i] - 24, size, 13, BODY), x + widths[i] / 2, y + chipH / 2 + size * 0.36);
+      ctx.textAlign = 'center';
+      ctx.fillText(ch.score, x + widths[i] - bw / 2 - 7, y + chipH / 2 + size * 0.36);
+      ctx.textAlign = 'left';
+      ctx.fillText(fitFont(ctx, ch.name, widths[i] - bw - 38, size, 13, BODY), x + 16, y + chipH / 2 + size * 0.36);
       x += widths[i] + gap;
     }
     y += chipH + chipGapY;
   }
+  ctx.textAlign = 'center';
   const gridTop = y + 6;
 
-  // Doodle grid: 5 × 2.
+  // Doodle grid: 5 per row. Each tile is captioned with the word, the whole model name, and its time;
+  // with many bots the chips take more rows, so the tiles shrink to leave room for the captions.
   const cols = 5;
   const tileGap = 24;
-  const tile = (SIZE - 60 * 2 - tileGap * (cols - 1)) / cols;
   const shown = r.rounds.slice(0, 10);
+  const gridRows = Math.max(1, Math.ceil(shown.length / cols));
+  const CAPTION = 160;
+  const tile = Math.max(120, Math.min((SIZE - 60 * 2 - tileGap * (cols - 1)) / cols, (SIZE - 62 - gridTop) / gridRows - CAPTION - 8));
+  const pitch = Math.min(330, tile + CAPTION + 8);
   shown.forEach((round, i) => {
     // Center each row, so a short game (Stop) doesn't hug the left edge.
     const inRow = Math.min(cols, shown.length - Math.floor(i / cols) * cols);
     const rowStart = (SIZE - inRow * tile - (inRow - 1) * tileGap) / 2;
     const cx = rowStart + (i % cols) * (tile + tileGap);
-    const cy = gridTop + Math.floor(i / cols) * 330;
+    const cy = gridTop + Math.floor(i / cols) * pitch;
     drawTile(ctx, cx, cy, tile, images[i], i);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = INK;
     // The word on one line if it fits at a good size, else split over two ("statue of / liberty").
     const lines = wordLines(ctx, round.word, tile + 16);
-    lines.forEach((line, n) => ctx.fillText(line, cx + tile / 2, cy + tile + 42 + n * 30));
-    const below = cy + tile + (lines.length - 1) * 30;
+    lines.forEach((line, n) => ctx.fillText(line, cx + tile / 2, cy + tile + 40 + n * 30));
+    let textY = cy + tile + 40 + (lines.length - 1) * 30;
 
-    if (round.winner !== null) {
-      ctx.fillStyle = darker(colorOf(r, round.winner));
-      const t = round.seconds !== null ? ` ${round.seconds.toFixed(1)}s` : '';
-      ctx.fillText(fitFont(ctx, `✓ ${shortName(r.labels[round.winner], 10)}${t}`, tile + 16, 23, 16, BODY), cx + tile / 2, below + 74);
-    } else {
+    if (round.winner === null) {
       ctx.fillStyle = MUTED;
       ctx.font = `23px ${BODY}`;
-      ctx.fillText('✗ stumped', cx + tile / 2, below + 74);
+      ctx.fillText('✗ stumped', cx + tile / 2, textY + 36);
+      return;
+    }
+    // The whole model name (wrapping at its dashes), then the time right under it.
+    const { lines: name, px } = wrapName(ctx, `✓ ${shortName(r.labels[round.winner], 40)}`, tile + 20, 20, 14);
+    ctx.font = `${px}px ${BODY}`;
+    ctx.fillStyle = darker(colorOf(r, round.winner));
+    name.forEach((line, n) => ctx.fillText(line, cx + tile / 2, textY + 32 + n * (px + 3)));
+    textY += 32 + (name.length - 1) * (px + 3);
+    if (round.seconds !== null) {
+      const tint = TIME_TINT[speedTier(round.seconds)];
+      ctx.font = `21px ${BODY}`;
+      const label = `${round.seconds.toFixed(1)}s`;
+      const pw = Math.ceil(ctx.measureText(label).width) + 24;
+      roundRect(ctx, cx + tile / 2 - pw / 2, textY + 10, pw, 30, 15);
+      ctx.fillStyle = tint.bg;
+      ctx.fill();
+      ctx.fillStyle = tint.fg;
+      ctx.fillText(label, cx + tile / 2, textY + 32);
     }
   });
 
