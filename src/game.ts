@@ -93,6 +93,8 @@ export class Game {
         snapshot: (image, players) => debugImage(`Snapshot → ${players.map((i) => this.engine.players[i].label).join(', ')}`, image),
         badge: (i, text, kind, detail) => this.setBadge(i, text, kind, detail),
         guess: (i, entry) => this.onGuess(i, entry),
+        // Counted when a request is sent, so a slow bot whose call gets cancelled still shows "1 call".
+        usage: (i) => this.views[i]?.row.setCalls(this.engine.players[i].roundCalls),
         doodleStatus: (status, message) => this.onDoodleStatus(status, message),
         sketch: (doodle) => {
           this.sketchEl.hidden = true;
@@ -114,7 +116,7 @@ export class Game {
       row: null as unknown as FieldRow, // built in render()
       scoreEl: el('span', { class: 'score', title: 'Rounds won' }, '0'),
       badgeEl: el('span', { class: 'badge', hidden: '' }),
-      feedEl: el('ol', { class: 'feed' }),
+      feedEl: el('ol', { class: 'feed', 'data-empty': 'ready' }),
     }));
     this.render();
     this.engine.start();
@@ -186,8 +188,8 @@ export class Game {
             // Right on top of the canvas: the round and level, the word, then your "N correct".
             el('div', { class: 'paper-head' }, [
               el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
+              // Just the word; the title says what it is for.
               el('div', { class: 'prompt', title: this.botDraws ? (this.youGuess ? 'The word to guess' : 'The word the bot is drawing') : 'The word to draw' }, [
-                el('span', { class: 'prompt-verb' }, this.botDraws ? (this.youGuess ? 'guess ' : 'drawing ') : 'draw '),
                 this.wordEl,
               ]),
               this.correctEl,
@@ -263,6 +265,7 @@ export class Game {
     this.wordEl.textContent = this.youGuess ? '???' : word.word; // watching a bot draw, you see the word
     for (const v of this.views) {
       v.feedEl.replaceChildren();
+      v.feedEl.dataset.empty = 'ready';
       v.row.reset();
     }
   }
@@ -284,7 +287,6 @@ export class Game {
   private onGuess(i: number, entry: GuessEntry) {
     // No sound per guess: with the bots guessing every few seconds it was too much. Only the
     // round's ding / wah-wah and the countdown ticks play.
-    this.views[i].row.setGuesses(this.engine.players[i].history.length);
     this.views[i].feedEl.prepend(
       el('li', { class: entry.right ? 'right' : 'nope' }, [
         el('span', { class: 'guess' }, entry.guess),
@@ -456,6 +458,10 @@ export class Game {
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
     const thinking = kind === 'thinking';
+    // Before its first guess, a row says where the bot is: ready, waiting (asked, no answer yet), or
+    // cancelled (the round ended while it was still waiting).
+    const wasThinking = v.row.el.classList.contains('thinking');
+    v.feedEl.dataset.empty = thinking ? 'waiting' : wasThinking && this.engine.roundOver ? 'cancelled' : 'ready';
     v.badgeEl.className = `badge ${kind}`;
     v.badgeEl.title = thinking ? '' : detail;
     v.badgeEl.textContent = thinking ? '' : text;

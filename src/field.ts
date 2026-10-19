@@ -1,7 +1,7 @@
 /**
  * "The field": one row per guesser, stacked beside the canvas. A row shows the bot, its latest guess
  * big (crossed out in red if wrong, ✓ if right), its earlier guesses as greyed chips, and at the
- * right how many guesses it has made this round, with its rounds won as a badge on the corner. The
+ * right how many calls it has made this round, with its rounds won as a badge on the corner. The
  * round's winner gets a spinning star and its own color. Display only; no game logic here.
  */
 
@@ -10,7 +10,7 @@ import { el } from './dom';
 
 export class FieldRow {
   readonly el: HTMLElement;
-  /** Guesses made this round, at the row's right end ("10 guesses"). */
+  /** Requests sent this round, at the row's right end ("10 calls"), answered or not. */
   private guessesEl = el('span', { class: 'row-guess-count' });
   /** Rounds won, as a badge on the row's top-right corner. */
   private winsEl = el('span', { class: 'row-wins', 'aria-hidden': 'true' }, '0 wins');
@@ -45,9 +45,9 @@ export class FieldRow {
     if (!art) this.el.style.setProperty('--lane', botColor(index));
   }
 
-  /** How many guesses the bot has made this round. Hidden at zero. */
-  setGuesses(n: number) {
-    this.guessesEl.textContent = n > 0 ? `${n} guess${n === 1 ? '' : 'es'}` : '';
+  /** How many calls the bot has made this round (cancelled ones too). Hidden at zero. */
+  setCalls(n: number) {
+    this.guessesEl.textContent = n > 0 ? `${n} call${n === 1 ? '' : 's'}` : '';
   }
 
   setThinking(on: boolean) {
@@ -65,7 +65,7 @@ export class FieldRow {
   /** New round: back to a plain row (the win count stays, the guess count restarts). */
   reset() {
     this.el.classList.remove('won', 'shrug');
-    this.setGuesses(0);
+    this.setCalls(0);
   }
 
   /** Nobody got it this round. */

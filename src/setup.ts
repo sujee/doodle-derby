@@ -20,26 +20,37 @@ const CUSTOM = '__custom__';
  */
 const SHOW_DOODLER_PICK = false;
 
-type Slot = {
+/** Where the bots come from: a provider, its key (and URL), and the model list it offers. */
+type Conn = {
+  root: HTMLElement;
+  /** Room under the status line for extra buttons (Add all). */
+  footer: HTMLElement;
+  kind(): ProviderKind;
+  /** The config for one bot on this provider. */
+  config(model: string): GuesserConfig;
+  /** The models offered, with the "image models only" filter applied. */
+  models(): ModelInfo[];
+  /** All loaded models that accept images. */
+  imageIds(): string[];
+  /** Called when the provider, the model list, or the filter changes. */
+  onChange(fn: () => void): void;
+};
+
+type Bot = {
   root: HTMLElement;
   removeBtn: HTMLElement;
   read(): GuesserConfig;
   kind(): ProviderKind;
-  /** Models currently offered in this slot's dropdown. */
-  models(): ModelInfo[];
   model(): string;
-  /** Called when the provider, model list, or chosen model changes. */
-  onChange(fn: () => void): void;
-  /** Pick a random model that no other bot has (when added with Add bot). */
-  reroll(): void;
-  /** Use Bot #1's provider with this model (Add all image models). */
+  /** True while this bot uses the shared provider (not its own). */
+  shared(): boolean;
+  /** Re-pick the model after its list changed; fresh = pick a new random one even if the old one still fits. */
+  assign(fresh?: boolean): void;
+  /** Use the shared provider with this model (Add all image models). */
   useModel(id: string): void;
   /** Re-label after the list changed (number, robot, color). */
   setNumber(n: number): void;
-  /** Follow the leader: show/hide "Same provider as Bot #1" and mirror its provider. */
-  syncLeader(): void;
 };
-
 
 /** A random model that can see images and isn't in avoid; any image model if all are taken. */
 export function pickModel(list: ModelInfo[], avoid: string[], random = Math.random): string | undefined {
@@ -52,34 +63,41 @@ export function pickModel(list: ModelInfo[], avoid: string[], random = Math.rand
 /** Render the setup screen. Calls onStart with the guesser configs (one or more), plus the doodler bot's config when a bot draws. */
 export function renderSetup(container: HTMLElement, onStart: (configs: GuesserConfig[], doodler: GuesserConfig | null) => void) {
   container.replaceChildren();
+  // One provider for everybody, set once above the cards. A bot can still switch to its own.
+  const shared = makeConnection();
   // The visible bots, in order. Adding appends; the ✕ removes one and the rest renumber (Bot #1, #2…).
-  const slots: Slot[] = [];
-  /** True while re-syncing, so a refresh can't trigger another one (refresh → notify → sync). */
-  let syncing = false;
+  const bots: Bot[] = [];
   /** The models the other bots already use, so a new bot picks a different one. */
-  const takenBy = (self: Slot) => slots.filter((s) => s !== self).map((s) => s.model());
-  // Bot #1's "Add all N image models": one bot per image model of its provider, no limit.
-  const addAll = (ids: string[]) => {
-    const rest = ids.filter((id) => id !== slots[0].model());
-    while (slots.length > 1) removeSlot(slots[slots.length - 1]);
-    rest.forEach((id) => addSlot().useModel(id));
+  const takenBy = (self: Bot) => bots.filter((b) => b !== self).map((b) => b.model());
+  const addBot = () => {
+    let self!: Bot;
+    const b = makeBot(bots.length + 1, shared, () => takenBy(self));
+    self = b;
+    b.removeBtn.addEventListener('click', () => removeBot(b));
+    bots.push(b);
+    guesserRow.insertBefore(b.root, add);
+    return b;
+  };
+  const doodlerBotCard = makeBot(0, shared, () => [], true);
+
+  // "Add all N image models": one bot per image model of the shared provider, no limit.
+  const addAllBtn = el('button', { type: 'button', class: 'add-all', hidden: '' });
+  shared.footer.append(addAllBtn);
+  addAllBtn.addEventListener('click', () => {
+    const ids = shared.imageIds();
+    while (bots.length > 1) removeBot(bots[bots.length - 1]);
+    bots[0].useModel(ids[0]);
+    ids.slice(1).forEach((id) => addBot().useModel(id));
     renumber();
-    slots[slots.length - 1].root.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
-  };
-  const first = makeSlot(1, () => undefined, false, () => [], addAll);
-  slots.push(first);
-  // A bot's leader is the first other bot (usually Bot #1), so "Same provider as…" survives a removal.
-  const addSlot = () => {
-    let self!: Slot;
-    // The leader is the current Bot #1; the first bot itself has none (it would mirror itself).
-    const s = makeSlot(slots.length + 1, () => (slots[0] === self ? undefined : slots[0]), false, () => takenBy(self));
-    self = s;
-    wire(s);
-    slots.push(s);
-    guesserRow.insertBefore(s.root, add);
-    return s;
-  };
-  const doodlerSlot = makeSlot(0, () => slots[0], true);
+  });
+  shared.onChange(() => {
+    // Bots go in order, so each one avoids the models the bots before it just took.
+    bots.filter((b) => b.shared()).forEach((b) => b.assign());
+    const n = shared.imageIds().length;
+    addAllBtn.textContent = `＋ Add all ${n} image models`;
+    addAllBtn.hidden = n < 2;
+    syncNote();
+  });
 
   // Pick the doodler: click the You card or the Bot card. The picked card is highlighted; a picked
   // Bot shows its model settings below, and You become one of the guessers.
@@ -101,6 +119,7 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   const guesserRow = el('div', { class: 'guesser-row' });
   const guessersSide = el('div', { class: 'guessers-side', role: 'group', 'aria-label': 'Pick the guessers' }, [
     el('p', { class: 'pick-label' }, SHOW_DOODLER_PICK ? [el('span', { class: 'step-num' }, '2'), 'Pick the guessers'] : 'Pick the guessers'),
+    shared.root,
     guesserRow,
   ]);
   const addLabel = el('span');
@@ -110,41 +129,24 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
   ]);
   const error = el('p', { class: 'error', role: 'alert' });
   const note = el('p', { class: 'note' }, 'Your API keys stay in this tab. They’re never saved and only go to the endpoint you pick.');
-  const syncNote = () => (note.hidden = ![...slots, ...(botDraws ? [doodlerSlot] : [])].some((s) => s.kind() !== 'fake'));
-  const syncSlots = () => {
-    if (syncing) return;
-    syncing = true;
-    try {
-      slots.forEach((s) => s.syncLeader());
-    } finally {
-      syncing = false;
-    }
-  };
-  const wire = (s: Slot) => {
-    s.removeBtn.addEventListener('click', () => removeSlot(s));
-    s.onChange(() => {
-      syncNote();
-      syncSlots();
-    });
-  };
+  const syncNote = () => (note.hidden = ![...bots, ...(botDraws ? [doodlerBotCard] : [])].some((b) => b.kind() !== 'fake'));
   /** Drop a bot; the others keep their state and take the numbers 1..N again. */
-  const removeSlot = (s: Slot) => {
-    const i = slots.indexOf(s);
-    if (i < 0 || slots.length <= 1) return; // always keep one guesser
-    slots.splice(i, 1);
-    s.root.remove();
+  const removeBot = (b: Bot) => {
+    const i = bots.indexOf(b);
+    if (i < 0 || bots.length <= 1) return; // always keep one guesser
+    bots.splice(i, 1);
+    b.root.remove();
     renumber();
   };
   const renumber = () => {
-    slots.forEach((s, i) => {
-      s.setNumber(i + 1);
-      s.removeBtn.hidden = slots.length <= 1; // the last bot can't be removed
+    bots.forEach((b, i) => {
+      b.setNumber(i + 1);
+      b.removeBtn.hidden = bots.length <= 1; // the last bot can't be removed
     });
-    addLabel.textContent = `Bot #${slots.length + 1}`;
-    add.setAttribute('aria-label', `Add Bot #${slots.length + 1}`);
+    addLabel.textContent = `Bot #${bots.length + 1}`;
+    add.setAttribute('aria-label', `Add Bot #${bots.length + 1}`);
     error.textContent = '';
     syncNote();
-    syncSlots();
   };
   const setMode = (bot: boolean) => {
     botDraws = bot;
@@ -153,33 +155,32 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
     setPicked(youCard, !bot);
     setPicked(botCard, bot);
     // A picked Bot keeps its card (highlighted) and shows its settings below both cards.
-    doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, botCard, ...(bot ? [doodlerSlot.root] : []));
-    guesserRow.replaceChildren(...slots.map((s) => s.root), add);
+    doodlerSide.replaceChildren(doodlerSide.firstChild!, youCard, botCard, ...(bot ? [doodlerBotCard.root] : []));
+    guesserRow.replaceChildren(...bots.map((b) => b.root), add);
     slotsEl.replaceChildren(...(SHOW_DOODLER_PICK ? [doodlerSide, vs] : []), guessersSide);
     syncNote();
   };
-  doodlerSlot.onChange(syncNote);
   add.addEventListener('click', () => {
-    const s = addSlot();
-    s.reroll();
-    s.root.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const b = addBot();
+    b.assign(true);
+    b.root.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     renumber();
   });
-  wire(first);
   setMode(false);
+  addBot();
   renumber();
   const start = el('button', { class: 'primary big start' }, 'Play!');
   start.addEventListener('click', () => {
     const configs: GuesserConfig[] = [];
-    for (const s of slots) {
-      const c = s.read();
+    for (const b of bots) {
+      const c = b.read();
       if (c.kind !== 'fake' && !c.model) return void (error.textContent = 'Pick a model for each Doodlebot first.');
       if (c.kind === 'openai' && !c.baseUrl) return void (error.textContent = 'Enter the API URL.');
       configs.push(c);
     }
     let doodler: GuesserConfig | null = null;
     if (botDraws) {
-      doodler = doodlerSlot.read();
+      doodler = doodlerBotCard.read();
       if (doodler.kind !== 'fake' && !doodler.model) return void (error.textContent = 'Pick a model for the doodler bot.');
       if (doodler.kind === 'openai' && !doodler.baseUrl) return void (error.textContent = 'Enter the doodler’s API URL.');
     }
@@ -199,18 +200,10 @@ export function renderSetup(container: HTMLElement, onStart: (configs: GuesserCo
 }
 
 /**
- * With a leader, the slot offers "Same provider as Guesser 1" and then only asks for a model.
- * The doodler slot (doodler = true) draws instead of guessing: no vision filter, and Test asks for a drawing.
+ * A provider picker: provider, API URL (generic OpenAI-compatible only), API key, and the model list.
+ * The list loads by itself once there is a key (⟳ loads it again). stacked = inside a bot card.
  */
-function makeSlot(
-  n: number,
-  /** The bot to mirror ("Same provider as Bot #1"), or undefined for Bot #1 itself. */
-  leader: () => Slot | undefined = () => undefined,
-  doodler = false,
-  taken: () => string[] = () => [],
-  /** Bot #1 only: offered once the model list loads, when the provider has 2+ image models. */
-  addAll?: (ids: string[]) => void,
-): Slot {
+function makeConnection(doodler = false, stacked = false): Conn {
   // One flat provider list: OpenAI-compatible presets are "openai:<index>".
   // Fake guesser first (the no-key default), real providers A–Z, generic "OpenAI compatible" last.
   const presets = OPENAI_PRESETS.map((p, i) => [`openai:${i}`, p.name]);
@@ -220,158 +213,196 @@ function makeSlot(
   const kind = select([['fake', doodler ? 'Fake doodler (no key)' : 'Fake guesser (no key)'], ...named, ...generic], 'fake');
   const baseUrl = el('input', { type: 'url', placeholder: 'https://…/v1' }) as HTMLInputElement;
   const apiKey = el('input', { type: 'password', autocomplete: 'off', placeholder: 'API key' }) as HTMLInputElement;
-  const modelSelect = el('select', { 'aria-label': 'Model' }) as HTMLSelectElement;
-  const customModel = el('input', { placeholder: 'Type a model name' }) as HTMLInputElement;
+  const loadBtn = el('button', { type: 'button', class: 'icon-btn refresh', title: 'Load the model list', 'aria-label': 'Load the model list' }, '⟳');
   const visionOnly = el('input', { type: 'checkbox' }) as HTMLInputElement;
   visionOnly.checked = !doodler; // drawing doesn't need image input
-  // Load / refresh the model list; a small icon sits beside the box (empty until it is loaded).
-  const loadBtn = el('button', { type: 'button', class: 'icon-btn refresh', title: 'Load the model list', 'aria-label': 'Load the model list' }, '⟳');
-  const testBtn = el('button', { type: 'button' }, 'Test');
+  const visionRow = el('label', { class: 'check small' }, [visionOnly, 'Image models only']);
   const status = el('p', { class: 'status' });
-  const addAllBtn = el('button', { type: 'button', class: 'add-all', hidden: '' });
-  let visionIds: string[] = [];
-  addAllBtn.addEventListener('click', () => addAll?.(visionIds));
   const help = el('p', { class: 'note' });
+  const footer = el('div', { class: 'conn-foot' }, [status, ...(doodler ? [] : [visionRow])]);
 
   const urlRow = field('API URL', baseUrl);
   const keyRow = field('API key', apiKey);
-  const providerRow = field('Provider', kind);
-  const sameBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
-  sameBox.checked = !!leader();
-  const sameRow = el('label', { class: 'check' }, [sameBox, 'Same as Bot #1']);
-  sameRow.hidden = !leader();
-  const isSame = () => !!leader() && sameBox.checked;
-  let ids: ModelInfo[] = [];
+  const root = el('div', { class: stacked ? 'conn stacked' : 'conn card' }, [
+    el('div', { class: 'conn-fields' }, [field('Provider', kind), urlRow, keyRow, loadBtn]),
+    help,
+    footer,
+  ]);
+
+  let all: ModelInfo[] = [];
   const listeners: (() => void)[] = [];
   const notify = () => listeners.forEach((fn) => fn());
-
-  const modelRow = el('div', { class: 'field' }, [
-    // "Model" with the reload on its right; the box then gets the full card width for long names.
-    el('div', { class: 'field-head' }, [el('span', {}, 'Model'), loadBtn]),
-    el('div', { class: 'stack' }, [modelSelect, customModel]),
-  ]);
-  const visionRow = el('label', { class: 'check small' }, [visionOnly, 'Vision models only']);
-
   const slotKind = (): ProviderKind => kind.value.split(':')[0] as ProviderKind;
-
-  // A real <select> (datalist suggestions filter by the typed text and are flaky in Safari).
-  // Grouped so image-capable models come first; text-only ones are still pickable but flagged.
-  const setModels = (all: ModelInfo[], prefer = modelValue()) => {
-    ids = all;
-    if (!all.length) addAllBtn.hidden = true; // provider changed: its list is gone
-    const list = visionOnly.checked ? all.filter((m) => m.vision === 'yes' || m.vision === 'likely') : all;
-    const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (likely)` : m.id);
-    const groups: [string, ModelInfo[]][] = [
-      ['Accepts images', list.filter((m) => m.vision === 'yes' || m.vision === 'likely')],
-      ['Unknown (use Test to check)', list.filter((m) => m.vision === 'unknown')],
-      ['Text only (won’t work)', list.filter((m) => m.vision === 'no')],
-    ];
-    const empty = all.length === 0 ? 'Click ⟳ to load the models' : 'No vision models found (untick the filter)';
-    modelSelect.replaceChildren(
-      ...(list.length ? [] : [el('option', { value: '', disabled: '' }, empty)]),
-      ...groups.filter(([, g]) => g.length).map(([label, g]) => el('optgroup', { label }, g.map(option))),
-      el('option', { value: CUSTOM }, 'Other… (type a name)'),
-    );
-    const usable = list.find((m) => m.vision !== 'no') ?? list[0];
-    modelSelect.value = list.some((m) => m.id === prefer) ? prefer : (usable?.id ?? '');
-    syncCustom();
-  };
-  const syncCustom = () => {
-    customModel.hidden = modelSelect.value !== CUSTOM;
-  };
-  const modelValue = () => (modelSelect.value === CUSTOM ? customModel.value : modelSelect.value).trim();
-  modelSelect.addEventListener('change', () => {
-    syncCustom();
-    if (!customModel.hidden) customModel.focus();
-    notify();
-  });
-  customModel.addEventListener('input', notify);
-  visionOnly.addEventListener('change', () => {
-    setModels(ids);
-    notify();
-  });
-
-  const refresh = () => {
-    if (isSame()) return refreshSame();
-    sameRow.hidden = !leader();
-    providerRow.hidden = false;
-    const k = slotKind();
-    const remote = k === 'openai' || k === 'anthropic';
-    urlRow.hidden = k !== 'openai';
-    keyRow.hidden = modelRow.hidden = !remote;
-    visionRow.hidden = !remote || doodler;
-    status.textContent = '';
-    help.textContent = '';
-    if (k === 'openai') {
-      const p = OPENAI_PRESETS[Number(kind.value.split(':')[1])];
-      baseUrl.value = p.baseUrl;
-      if (p.keyless) help.textContent = 'No key needed; click ⟳ to load models. Ollama must allow this site: set OLLAMA_ORIGINS. Safari may block http://localhost from an https page.';
-    }
-    if (remote) setModels([], '');
-    help.hidden = !help.textContent;
-    notify();
-  };
-
-  // Mirror the leader's provider; default to a model no other bot uses (random when fresh).
-  const refreshSame = (fresh = false) => {
-    const lead = leader();
-    if (!lead) return;
-    providerRow.hidden = urlRow.hidden = keyRow.hidden = help.hidden = true;
-    status.textContent = '';
-    modelRow.hidden = lead.kind() === 'fake';
-    visionRow.hidden = modelRow.hidden || doodler;
-    const list = lead.models();
-    const keep = modelValue();
-    const avoid = taken();
-    setModels(list, !fresh && list.some((m) => m.id === keep) && !avoid.includes(keep) ? keep : pickModel(list, avoid));
-  };
-
-  const read = (): GuesserConfig => {
-    if (isSame()) {
-      const c = leader()!.read();
-      return c.kind === 'fake' ? c : { ...c, model: modelValue() };
-    }
+  const preset = () => (slotKind() === 'openai' ? OPENAI_PRESETS[Number(kind.value.split(':')[1])] : undefined);
+  const config = (model: string): GuesserConfig => {
     switch (slotKind()) {
       case 'fake':
         return { kind: 'fake' };
       case 'openai':
-        return { kind: 'openai', baseUrl: baseUrl.value.trim(), apiKey: apiKey.value.trim(), model: modelValue() };
+        return { kind: 'openai', baseUrl: baseUrl.value.trim(), apiKey: apiKey.value.trim(), model };
       case 'anthropic':
-        return { kind: 'anthropic', apiKey: apiKey.value.trim(), model: modelValue() };
+        return { kind: 'anthropic', apiKey: apiKey.value.trim(), model };
     }
   };
 
-  kind.addEventListener('change', refresh);
-  sameBox.addEventListener('change', refresh);
-
-  loadBtn.addEventListener('click', async () => {
-    const c = read();
+  /** Bumped on every load and provider change, so a slow, stale list never lands. */
+  let loadId = 0;
+  const load = async () => {
+    const id = ++loadId;
+    const c = config('');
     status.textContent = 'Loading models…';
     try {
       // Where the provider's own list doesn't say, fall back to models.dev's image support.
-      const ids = sortModels(
+      const list = sortModels(
         (await listModels(c)).map((m) => {
           if (m.vision === 'yes' || m.vision === 'no') return m;
           const img = catalogVision(c, m.id);
           return img === undefined ? m : { ...m, vision: img ? ('yes' as const) : ('no' as const) };
         }),
       );
-      setModels(ids);
+      if (id !== loadId) return;
+      all = list;
+      const vision = imageIds().length;
+      status.textContent = doodler ? `✓ ${list.length} models. Any chat model can doodle.` : `✓ ${list.length} models, ${vision} see images`;
       notify();
-      visionIds = ids.filter((m) => m.vision === 'yes' || m.vision === 'likely').map((m) => m.id);
-      const vision = visionIds.length;
-      addAllBtn.textContent = `＋ Add all ${vision} image models`;
-      addAllBtn.hidden = !addAll || vision < 2;
-      status.textContent = doodler
-        ? `${ids.length} models loaded. Any chat model can doodle.`
-        : `${ids.length} models loaded, ${vision} accept images. “(likely)” is a guess from the name.`;
     } catch (e) {
-      status.textContent = `Could not load models: ${errorText(e)}`;
+      if (id !== loadId) return;
+      status.textContent = `Couldn’t load the models: ${errorText(e)}`;
     }
+  };
+  const imageIds = () => all.filter((m) => m.vision === 'yes' || m.vision === 'likely').map((m) => m.id);
+  /** Load when there is enough to go on: a key (or a keyless provider) and a URL. */
+  const autoLoad = () => {
+    const p = preset();
+    if (slotKind() === 'fake' || !baseUrl.value.trim() && slotKind() === 'openai') return;
+    if (apiKey.value.trim() || p?.keyless) void load();
+  };
+
+  const refresh = () => {
+    loadId++;
+    const k = slotKind();
+    const remote = k !== 'fake';
+    const p = preset();
+    urlRow.hidden = !p || !!p.baseUrl; // presets know their URL; only the generic one asks
+    keyRow.hidden = !remote || !!p?.keyless;
+    loadBtn.hidden = visionRow.hidden = !remote;
+    visionRow.hidden ||= doodler;
+    baseUrl.value = p?.baseUrl ?? '';
+    help.textContent = p?.keyless ? 'No key needed. Ollama must allow this site: set OLLAMA_ORIGINS. Safari may block http://localhost from an https page.' : '';
+    help.hidden = !help.textContent;
+    all = [];
+    status.textContent = !remote ? 'No key needed. Pretend bots, for trying the game.' : p?.keyless ? '' : 'Enter your API key to load the models.';
+    notify();
+    autoLoad();
+  };
+
+  let typing: ReturnType<typeof setTimeout> | undefined;
+  const loadSoon = () => {
+    clearTimeout(typing);
+    typing = setTimeout(autoLoad, 600);
+  };
+  kind.addEventListener('change', refresh);
+  apiKey.addEventListener('input', loadSoon);
+  baseUrl.addEventListener('input', loadSoon);
+  loadBtn.addEventListener('click', () => void load());
+  visionOnly.addEventListener('change', notify);
+  refresh();
+
+  return {
+    root,
+    footer,
+    kind: slotKind,
+    config,
+    models: () => (visionOnly.checked ? all.filter((m) => m.vision === 'yes' || m.vision === 'likely') : all),
+    imageIds,
+    onChange: (fn) => listeners.push(fn),
+  };
+}
+
+/**
+ * One bot card: its robot, its model and a Test button. It uses the shared provider unless it is
+ * switched to its own. The doodler card (doodler = true) always has its own provider, and Test asks for a drawing.
+ */
+function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false): Bot {
+  let own: Conn | null = null;
+  const conn = () => own ?? shared;
+  const ownBox = el('div', { class: 'own-conn' });
+  const ownBtn = el('button', { type: 'button', class: 'link-btn' });
+
+  // The real <select> sits invisibly over a label that shows the whole id: "org/" small, the name below.
+  const modelSelect = el('select', { 'aria-label': 'Model' }) as HTMLSelectElement;
+  const org = el('span', { class: 'model-org' });
+  const name = el('span', { class: 'model-name' });
+  const vis = el('span', { class: 'model-vis' });
+  const modelPick = el('div', { class: 'model-pick' }, [org, name, vis, modelSelect]);
+  const customModel = el('input', { placeholder: 'Type a model name' }) as HTMLInputElement;
+  const fakeNote = el('p', { class: 'fake-note' }, doodler ? 'Fake doodler' : 'Fake guesser');
+  const testBtn = el('button', { type: 'button' }, 'Test');
+  const status = el('p', { class: 'status' });
+
+  const modelValue = () => (modelSelect.value === CUSTOM ? customModel.value : modelSelect.value).trim();
+  const showLabel = () => {
+    const id = modelSelect.value;
+    const m = conn().models().find((x) => x.id === id);
+    const cut = id.lastIndexOf('/');
+    org.textContent = id && id !== CUSTOM && cut > 0 ? id.slice(0, cut + 1) : '';
+    name.textContent = id === CUSTOM ? 'Other…' : id ? id.slice(cut + 1) : modelSelect.selectedOptions[0]?.textContent ?? '';
+    vis.textContent = !m ? '' : m.vision === 'yes' ? 'sees images' : m.vision === 'likely' ? 'likely sees images' : m.vision === 'no' ? 'text only (won’t work)' : 'images? use Test';
+    vis.dataset.vision = m?.vision ?? '';
+    customModel.hidden = id !== CUSTOM;
+  };
+
+  // A real <select> (datalist suggestions filter by the typed text and are flaky in Safari).
+  // Grouped so image-capable models come first; text-only ones are still pickable but flagged.
+  const render = (prefer: string | undefined) => {
+    const list = conn().models();
+    const option = (m: ModelInfo) => el('option', { value: m.id }, m.vision === 'likely' ? `${m.id} (likely)` : m.id);
+    const groups: [string, ModelInfo[]][] = [
+      ['Accepts images', list.filter((m) => m.vision === 'yes' || m.vision === 'likely')],
+      ['Unknown (use Test to check)', list.filter((m) => m.vision === 'unknown')],
+      ['Text only (won’t work)', list.filter((m) => m.vision === 'no')],
+    ];
+    modelSelect.replaceChildren(
+      ...(list.length ? [] : [el('option', { value: '', disabled: '' }, 'Models load once the provider is set')]),
+      ...groups.filter(([, g]) => g.length).map(([label, g]) => el('optgroup', { label }, g.map(option))),
+      el('option', { value: CUSTOM }, 'Other… (type a name)'),
+    );
+    const usable = list.find((m) => m.vision !== 'no') ?? list[0];
+    modelSelect.value = prefer === CUSTOM || list.some((m) => m.id === prefer) ? prefer! : (usable?.id ?? '');
+    const fake = conn().kind() === 'fake';
+    modelPick.hidden = fake;
+    fakeNote.hidden = !fake;
+    status.textContent = '';
+    showLabel();
+  };
+  // Keep the model if it is still offered and nobody else has it; else a random free one.
+  // The pick comes from the offered (filtered) list, so it can't fall back to someone else's model.
+  const assign = (fresh = false) => {
+    const keep = modelSelect.value;
+    const list = conn().models();
+    const avoid = taken();
+    const keepOk = !fresh && (keep === CUSTOM || (list.some((m) => m.id === keep) && !avoid.includes(keep)));
+    render(keepOk ? keep : pickModel(list, avoid));
+  };
+
+  modelSelect.addEventListener('change', () => {
+    showLabel();
+    status.textContent = '';
+    if (!customModel.hidden) customModel.focus();
   });
 
+  const setOwn = (on: boolean) => {
+    own = on ? makeConnection(doodler, true) : null;
+    own?.onChange(() => assign());
+    ownBox.replaceChildren(...(own ? [own.root] : []));
+    ownBtn.textContent = on ? 'Use the shared provider' : 'Use another provider';
+    ownBtn.hidden = doodler;
+    assign();
+  };
+  ownBtn.addEventListener('click', () => setOwn(!own));
+
   testBtn.addEventListener('click', async () => {
-    const c = read();
+    const c = conn().config(modelValue());
     status.textContent = 'Testing…';
     if (doodler) {
       try {
@@ -399,38 +430,26 @@ function makeSlot(
   const title = el('h2', {}, doodler ? 'Doodler bot ✏️' : `Bot #${n}`);
   const root = el('div', { class: doodler ? 'slot card doodler-slot' : `slot card p${(n - 1) % 3}` }, [
     el('div', { class: 'slot-head' }, [avatar, title, removeBtn]),
-    sameRow,
-    providerRow,
-    urlRow,
-    keyRow,
-    modelRow,
-    visionRow,
-    help,
-    el('div', { class: 'row' }, [testBtn]),
+    ownBox,
+    modelPick,
+    customModel,
+    fakeNote,
+    el('div', { class: 'row slot-foot' }, [testBtn, ownBtn]),
     status,
-    addAllBtn,
   ]);
   if (!doodler) root.style.setProperty('--lane', botColor(n - 1));
-  refresh();
+  setOwn(doodler);
   return {
     root,
     removeBtn,
-    read,
-    kind: () => (isSame() ? leader()!.kind() : slotKind()),
-    models: () => ids,
+    read: () => conn().config(modelValue()),
+    kind: () => conn().kind(),
     model: modelValue,
-    onChange: (fn) => listeners.push(fn),
+    shared: () => !own,
+    assign,
     useModel: (id) => {
-      sameBox.checked = true;
-      refreshSame();
-      modelSelect.value = id;
-      syncCustom();
-      notify();
-    },
-    reroll: () => {
-      if (isSame()) refreshSame(true);
-      else if (ids.length) setModels(ids, pickModel(ids, taken()));
-      notify();
+      if (own) setOwn(false);
+      render(id);
     },
     setNumber: (num) => {
       if (doodler) return;
@@ -439,18 +458,6 @@ function makeSlot(
       avatar.replaceChildren(robot(num - 1));
       title.textContent = `Bot #${num}`;
       removeBtn.setAttribute('aria-label', `Remove Bot #${num}`);
-    },
-    syncLeader: () => {
-      const lead = leader();
-      sameRow.hidden = !lead;
-      if (!lead) {
-        if (sameBox.checked) {
-          sameBox.checked = false; // its leader is gone: back to picking a provider
-          refresh();
-        }
-        return;
-      }
-      if (sameBox.checked) refreshSame();
     },
   };
 }
