@@ -272,6 +272,43 @@ button.quiet { background: transparent; box-shadow: none; border-color: color-mi
 /* A touch smaller, so a long "provider/model-name" fits the box whole. */
 .field select, .field input { font-size: 14px; }
 .field > span { font-size: 1.05rem; color: var(--muted); }
+/* The shared provider: one bar above the bot cards (or stacked inside a card that uses its own). */
+.conn.card { width: min(974px, 100%); /* four cards and their gaps */ padding: 14px 18px; background: var(--surface); transform: rotate(-0.4deg); }
+.conn-fields { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: end; }
+.conn-fields > .field { flex: 1 1 200px; margin-bottom: 0; }
+.conn-fields > .refresh { width: 38px; height: 38px; margin-bottom: 2px; }
+.conn > .note { margin: 8px 0 0; font-size: 0.95rem; }
+.conn-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 10px; }
+.conn-foot .status { flex: 1 1 220px; margin: 0; }
+.conn-foot .check.small { margin: 0; }
+.conn-foot button.add-all { width: auto; margin: 0; }
+.conn.stacked .conn-fields { flex-direction: column; align-items: stretch; }
+.conn.stacked .conn-fields > .field { flex: none; }
+.conn.stacked .conn-fields > .refresh { align-self: flex-end; }
+.own-conn:not(:empty) { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent); }
+/* The model: the whole id on two lines, with the real <select> laid invisibly on top. */
+.model-pick {
+  position: relative; display: grid; padding: 7px 30px 7px 10px; min-height: 58px; align-content: center;
+  background: var(--field); border: 2.5px solid var(--ink); border-radius: 10px 6px 12px 7px; font-family: var(--plain);
+}
+.model-pick::after { content: '▾'; position: absolute; right: 10px; top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+.model-pick:focus-within { outline: 3px solid var(--sky); outline-offset: 1px; }
+.model-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.model-org { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.model-org:empty { display: none; }
+.model-name { font-size: 15px; font-weight: 600; line-height: 1.25; color: var(--ink); overflow-wrap: anywhere; }
+.model-vis { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.model-vis:empty { display: none; }
+.model-vis[data-vision='no'] { color: var(--coral); }
+.slot > input { margin-top: 6px; font-size: 14px; }
+.fake-note { margin: 0; color: var(--muted); font-size: 1rem; }
+.guesser-row .slot { display: flex; flex-direction: column; }
+.slot-foot { margin-top: auto; padding-top: 12px; flex-wrap: wrap; justify-content: space-between; } /* level across a row */
+button.link-btn {
+  padding: 2px 0; background: none; border: none; box-shadow: none; color: var(--muted);
+  font-size: 0.9rem; text-decoration: underline dotted; text-underline-offset: 3px;
+}
+button.link-btn:hover { color: var(--ink); box-shadow: none; transform: none; }
 .setup > .note { margin: 20px auto 0; max-width: 34em; font-size: 0.95rem; }
 .start-bar {
   position: sticky; bottom: 0; z-index: 30; margin: 18px -16px 0; padding: 12px 16px 16px;
@@ -744,8 +781,8 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 /* Cards wrap into rows of up to four (three on a laptop), each 260–320px, so a long model name
    stays readable instead of the cards squeezing onto one line. */
 .guesser-row {
-  display: grid; grid-template-columns: repeat(auto-fit, 310px);
-  gap: 18px; justify-content: center; align-items: start; width: 100%;
+  display: grid; grid-template-columns: repeat(auto-fit, 230px);
+  gap: 18px; justify-content: center; align-items: stretch; width: min(1040px, 100%);
 }
 .pick { cursor: pointer; transition: opacity 0.15s, filter 0.15s; }
 .pick:not(.picked) { opacity: 0.55; filter: saturate(0.5); }
