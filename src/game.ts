@@ -466,9 +466,9 @@ export class Game {
     const v = this.views[i];
     const thinking = kind === 'thinking';
     // Before its first guess, a row says where the bot is: ready, waiting (asked, no answer yet), or
-    // cancelled (the round ended while it was still waiting).
+    // round ended (the round ended while it was still waiting; its call was cancelled).
     const wasThinking = v.row.el.classList.contains('thinking');
-    v.feedEl.dataset.empty = thinking ? 'waiting' : wasThinking && this.engine.roundOver ? 'cancelled' : 'ready';
+    v.feedEl.dataset.empty = thinking ? 'waiting' : wasThinking && this.engine.roundOver ? 'round ended' : 'ready';
     v.badgeEl.className = `badge ${kind}`;
     v.badgeEl.title = thinking ? '' : detail;
     v.badgeEl.textContent = thinking ? '' : text;

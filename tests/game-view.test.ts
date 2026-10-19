@@ -162,7 +162,7 @@ describe('the call count at the right of a row', () => {
 });
 
 describe('a row before its first guess', () => {
-  it('says ready, then waiting while asked, then cancelled if the round ends first', async () => {
+  it('says ready, then waiting while asked, then round ended if the round ends first', async () => {
     const { game, draw } = startGame();
     const feed = container.querySelector<HTMLElement>('.field-row .feed')!;
     expect(feed.dataset.empty).toBe('ready');
@@ -171,7 +171,7 @@ describe('a row before its first guess', () => {
     expect(feed.dataset.empty).toBe('waiting');
     game.engine.skip();
     expect(feed.children).toHaveLength(0);
-    expect(feed.dataset.empty).toBe('cancelled');
+    expect(feed.dataset.empty).toBe('round ended');
     game.engine.stop();
   });
 });

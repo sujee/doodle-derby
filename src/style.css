@@ -527,7 +527,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
 .feed li.right .guess { color: var(--ink); font-weight: 700; }
 .feed li.right .guess::after { content: ' ✓'; color: #05a37b; }
 .feed:empty::before { content: attr(data-empty); color: var(--muted); font-size: 0.95rem; }
-.feed[data-empty='cancelled']:empty::before { color: var(--coral); }
+.feed[data-empty='round ended']:empty::before { color: var(--coral); }
 
 /* Status chip beside the bot's name: only a rate-limit warning or an error shows anything. */
 .badge {
