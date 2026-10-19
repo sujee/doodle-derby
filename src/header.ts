@@ -72,7 +72,7 @@ export function installHeader(): void {
     el('header', { class: 'site-head' }, [
       wordmark(),
       el('div', { class: 'meta' }, [
-        el('span', {}, `v${version}`),
+        el('span', {}, `v${version.split('.')[0]}`),
         source,
         textLink(SITE, 'by sujee.dev'),
         contactCard(),

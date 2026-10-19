@@ -20,7 +20,7 @@ describe('the site header', () => {
   it('says the game’s name and version', () => {
     const head = install();
     expect(head.querySelector('.brand')?.textContent).toBe('Doodle Derby');
-    expect(head.querySelector('.meta')?.firstElementChild?.textContent).toBe(`v${version}`);
+    expect(head.querySelector('.meta')?.firstElementChild?.textContent).toBe(`v${version.split('.')[0]}`);
   });
 
   it('links to the source repo with a GitHub mark', () => {
