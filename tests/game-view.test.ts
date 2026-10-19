@@ -147,6 +147,21 @@ describe('the call count at the right of a row', () => {
   });
 });
 
+describe('a row before its first guess', () => {
+  it('says ready, then waiting while asked, then cancelled if the round ends first', async () => {
+    const { game, draw } = startGame();
+    const feed = container.querySelector<HTMLElement>('.field-row .feed')!;
+    expect(feed.dataset.empty).toBe('ready');
+    draw();
+    await vi.advanceTimersByTimeAsync(POLL_MS + 50); // asked; the Fake guesser takes 600 ms or more
+    expect(feed.dataset.empty).toBe('waiting');
+    game.engine.skip();
+    expect(feed.children).toHaveLength(0);
+    expect(feed.dataset.empty).toBe('cancelled');
+    game.engine.stop();
+  });
+});
+
 describe('the field order', () => {
   it('puts the bot with the most right guesses on top; ties keep their original order', () => {
     const game = new Game(container, [{ kind: 'fake' }, { kind: 'fake' }, { kind: 'fake' }], () => {}, null, WORDS);

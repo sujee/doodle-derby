@@ -116,7 +116,7 @@ export class Game {
       row: null as unknown as FieldRow, // built in render()
       scoreEl: el('span', { class: 'score', title: 'Rounds won' }, '0'),
       badgeEl: el('span', { class: 'badge', hidden: '' }),
-      feedEl: el('ol', { class: 'feed' }),
+      feedEl: el('ol', { class: 'feed', 'data-empty': 'ready' }),
     }));
     this.render();
     this.engine.start();
@@ -265,6 +265,7 @@ export class Game {
     this.wordEl.textContent = this.youGuess ? '???' : word.word; // watching a bot draw, you see the word
     for (const v of this.views) {
       v.feedEl.replaceChildren();
+      v.feedEl.dataset.empty = 'ready';
       v.row.reset();
     }
   }
@@ -457,6 +458,10 @@ export class Game {
   private setBadge(i: number, text: string, kind: BadgeKind, detail = '') {
     const v = this.views[i];
     const thinking = kind === 'thinking';
+    // Before its first guess, a row says where the bot is: ready, waiting (asked, no answer yet), or
+    // cancelled (the round ended while it was still waiting).
+    const wasThinking = v.row.el.classList.contains('thinking');
+    v.feedEl.dataset.empty = thinking ? 'waiting' : wasThinking && this.engine.roundOver ? 'cancelled' : 'ready';
     v.badgeEl.className = `badge ${kind}`;
     v.badgeEl.title = thinking ? '' : detail;
     v.badgeEl.textContent = thinking ? '' : text;
