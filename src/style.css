@@ -765,6 +765,8 @@ details.report > summary { cursor: pointer; color: var(--muted); font-size: 1.05
 .share-dialog { position: relative; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; text-align: center; }
 .share-dialog h2 { margin: 0 0 12px; font-family: var(--hand); font-size: 2rem; }
 .share-close { position: absolute; top: 10px; right: 10px; }
+.status-dialog { width: min(820px, 100%); }
+.status-dialog .tally-wrap { margin: 8px 0 4px; }
 .share-preview { min-height: 120px; display: grid; place-items: center; }
 .share-preview img {
   width: 100%; height: auto; display: block;

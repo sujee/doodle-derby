@@ -14,6 +14,7 @@ import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, typ
 import { priceFor } from './pricing';
 import { createGuesser, providerName, type GuesserConfig } from './providers';
 import { openShareDialog, shortName } from './share';
+import { openStatusDialog } from './tally';
 import * as sfx from './sound';
 import { ROUNDS, type Tier, type Word } from './words';
 
@@ -42,7 +43,7 @@ export class Game {
   private pauseBtn = el('button', { type: 'button', class: 'pause-btn', title: 'Pause and see this round’s guesses (P)', 'aria-label': 'Pause' }, pauseFace(false));
   private pauseEl = el('div', { class: 'pause-layer', hidden: '' });
   // Share the game so far, any time after the first round (the round in play pauses meanwhile).
-  private shareBtn = el('button', { type: 'button', class: 'hud-btn share-btn', title: 'The game so far, to share (after the first round)', disabled: '' }, 'Status');
+  private shareBtn = el('button', { type: 'button', class: 'hud-btn share-btn', title: 'Standings so far: right guesses, calls, tokens, cost' }, 'Status');
   private roundEl = el('span');
   private tierEl = el('span', { class: 'tier' });
   private wordEl = el('span', { class: 'word' });
@@ -156,7 +157,15 @@ export class Game {
     this.shareBtn.addEventListener('click', () => {
       const pauseHere = !this.engine.roundOver && !this.engine.paused;
       if (pauseHere) this.engine.pause();
-      openShareDialog(this.engine.resultSoFar(), () => pauseHere && this.engine.paused && this.engine.resume());
+      const resume = () => pauseHere && this.engine.paused && this.engine.resume();
+      const r = this.engine.resultSoFar();
+      const done = r.rounds.length;
+      // The tally counts finished rounds; a round in play adds its wrong guesses so far.
+      const live = this.engine.roundOver
+        ? r
+        : { ...r, rounds: [...r.rounds, { word: '', winner: null, seconds: null, image: null, guesses: this.engine.players.map((p) => [...p.wrong]) }] };
+      const round = Math.min(this.engine.round + 1, ROUNDS);
+      openStatusDialog(live, `Standings · round ${round}/${ROUNDS}`, done ? () => openShareDialog(r, resume) : null, resume);
     });
     const togglePause = () => (this.engine.paused ? this.engine.resume() : this.engine.pause());
     this.pauseBtn.addEventListener('click', togglePause);
@@ -328,9 +337,6 @@ export class Game {
       sfx.wahWah();
       for (const v of this.views) v.row.shrug();
     }
-
-    this.shareBtn.removeAttribute('disabled');
-    this.shareBtn.title = 'The game so far, to share';
 
     // The next round starts only when you click (or press Enter on the focused button).
     const last = round === ROUNDS - 1;

@@ -77,17 +77,31 @@ describe('the result bar', () => {
   });
 });
 
-describe('Share in the game controls', () => {
-  it('is off until a round ends, then shares the game so far, pausing a round in play', async () => {
+describe('Status in the game controls', () => {
+  it('shows the standings so far (calls and tokens too), pausing a round in play', async () => {
     const { game } = startGame();
-    const share = container.querySelector<HTMLButtonElement>('.share-btn')!;
-    expect(share.disabled).toBe(true);
+    const status = container.querySelector<HTMLButtonElement>('.share-btn')!;
+    expect(status.disabled).toBe(false); // standings are there from the start
+    status.click();
+    const dialog = document.querySelector('.status-dialog')!;
+    expect(dialog.querySelector('h2')!.textContent).toBe('Standings · round 1/10');
+    expect(dialog.querySelectorAll('.tally tbody tr')).toHaveLength(game.engine.players.length);
+    expect(dialog.textContent).toContain('API calls');
+    expect(dialog.querySelector('.share-actions')).toBeNull(); // nothing to share before a round is done
+    document.querySelector<HTMLButtonElement>('.share-close')!.click();
+    expect(document.querySelector('.status-dialog')).toBeNull();
+    game.engine.stop();
+  });
+
+  it('after a round, Share opens the share cards; closing them resumes the game', async () => {
+    const { game } = startGame();
     game.engine.skip();
     await flush();
-    expect(share.disabled).toBe(false);
     game.engine.nextRound();
-    share.click();
+    container.querySelector<HTMLButtonElement>('.share-btn')!.click();
     expect(game.engine.paused).toBe(true);
+    document.querySelector<HTMLButtonElement>('.status-dialog .share-actions button')!.click();
+    expect(document.querySelector('.status-dialog')).toBeNull();
     expect(document.querySelector('.share-dialog')).not.toBeNull();
     document.querySelector<HTMLButtonElement>('.share-close')!.click();
     expect(game.engine.paused).toBe(false);

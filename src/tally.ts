@@ -79,3 +79,35 @@ export function tallyTable(r: GameResult) {
     ]),
   ]);
 }
+
+/**
+ * Status, mid-game: the same tally as the results screen, for the game so far, in a modal. Share
+ * opens the share cards once a round is done. onClose runs when it closes (the game resumes).
+ */
+export function openStatusDialog(r: GameResult, title: string, onShare: (() => void) | null, onClose?: () => void) {
+  const close = el('button', { type: 'button', class: 'icon-btn share-close', 'aria-label': 'Close' }, '✕');
+  const share = el('button', { type: 'button', class: 'primary' }, 'Share…');
+  const dialog = el('div', { class: 'share-dialog status-dialog card', role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, [
+    close,
+    el('h2', {}, title),
+    tallyTable(r),
+    ...(onShare ? [el('div', { class: 'share-actions' }, share)] : []),
+  ]);
+  const backdrop = el('div', { class: 'share-backdrop' }, dialog);
+  const dismiss = () => {
+    backdrop.remove();
+    document.removeEventListener('keydown', onKey);
+    onClose?.();
+  };
+  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dismiss();
+  close.addEventListener('click', dismiss);
+  backdrop.addEventListener('click', (e) => e.target === backdrop && dismiss());
+  share.addEventListener('click', () => {
+    backdrop.remove();
+    document.removeEventListener('keydown', onKey);
+    onShare?.(); // the share dialog takes over, and resumes the game when it closes
+  });
+  document.addEventListener('keydown', onKey);
+  document.body.append(backdrop);
+  close.focus();
+}
