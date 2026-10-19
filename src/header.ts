@@ -11,6 +11,7 @@ import { el } from './dom';
 export const REPO = 'https://github.com/sujee/doodle-derby';
 const SITE = 'https://sujee.dev';
 const TWITTER = 'https://x.com/sujee_dev';
+const PROFILE = 'https://github.com/sujee';
 
 /** An outside link: a new tab, and no referrer. */
 function textLink(href: string, label: string): HTMLAnchorElement {
@@ -27,7 +28,7 @@ export function contactCard(): HTMLElement {
   const panel = el('section', { class: 'contact-panel', hidden: '', 'aria-label': 'Contact' }, [
     el('h2', {}, '👋 Say hello'),
     el('p', {}, 'Found a bug, or have an idea? I’d love to hear it.'),
-    el('div', { class: 'contact-links' }, [textLink(`${REPO}/issues/new`, '🐞 Open an issue'), textLink(TWITTER, '𝕏 @sujee_dev')]),
+    el('div', { class: 'contact-links' }, [textLink(`${REPO}/issues/new`, '🐞 Open an issue'), textLink(TWITTER, '𝕏 @sujee_dev'), textLink(PROFILE, 'GitHub /sujee')]),
   ]);
   const wrap = el('div', { class: 'contact-wrap' }, [button, panel]);
 

@@ -35,12 +35,12 @@ describe('the site header', () => {
     expect(install().querySelector('.contact-toggle')?.textContent).toContain('Contact');
   });
 
-  it('keeps the contact details behind the Contact button: open an issue, or @sujee_dev', () => {
+  it('keeps the contact details behind the Contact button: open an issue, @sujee_dev, or GitHub /sujee', () => {
     document.body.append(contactCard());
     const button = document.querySelector<HTMLButtonElement>('.contact-toggle')!;
     const panel = document.querySelector<HTMLElement>('.contact-panel')!;
 
-    expect(hrefs(panel)).toEqual(['https://github.com/sujee/doodle-derby/issues/new', 'https://x.com/sujee_dev']);
+    expect(hrefs(panel)).toEqual(['https://github.com/sujee/doodle-derby/issues/new', 'https://x.com/sujee_dev', 'https://github.com/sujee']);
     expect(panel.hidden).toBe(true);
     expect(button.getAttribute('aria-expanded')).toBe('false');
 
