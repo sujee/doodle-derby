@@ -22,10 +22,10 @@ export function listModels(config: GuesserConfig): Promise<ModelInfo[]> {
 }
 
 /** catalog: the provider's id on models.dev, for prices and image support. */
-export type OpenAIPreset = { name: string; baseUrl: string; keyless?: boolean; catalog?: string };
+export type OpenAIPreset = { name: string; baseUrl: string; keyless?: boolean; catalog?: string; /** A shorter name for a small tag on a field row. */ short?: string };
 
 export const OPENAI_PRESETS: OpenAIPreset[] = [
-  { name: 'Nebius Token Factory', baseUrl: 'https://api.tokenfactory.nebius.com/v1', catalog: 'nebius' },
+  { name: 'Nebius Token Factory', short: 'Nebius', baseUrl: 'https://api.tokenfactory.nebius.com/v1', catalog: 'nebius' },
   { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', catalog: 'openai' },
   { name: 'OpenAI compatible', baseUrl: '' },
   { name: 'Baseten', baseUrl: 'https://inference.baseten.co/v1', catalog: 'baseten' },
@@ -50,6 +50,13 @@ export function providerName(config: GuesserConfig): string | null {
   } catch {
     return null;
   }
+}
+
+/** The same, short enough for a tag on a field row when the bots use different providers ("Nebius"). */
+export function providerTag(config: GuesserConfig): string | null {
+  const full = providerName(config);
+  if (!full) return null;
+  return OPENAI_PRESETS.find((p) => p.name === full)?.short ?? full;
 }
 
 export type { FakeContext };

@@ -12,7 +12,7 @@ import { el } from './dom';
 import { createDoodler, Sketcher } from './doodler';
 import { Engine, ROUND_MS, type BadgeKind, type GameResult, type GuessEntry, type RoundResult } from './engine';
 import { priceFor } from './pricing';
-import { createGuesser, providerName, type GuesserConfig } from './providers';
+import { createGuesser, providerName, providerTag, type GuesserConfig } from './providers';
 import { openShareDialog, shortName } from './share';
 import { openStatusDialog } from './tally';
 import * as sfx from './sound';
@@ -220,13 +220,14 @@ export class Game {
           ),
           this.padWrap),
           el('aside', { class: 'field' }, [
-            el('h2', { class: 'field-title' }, 'The field'),
+            // When every bot is on one provider the title says so, once, instead of the rows each repeating it.
+            el('h2', { class: 'field-title' }, this.sharedProvider() ? `All models on ${this.sharedProvider()}` : 'The field'),
             // Rows, in score order (all level at the start: engine order).
             (this.rowsEl.className = this.engine.players.length > 3 ? 'rows many' : 'rows', // many: compact on phones
             this.rowsEl.replaceChildren(
               ...this.engine.players.map((p, i) => {
                 const v = this.views[i];
-                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, p.human ? you() : undefined, p.human ? null : providerName(this.configs[i]));
+                v.row = new FieldRow(i, p.label, [v.badgeEl, v.feedEl], v.scoreEl, p.human ? you() : undefined, this.rowProvider(i));
                 this.setBadge(i, '', '');
                 return v.row.el;
               }),
@@ -237,6 +238,18 @@ export class Game {
         ]),
       ]),
     );
+  }
+
+  /** The provider every guesser uses, to say once beside the field's title; null if they differ (or a Fake one is in). */
+  private sharedProvider(): string | null {
+    const names = this.engine.players.filter((p) => !p.human).map((p) => providerName(this.configs[this.engine.players.indexOf(p)]));
+    return names.length > 0 && names.every((n) => n !== null && n === names[0]) ? names[0] : null;
+  }
+
+  /** What a row says about its provider: its full name on hover, and a small tag unless the title already said it. */
+  private rowProvider(i: number): { full: string; tag: string | null } | null {
+    const full = this.engine.players[i].human ? null : providerName(this.configs[i]);
+    return full ? { full, tag: this.sharedProvider() ? null : providerTag(this.configs[i]) } : null;
   }
 
   /** A bot draws and you guess along (the engine's youGuess): your text box, unless you just watch. */

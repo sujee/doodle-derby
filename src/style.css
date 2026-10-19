@@ -475,7 +475,7 @@ button.tool.active .tool-icon { color: #2b2b2b; }
   margin: 0; min-width: 0; max-width: 100%; font: 1.1rem/1.2 var(--body); overflow-wrap: anywhere;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
-.row-provider { font-size: 0.82em; color: var(--muted); }
+.row-provider { font-size: 0.74rem; color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: 999px; padding: 0 8px; margin-left: 8px; font-family: var(--round); vertical-align: middle; }
 /* How fast the winner's right guess was, after its name, tinted by speed (up to 5s, up to 15s, slower) like the share cards. */
 .row-time { flex: none; padding: 0 9px; font: 600 0.8rem/1.5 var(--round); border-radius: 999px; font-variant-numeric: tabular-nums; }
 .row-time:empty { display: none; }

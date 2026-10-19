@@ -23,9 +23,10 @@ export class FieldRow {
    * (latest guess first) gets the line below to itself.
    * score: the engine's score element, kept for screen readers; the row shows "N wins" itself.
    * art: the avatar (defaults to robot i); you() when You are guessing in bot-doodler mode.
-   * provider: who serves the model ("Fireworks"), shown muted after its name.
+   * provider: who serves the model: a short tag after its name (only when the bots differ), and the full
+   * name on hover. A null tag keeps the name off the row (the field's title already says it).
    */
-  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, art?: Element, provider?: string | null) {
+  constructor(index: number, label: string, bubbles: Node[], score: HTMLElement, art?: Element, provider?: { full: string; tag: string | null } | null) {
     score.classList.add('sr-only');
     this.el = el('div', { class: art ? 'field-row human' : 'field-row' }, [
       el('span', { class: 'win-star', 'aria-hidden': 'true' }, starSvg()),
@@ -34,9 +35,9 @@ export class FieldRow {
       el('div', { class: 'row-main' }, [
         el('div', { class: 'row-head' }, [
           el('div', { class: 'row-name' }, [
-            el('h3', { title: provider ? `${label} · ${provider}` : label }, [
+            el('h3', { title: provider ? `${label} · ${provider.full}` : label }, [
               shortLabel(label),
-              ...(provider ? [el('span', { class: 'row-provider' }, ` · ${provider}`)] : []),
+              ...(provider?.tag ? [el('span', { class: 'row-provider' }, provider.tag)] : []),
             ]),
             this.timeEl,
             bubbles[0],

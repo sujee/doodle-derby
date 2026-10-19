@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDoodler } from '../src/doodler';
 import { AnthropicGuesser, listAnthropicModels } from '../src/providers/anthropic';
 import { listOpenAIModels, OpenAICompatGuesser } from '../src/providers/openaiCompat';
-import { providerName } from '../src/providers';
+import { providerName, providerTag } from '../src/providers';
 import { GuessError } from '../src/providers/types';
 import { setThinking } from '../src/settings';
 
@@ -300,5 +300,13 @@ describe('providerName (shown after the model in the field)', () => {
     expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'https://api.fireworks.ai/inference/v1/' })).toBe('Fireworks');
     expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'https://api.example.com/v1' })).toBe('example.com');
     expect(providerName({ kind: 'openai', apiKey: 'k', model: 'm', baseUrl: 'not a url' })).toBeNull();
+  });
+
+  it('has a shorter tag for a row when the bots differ', () => {
+    const nebius = { kind: 'openai' as const, apiKey: 'k', model: 'm', baseUrl: 'https://api.tokenfactory.nebius.com/v1' };
+    expect(providerName(nebius)).toBe('Nebius Token Factory');
+    expect(providerTag(nebius)).toBe('Nebius');
+    expect(providerTag({ ...nebius, baseUrl: 'https://api.together.xyz/v1' })).toBe('Together'); // no shorter form: the same
+    expect(providerTag({ kind: 'fake' })).toBeNull();
   });
 });

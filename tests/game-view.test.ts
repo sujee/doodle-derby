@@ -161,6 +161,35 @@ describe('the call count at the right of a row', () => {
   });
 });
 
+describe('the provider on the field', () => {
+  const on = (baseUrl: string) => ({ kind: 'openai' as const, apiKey: 'k', model: 'm', baseUrl });
+  const fireworks = 'https://api.fireworks.ai/inference/v1';
+  const together = 'https://api.together.xyz/v1';
+  const tags = () => [...container.querySelectorAll('.field-row .row-provider')].map((t) => t.textContent);
+
+  it('is said once in the title when every bot uses it, and left off the rows', () => {
+    const game = new Game(container, [on(fireworks), on(fireworks)], () => {}, null, WORDS);
+    expect(container.querySelector('.field-title')!.textContent).toBe('All models on Fireworks');
+    expect(tags()).toEqual([]);
+    expect(container.querySelector('.field-row h3')!.getAttribute('title')).toContain('Fireworks'); // still there on hover
+    game.engine.stop();
+  });
+
+  it('is a small tag on each row when the bots differ, with nothing on the title', () => {
+    const game = new Game(container, [on(fireworks), on(together)], () => {}, null, WORDS);
+    expect(container.querySelector('.field-title')!.textContent).toBe('The field');
+    expect(tags()).toEqual(['Fireworks', 'Together']);
+    game.engine.stop();
+  });
+
+  it('is not claimed when a Fake guesser is among the real ones', () => {
+    const game = new Game(container, [on(fireworks), { kind: 'fake' }], () => {}, null, WORDS);
+    expect(container.querySelector('.field-title')!.textContent).toBe('The field');
+    expect(tags()).toEqual(['Fireworks']);
+    game.engine.stop();
+  });
+});
+
 describe('the winner row', () => {
   it('shows the time of the right guess after the name, tinted by its speed, and clears it next round', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0); // the Fake guesser gets it right on the first try
