@@ -93,6 +93,8 @@ export class Game {
         snapshot: (image, players) => debugImage(`Snapshot → ${players.map((i) => this.engine.players[i].label).join(', ')}`, image),
         badge: (i, text, kind, detail) => this.setBadge(i, text, kind, detail),
         guess: (i, entry) => this.onGuess(i, entry),
+        // Counted when a request is sent, so a slow bot whose call gets cancelled still shows "1 call".
+        usage: (i) => this.views[i]?.row.setCalls(this.engine.players[i].roundCalls),
         doodleStatus: (status, message) => this.onDoodleStatus(status, message),
         sketch: (doodle) => {
           this.sketchEl.hidden = true;
@@ -186,8 +188,8 @@ export class Game {
             // Right on top of the canvas: the round and level, the word, then your "N correct".
             el('div', { class: 'paper-head' }, [
               el('div', { class: 'round' }, [this.roundEl, this.tierEl]),
+              // Just the word; the title says what it is for.
               el('div', { class: 'prompt', title: this.botDraws ? (this.youGuess ? 'The word to guess' : 'The word the bot is drawing') : 'The word to draw' }, [
-                el('span', { class: 'prompt-verb' }, this.botDraws ? (this.youGuess ? 'guess ' : 'drawing ') : 'draw '),
                 this.wordEl,
               ]),
               this.correctEl,
@@ -284,7 +286,6 @@ export class Game {
   private onGuess(i: number, entry: GuessEntry) {
     // No sound per guess: with the bots guessing every few seconds it was too much. Only the
     // round's ding / wah-wah and the countdown ticks play.
-    this.views[i].row.setGuesses(this.engine.players[i].history.length);
     this.views[i].feedEl.prepend(
       el('li', { class: entry.right ? 'right' : 'nope' }, [
         el('span', { class: 'guess' }, entry.guess),
