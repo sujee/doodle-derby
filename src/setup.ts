@@ -12,6 +12,8 @@ import {
 import { botColor, doodlerBot, robot, you } from './art';
 import { createDoodler } from './doodler';
 import { el } from './dom';
+import { isMatch } from './match';
+import type { Word } from './words';
 
 const CUSTOM = '__custom__';
 /** Can the model see the doodle (picture in → words out)? A short label under its name, the longer story on hover. */
@@ -425,11 +427,11 @@ function makeBot(n: number, shared: Conn, taken: () => string[], doodler = false
       }
       return;
     }
+    if (c.kind === 'fake') return void (status.textContent = 'Works. Fake guessers only pretend to look.');
     try {
-      const g = createGuesser(c, { target: () => ({ word: 'circle' }), progress: () => 1, difficulty: () => 0 });
-      const { guess, confidence } = await g.guess({ image: testImage(), wrongGuesses: [], signal: AbortSignal.timeout(30000) });
-      const sure = confidence === null ? '' : ` (${confidence}% sure)`;
-      status.textContent = `Works. It sees a test circle as: “${guess}”${sure}`;
+      const g = createGuesser(c, { target: () => TEST_WORD, progress: () => 1, difficulty: () => 0 });
+      const { guess } = await g.guess({ image: testImage(), wrongGuesses: [], signal: AbortSignal.timeout(30000) });
+      status.textContent = testVerdict(guess);
     } catch (e) {
       status.textContent = `Hmm, that didn’t work: ${errorText(e)}`;
     }
@@ -510,16 +512,57 @@ function field(label: string, control: HTMLElement): HTMLElement {
   return el('label', { class: 'field' }, [el('span', {}, label), control]);
 }
 
-/** A small circle on white, for the Test button. */
+/**
+ * Test shows the model an apple: a model that can't see has no reason to say "apple", so a right
+ * answer means it really looked (a circle was too easy to name blind).
+ */
+const TEST_WORD: Word = { word: 'apple' };
+
+/** What Test says about the model's answer to the apple. */
+export function testVerdict(guess: string): string {
+  return isMatch(guess, TEST_WORD)
+    ? 'Works. It saw the apple 🍎'
+    : `It can’t see images: it said “${guess}”, but it was an apple.`;
+}
+
+/** A red apple with a stem and a green leaf, outlined in ink, on white. */
 function testImage(): string {
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
+  c.width = c.height = 192;
   const ctx = c.getContext('2d')!;
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, 128, 128);
-  ctx.lineWidth = 6;
+  ctx.fillRect(0, 0, 192, 192);
+  ctx.lineWidth = 5;
+  ctx.lineJoin = ctx.lineCap = 'round';
+  ctx.strokeStyle = '#2b2b2b';
+  // The body: two lobes with a dip at the top and a small one at the bottom.
   ctx.beginPath();
-  ctx.arc(64, 64, 40, 0, Math.PI * 2);
+  ctx.moveTo(96, 62);
+  ctx.bezierCurveTo(70, 40, 26, 52, 30, 100);
+  ctx.bezierCurveTo(33, 140, 62, 172, 84, 166);
+  ctx.quadraticCurveTo(96, 162, 108, 166);
+  ctx.bezierCurveTo(130, 172, 159, 140, 162, 100);
+  ctx.bezierCurveTo(166, 52, 122, 40, 96, 62);
+  ctx.closePath();
+  ctx.fillStyle = '#e5383b';
+  ctx.fill();
+  ctx.stroke();
+  // The stem.
+  ctx.beginPath();
+  ctx.moveTo(96, 64);
+  ctx.quadraticCurveTo(94, 42, 102, 26);
+  ctx.strokeStyle = '#6b4226';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  // The leaf.
+  ctx.beginPath();
+  ctx.moveTo(100, 40);
+  ctx.quadraticCurveTo(122, 18, 146, 30);
+  ctx.quadraticCurveTo(124, 52, 100, 40);
+  ctx.fillStyle = '#4caf50';
+  ctx.fill();
+  ctx.strokeStyle = '#2b2b2b';
+  ctx.lineWidth = 4;
   ctx.stroke();
   return c.toDataURL('image/jpeg', 0.9);
 }

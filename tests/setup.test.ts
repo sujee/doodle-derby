@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ModelInfo } from '../src/providers';
-import { pickModel } from '../src/setup';
+import { pickModel, testVerdict } from '../src/setup';
 
 const m = (id: string, vision: ModelInfo['vision'] = 'yes') => ({ id, vision }) as ModelInfo;
 
@@ -112,5 +112,16 @@ describe('Add bot on the setup screen', () => {
     expect(slots()).toHaveLength(1);
     expect(slots()[0].querySelector<HTMLButtonElement>('.remove')!.hidden).toBe(true); // the last bot can't go
     done();
+  });
+});
+
+describe('Test shows an apple, and grades the answer', () => {
+  it('passes a model that names the apple, however it puts it', () => {
+    for (const g of ['apple', 'An apple.', 'red apple', 'Apples']) expect(testVerdict(g)).toContain('saw the apple');
+  });
+
+  it('flags a model that names something else: it can’t see', () => {
+    expect(testVerdict('circle')).toBe('It can’t see images: it said “circle”, but it was an apple.');
+    expect(testVerdict('pineapple')).toContain('can’t see'); // not "apple" at the end of a word
   });
 });
