@@ -11,26 +11,23 @@ import { el } from './dom';
 const REPO = 'https://github.com/sujee/doodle-derby';
 const SITE = 'https://sujee.dev';
 const TWITTER = 'https://x.com/sujee_dev';
-const EMAIL = 'sujee@sujee.dev';
-/** Hidden for now: the card and its button are written and tested, just not shown. */
-const SHOW_CONTACT = false;
 
 /** An outside link: a new tab, and no referrer. */
 function textLink(href: string, label: string): HTMLAnchorElement {
   return el('a', { href, rel: 'noreferrer', ...(href.startsWith('http') ? { target: '_blank' } : {}) }, label) as HTMLAnchorElement;
 }
 
-/** The "?" in the header and the little card it opens with the ways to get in touch. */
+/** The "👋 Contact" button in the header and the little card it opens with the ways to get in touch. */
 export function contactCard(): HTMLElement {
   const button = el(
     'button',
-    { type: 'button', class: 'contact-toggle', 'aria-expanded': 'false', title: 'Contact', 'aria-label': 'Contact' },
-    '?',
+    { type: 'button', class: 'contact-toggle', 'aria-expanded': 'false', title: 'Contact me' },
+    [el('span', { 'aria-hidden': 'true' }, '👋'), ' Contact'],
   ) as HTMLButtonElement;
   const panel = el('section', { class: 'contact-panel', hidden: '', 'aria-label': 'Contact' }, [
     el('h2', {}, '👋 Say hello'),
-    el('p', {}, 'Bugs, ideas, or just to say hi:'),
-    el('div', { class: 'contact-links' }, [textLink(TWITTER, '@sujee_dev'), textLink(`mailto:${EMAIL}`, EMAIL)]),
+    el('p', {}, 'Found a bug, or have an idea? I’d love to hear it.'),
+    el('div', { class: 'contact-links' }, [textLink(`${REPO}/issues/new`, '🐞 Open an issue'), textLink(TWITTER, '𝕏 @sujee_dev')]),
   ]);
   const wrap = el('div', { class: 'contact-wrap' }, [button, panel]);
 
@@ -77,7 +74,7 @@ export function installHeader(): void {
         el('span', {}, `v${version}`),
         source,
         textLink(SITE, 'by sujee.dev'),
-        ...(SHOW_CONTACT ? [contactCard()] : []),
+        contactCard(),
       ]),
     ]),
   );
