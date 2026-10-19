@@ -26,14 +26,19 @@ document.body.append(
 let lastConfigs: GuesserConfig[] = [];
 let lastDoodler: GuesserConfig | null = null;
 
+/** A new screen starts at its top, not wherever the last one was scrolled to (Play sits at the bottom). */
+const toTop = () => window.scrollTo({ top: 0, behavior: 'instant' });
+
 function showSetup() {
   renderSetup(app, startGame);
+  toTop();
 }
 
 function startGame(configs: GuesserConfig[], doodler: GuesserConfig | null) {
   lastConfigs = configs;
   lastDoodler = doodler;
   new Game(app, configs, showResults, doodler);
+  toTop();
 }
 
 function showResults(r: GameResult) {
@@ -82,6 +87,7 @@ function showResults(r: GameResult) {
       ]),
     ]),
   );
+  toTop();
 }
 
 showSetup();
